@@ -8,7 +8,7 @@ A minimal, high-performance arithmetic expression language with a complete lexer
 - 📦 **Tiny Bundle** - 3.61 KB gzipped, zero dependencies
 - 🌐 **Browser Ready** - 100% ESM, no Node.js APIs
 - 🔒 **Type-Safe** - Strict TypeScript with full type coverage
-- ✅ **Thoroughly Tested** - 71 tests, 97.66% coverage
+- ✅ **Thoroughly Tested** - 106 tests, 97.66% coverage
 - 📐 **Math Expressions** - Numbers, dates, operators, functions, variables
 - 🎯 **Clean API** - Intuitive dual API (class-based + functional)
 - 📝 **Well Documented** - Complete JSDoc and examples
@@ -183,6 +183,24 @@ const ast = parseSource("2 + 3 * 4");
 // Returns: BinaryOp(+, NumberLiteral(2), BinaryOp(*, ...))
 ```
 
+#### `generate(node: ASTNode): string`
+
+Convert an AST node back to source code. Intelligently adds parentheses only when necessary to preserve semantics.
+
+```typescript
+import { generate, ast } from "littlewing";
+
+// From AST builders
+const expr = ast.multiply(ast.add(ast.number(2), ast.number(3)), ast.number(4));
+generate(expr); // → "(2 + 3) * 4"
+
+// Round-trip: parse → generate → parse
+const code = "2 + 3 * 4";
+const tree = parseSource(code);
+const regenerated = generate(tree); // → "2 + 3 * 4"
+parseSource(regenerated); // Same AST structure
+```
+
 ### Classes
 
 #### `Lexer`
@@ -217,6 +235,17 @@ import { Executor } from "littlewing";
 
 const executor = new Executor(context);
 const result = executor.execute(ast);
+```
+
+#### `CodeGenerator`
+
+Convert AST nodes back to source code. Handles operator precedence and associativity automatically.
+
+```typescript
+import { CodeGenerator } from "littlewing";
+
+const generator = new CodeGenerator();
+const code = generator.generate(ast);
 ```
 
 ### AST Builders
@@ -368,7 +397,7 @@ execute("kilometers(5)", context); // → 8.0467
 
 ### Test Coverage
 
-- 71 comprehensive tests
+- 106 comprehensive tests
 - 97.66% code coverage
 - All edge cases handled
 
