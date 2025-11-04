@@ -285,37 +285,6 @@ import { defaultContext } from "littlewing";
 (milliseconds, seconds, minutes, hours, days);
 ```
 
-## Type Definitions
-
-### ExecutionContext
-
-```typescript
-interface ExecutionContext {
-	functions?: Record<string, (...args: any[]) => number | Date>;
-	variables?: Record<string, number | Date>;
-}
-```
-
-### RuntimeValue
-
-```typescript
-type RuntimeValue = number | Date | unknown;
-```
-
-### ASTNode
-
-```typescript
-type ASTNode =
-	| Program
-	| NumberLiteral
-	| StringLiteral
-	| Identifier
-	| BinaryOp
-	| UnaryOp
-	| FunctionCall
-	| Assignment;
-```
-
 ## Examples
 
 ### Calculator
@@ -391,14 +360,14 @@ execute("kilometers(5)", context); // → 8.0467
 
 ### Bundle Size
 
-- Raw: 16.70 KB
-- Gzipped: **3.61 KB**
+- Raw: 21.06 KB
+- Gzipped: **4.26 KB**
 - Zero dependencies
 
 ### Test Coverage
 
 - 106 comprehensive tests
-- 97.66% code coverage
+- 95.99% code coverage
 - All edge cases handled
 
 ## Type Safety
@@ -437,7 +406,3 @@ MIT
 ## Contributing
 
 See [CONTRIBUTING.md](./CONTRIBUTING.md) for guidelines.
-
----
-
-Made with ❤️ by the littlewing team
