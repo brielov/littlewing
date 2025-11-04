@@ -4,6 +4,13 @@ import {
 	defaultContext,
 	Executor,
 	execute,
+	isAssignment,
+	isBinaryOp,
+	isFunctionCall,
+	isIdentifier,
+	isNumberLiteral,
+	isStringLiteral,
+	isUnaryOp,
 	Lexer,
 	parseSource,
 	TokenType,
@@ -16,39 +23,39 @@ import {
 test('Lexer: tokenize numbers', () => {
 	const lexer = new Lexer('42 3.14')
 	const tokens = lexer.tokenize()
-	expect(tokens[0].type).toBe(TokenType.NUMBER)
-	expect(tokens[0].value).toBe(42)
-	expect(tokens[1].type).toBe(TokenType.NUMBER)
-	expect(tokens[1].value).toBe(3.14)
-	expect(tokens[2].type).toBe(TokenType.EOF)
+	expect(tokens[0]?.type).toBe(TokenType.NUMBER)
+	expect(tokens[0]?.value).toBe(42)
+	expect(tokens[1]?.type).toBe(TokenType.NUMBER)
+	expect(tokens[1]?.value).toBe(3.14)
+	expect(tokens[2]?.type).toBe(TokenType.EOF)
 })
 
 test('Lexer: tokenize identifiers', () => {
 	const lexer = new Lexer('x my_var now')
 	const tokens = lexer.tokenize()
-	expect(tokens[0].type).toBe(TokenType.IDENTIFIER)
-	expect(tokens[0].value).toBe('x')
-	expect(tokens[1].type).toBe(TokenType.IDENTIFIER)
-	expect(tokens[1].value).toBe('my_var')
-	expect(tokens[2].type).toBe(TokenType.IDENTIFIER)
-	expect(tokens[2].value).toBe('now')
+	expect(tokens[0]?.type).toBe(TokenType.IDENTIFIER)
+	expect(tokens[0]?.value).toBe('x')
+	expect(tokens[1]?.type).toBe(TokenType.IDENTIFIER)
+	expect(tokens[1]?.value).toBe('my_var')
+	expect(tokens[2]?.type).toBe(TokenType.IDENTIFIER)
+	expect(tokens[2]?.value).toBe('now')
 })
 
 test('Lexer: tokenize operators', () => {
 	const lexer = new Lexer('+ - * / %')
 	const tokens = lexer.tokenize()
-	expect(tokens[0].type).toBe(TokenType.PLUS)
-	expect(tokens[1].type).toBe(TokenType.MINUS)
-	expect(tokens[2].type).toBe(TokenType.STAR)
-	expect(tokens[3].type).toBe(TokenType.SLASH)
-	expect(tokens[4].type).toBe(TokenType.PERCENT)
+	expect(tokens[0]?.type).toBe(TokenType.PLUS)
+	expect(tokens[1]?.type).toBe(TokenType.MINUS)
+	expect(tokens[2]?.type).toBe(TokenType.STAR)
+	expect(tokens[3]?.type).toBe(TokenType.SLASH)
+	expect(tokens[4]?.type).toBe(TokenType.PERCENT)
 })
 
 test('Lexer: skip comments', () => {
 	const lexer = new Lexer('42 // this is a comment\n 3.14')
 	const tokens = lexer.tokenize()
-	expect(tokens[0].value).toBe(42)
-	expect(tokens[1].value).toBe(3.14)
+	expect(tokens[0]?.value).toBe(42)
+	expect(tokens[1]?.value).toBe(3.14)
 })
 
 test('Lexer: skip whitespace and semicolons', () => {
@@ -61,25 +68,25 @@ test('Lexer: skip whitespace and semicolons', () => {
 test('Lexer: tokenize full expression', () => {
 	const lexer = new Lexer('x = 1 + 2')
 	const tokens = lexer.tokenize()
-	expect(tokens[0].value).toBe('x')
-	expect(tokens[1].value).toBe('=')
-	expect(tokens[2].value).toBe(1)
-	expect(tokens[3].value).toBe('+')
-	expect(tokens[4].value).toBe(2)
+	expect(tokens[0]?.value).toBe('x')
+	expect(tokens[1]?.value).toBe('=')
+	expect(tokens[2]?.value).toBe(1)
+	expect(tokens[3]?.value).toBe('+')
+	expect(tokens[4]?.value).toBe(2)
 })
 
 test('Lexer: tokenize string literal', () => {
 	const lexer = new Lexer("'hello'")
 	const tokens = lexer.tokenize()
-	expect(tokens[0].type).toBe(TokenType.STRING)
-	expect(tokens[0].value).toBe('hello')
+	expect(tokens[0]?.type).toBe(TokenType.STRING)
+	expect(tokens[0]?.value).toBe('hello')
 })
 
 test('Lexer: tokenize string with escape sequences', () => {
 	const lexer = new Lexer("'hello\\'world'")
 	const tokens = lexer.tokenize()
-	expect(tokens[0].type).toBe(TokenType.STRING)
-	expect(tokens[0].value).toBe("hello'world")
+	expect(tokens[0]?.type).toBe(TokenType.STRING)
+	expect(tokens[0]?.value).toBe("hello'world")
 })
 
 // ============================================================================
@@ -87,83 +94,111 @@ test('Lexer: tokenize string with escape sequences', () => {
 // ============================================================================
 
 test('Parser: parse number literal', () => {
-	const ast = parseSource('42')
-	expect(ast.type).toBe('NumberLiteral')
-	expect(ast.value).toBe(42)
+	const node = parseSource('42')
+	expect(isNumberLiteral(node)).toBe(true)
+	if (isNumberLiteral(node)) {
+		expect(node.value).toBe(42)
+	}
 })
 
 test('Parser: parse string literal', () => {
-	const ast = parseSource("'hello'")
-	expect(ast.type).toBe('StringLiteral')
-	expect(ast.value).toBe('hello')
+	const node = parseSource("'hello'")
+	expect(isStringLiteral(node)).toBe(true)
+	if (isStringLiteral(node)) {
+		expect(node.value).toBe('hello')
+	}
 })
 
 test('Parser: parse identifier', () => {
-	const ast = parseSource('x')
-	expect(ast.type).toBe('Identifier')
-	expect(ast.name).toBe('x')
+	const node = parseSource('x')
+	expect(isIdentifier(node)).toBe(true)
+	if (isIdentifier(node)) {
+		expect(node.name).toBe('x')
+	}
 })
 
 test('Parser: parse binary operation', () => {
-	const ast = parseSource('1 + 2')
-	expect(ast.type).toBe('BinaryOp')
-	expect(ast.operator).toBe('+')
-	expect(ast.left.type).toBe('NumberLiteral')
-	expect(ast.right.type).toBe('NumberLiteral')
+	const node = parseSource('1 + 2')
+	expect(isBinaryOp(node)).toBe(true)
+	if (isBinaryOp(node)) {
+		expect(node.operator).toBe('+')
+		expect(node.left.type).toBe('NumberLiteral')
+		expect(node.right.type).toBe('NumberLiteral')
+	}
 })
 
 test('Parser: parse operator precedence', () => {
-	const ast = parseSource('1 + 2 * 3')
+	const node = parseSource('1 + 2 * 3')
 	// Should parse as 1 + (2 * 3)
-	expect(ast.type).toBe('BinaryOp')
-	expect(ast.operator).toBe('+')
-	expect(ast.right.type).toBe('BinaryOp')
-	expect(ast.right.operator).toBe('*')
+	expect(isBinaryOp(node)).toBe(true)
+	if (isBinaryOp(node)) {
+		expect(node.operator).toBe('+')
+		expect(node.right.type).toBe('BinaryOp')
+		if (isBinaryOp(node.right)) {
+			expect(node.right.operator).toBe('*')
+		}
+	}
 })
 
 test('Parser: parse parentheses', () => {
-	const ast = parseSource('(1 + 2) * 3')
+	const node = parseSource('(1 + 2) * 3')
 	// Should parse as (1 + 2) * 3
-	expect(ast.type).toBe('BinaryOp')
-	expect(ast.operator).toBe('*')
-	expect(ast.left.type).toBe('BinaryOp')
-	expect(ast.left.operator).toBe('+')
+	expect(isBinaryOp(node)).toBe(true)
+	if (isBinaryOp(node)) {
+		expect(node.operator).toBe('*')
+		expect(node.left.type).toBe('BinaryOp')
+		if (isBinaryOp(node.left)) {
+			expect(node.left.operator).toBe('+')
+		}
+	}
 })
 
 test('Parser: parse unary minus', () => {
-	const ast = parseSource('-42')
-	expect(ast.type).toBe('UnaryOp')
-	expect(ast.operator).toBe('-')
-	expect(ast.argument.type).toBe('NumberLiteral')
-	expect(ast.argument.value).toBe(42)
+	const node = parseSource('-42')
+	expect(isUnaryOp(node)).toBe(true)
+	if (isUnaryOp(node)) {
+		expect(node.operator).toBe('-')
+		expect(node.argument.type).toBe('NumberLiteral')
+		if (isNumberLiteral(node.argument)) {
+			expect(node.argument.value).toBe(42)
+		}
+	}
 })
 
 test('Parser: parse function call without arguments', () => {
-	const ast = parseSource('now()')
-	expect(ast.type).toBe('FunctionCall')
-	expect(ast.name).toBe('now')
-	expect(ast.arguments.length).toBe(0)
+	const node = parseSource('now()')
+	expect(isFunctionCall(node)).toBe(true)
+	if (isFunctionCall(node)) {
+		expect(node.name).toBe('now')
+		expect(node.arguments.length).toBe(0)
+	}
 })
 
 test('Parser: parse function call with arguments', () => {
-	const ast = parseSource('abs(-5)')
-	expect(ast.type).toBe('FunctionCall')
-	expect(ast.name).toBe('abs')
-	expect(ast.arguments.length).toBe(1)
+	const node = parseSource('abs(-5)')
+	expect(isFunctionCall(node)).toBe(true)
+	if (isFunctionCall(node)) {
+		expect(node.name).toBe('abs')
+		expect(node.arguments.length).toBe(1)
+	}
 })
 
 test('Parser: parse variable assignment', () => {
-	const ast = parseSource('x = 5')
-	expect(ast.type).toBe('Assignment')
-	expect(ast.name).toBe('x')
-	expect(ast.value.type).toBe('NumberLiteral')
+	const node = parseSource('x = 5')
+	expect(isAssignment(node)).toBe(true)
+	if (isAssignment(node)) {
+		expect(node.name).toBe('x')
+		expect(node.value.type).toBe('NumberLiteral')
+	}
 })
 
 test('Parser: parse complex assignment', () => {
-	const ast = parseSource('z = x + y')
-	expect(ast.type).toBe('Assignment')
-	expect(ast.name).toBe('z')
-	expect(ast.value.type).toBe('BinaryOp')
+	const node = parseSource('z = x + y')
+	expect(isAssignment(node)).toBe(true)
+	if (isAssignment(node)) {
+		expect(node.name).toBe('z')
+		expect(node.value.type).toBe('BinaryOp')
+	}
 })
 
 // ============================================================================

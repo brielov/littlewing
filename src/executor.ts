@@ -12,6 +12,16 @@ import type {
 	StringLiteral,
 	UnaryOp,
 } from './types'
+import {
+	isAssignment,
+	isBinaryOp,
+	isFunctionCall,
+	isIdentifier,
+	isNumberLiteral,
+	isProgram,
+	isStringLiteral,
+	isUnaryOp,
+} from './types'
 
 /**
  * Executor - evaluates an AST with given context
@@ -29,26 +39,15 @@ export class Executor {
 	 * Execute an AST node and return the result
 	 */
 	execute(node: ASTNode): RuntimeValue {
-		switch (node.type) {
-			case 'Program':
-				return this.executeProgram(node as Program)
-			case 'NumberLiteral':
-				return this.executeNumberLiteral(node as NumberLiteral)
-			case 'StringLiteral':
-				return this.executeStringLiteral(node as StringLiteral)
-			case 'Identifier':
-				return this.executeIdentifier(node as Identifier)
-			case 'BinaryOp':
-				return this.executeBinaryOp(node as BinaryOp)
-			case 'UnaryOp':
-				return this.executeUnaryOp(node as UnaryOp)
-			case 'FunctionCall':
-				return this.executeFunctionCall(node as FunctionCall)
-			case 'Assignment':
-				return this.executeAssignment(node as Assignment)
-			default:
-				throw new Error(`Unknown node type`)
-		}
+		if (isProgram(node)) return this.executeProgram(node)
+		if (isNumberLiteral(node)) return this.executeNumberLiteral(node)
+		if (isStringLiteral(node)) return this.executeStringLiteral(node)
+		if (isIdentifier(node)) return this.executeIdentifier(node)
+		if (isBinaryOp(node)) return this.executeBinaryOp(node)
+		if (isUnaryOp(node)) return this.executeUnaryOp(node)
+		if (isFunctionCall(node)) return this.executeFunctionCall(node)
+		if (isAssignment(node)) return this.executeAssignment(node)
+		throw new Error(`Unknown node type`)
 	}
 
 	/**

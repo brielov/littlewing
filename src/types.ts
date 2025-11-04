@@ -131,3 +131,38 @@ export interface Assignment {
 	name: string
 	value: ASTNode
 }
+
+/**
+ * Type guard functions for discriminated union narrowing
+ */
+export function isNumberLiteral(node: ASTNode): node is NumberLiteral {
+	return node.type === 'NumberLiteral'
+}
+
+export function isStringLiteral(node: ASTNode): node is StringLiteral {
+	return node.type === 'StringLiteral'
+}
+
+export function isIdentifier(node: ASTNode): node is Identifier {
+	return node.type === 'Identifier'
+}
+
+export function isBinaryOp(node: ASTNode): node is BinaryOp {
+	return node.type === 'BinaryOp'
+}
+
+export function isUnaryOp(node: ASTNode): node is UnaryOp {
+	return node.type === 'UnaryOp'
+}
+
+export function isFunctionCall(node: ASTNode): node is FunctionCall {
+	return node.type === 'FunctionCall'
+}
+
+export function isAssignment(node: ASTNode): node is Assignment {
+	return node.type === 'Assignment'
+}
+
+export function isProgram(node: ASTNode): node is Program {
+	return node.type === 'Program'
+}

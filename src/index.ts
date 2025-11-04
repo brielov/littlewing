@@ -19,4 +19,16 @@ export { Parser, parseSource } from './parser'
 
 // Type definitions
 export type { ExecutionContext, RuntimeValue } from './types'
-export { type ASTNode, type Token, TokenType } from './types'
+export {
+	type ASTNode,
+	isAssignment,
+	isBinaryOp,
+	isFunctionCall,
+	isIdentifier,
+	isNumberLiteral,
+	isProgram,
+	isStringLiteral,
+	isUnaryOp,
+	type Token,
+	TokenType,
+} from './types'
