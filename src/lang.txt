@@ -1,0 +1,6 @@
+x = 1;
+y = 2;
+z = x + y;
+
+d = now() // <- global function provided to executor
+p = i - 10 // <- global variable provided to executor (i is not defined here).
