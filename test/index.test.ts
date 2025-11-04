@@ -4,6 +4,7 @@ import {
 	defaultContext,
 	Executor,
 	execute,
+	generate,
 	isAssignment,
 	isBinaryOp,
 	isFunctionCall,
@@ -603,4 +604,278 @@ test('Default context: spread into custom context', () => {
 		variables: { x: 5 },
 	})
 	expect(result).toBe(10)
+})
+
+// ============================================================================
+// CODE GENERATION TESTS
+// ============================================================================
+
+test('CodeGen: generate number literal', () => {
+	const node = ast.number(42)
+	const code = generate(node)
+	expect(code).toBe('42')
+})
+
+test('CodeGen: generate identifier', () => {
+	const node = ast.identifier('x')
+	const code = generate(node)
+	expect(code).toBe('x')
+})
+
+test('CodeGen: generate simple binary operation', () => {
+	const node = ast.add(ast.number(2), ast.number(3))
+	const code = generate(node)
+	expect(code).toBe('2 + 3')
+})
+
+test('CodeGen: generate binary operation with proper spacing', () => {
+	const node = ast.subtract(ast.number(10), ast.number(5))
+	const code = generate(node)
+	expect(code).toBe('10 - 5')
+})
+
+test('CodeGen: generate multiplication', () => {
+	const node = ast.multiply(ast.number(3), ast.number(4))
+	const code = generate(node)
+	expect(code).toBe('3 * 4')
+})
+
+test('CodeGen: generate division', () => {
+	const node = ast.divide(ast.number(10), ast.number(2))
+	const code = generate(node)
+	expect(code).toBe('10 / 2')
+})
+
+test('CodeGen: generate modulo', () => {
+	const node = ast.modulo(ast.number(10), ast.number(3))
+	const code = generate(node)
+	expect(code).toBe('10 % 3')
+})
+
+test('CodeGen: generate exponentiation', () => {
+	const node = ast.exponentiate(ast.number(2), ast.number(3))
+	const code = generate(node)
+	expect(code).toBe('2 ^ 3')
+})
+
+test('CodeGen: generate unary minus', () => {
+	const node = ast.negate(ast.number(5))
+	const code = generate(node)
+	expect(code).toBe('-5')
+})
+
+test('CodeGen: generate unary minus with binary operation', () => {
+	const node = ast.negate(ast.add(ast.number(2), ast.number(3)))
+	const code = generate(node)
+	expect(code).toBe('-(2 + 3)')
+})
+
+test('CodeGen: generate function call without arguments', () => {
+	const node = ast.functionCall('now')
+	const code = generate(node)
+	expect(code).toBe('now()')
+})
+
+test('CodeGen: generate function call with single argument', () => {
+	const node = ast.functionCall('abs', [ast.number(-5)])
+	const code = generate(node)
+	expect(code).toBe('abs(-5)')
+})
+
+test('CodeGen: generate function call with multiple arguments', () => {
+	const node = ast.functionCall('max', [
+		ast.number(1),
+		ast.number(5),
+		ast.number(3),
+	])
+	const code = generate(node)
+	expect(code).toBe('max(1, 5, 3)')
+})
+
+test('CodeGen: generate variable assignment', () => {
+	const node = ast.assign('x', ast.number(5))
+	const code = generate(node)
+	expect(code).toBe('x = 5')
+})
+
+test('CodeGen: generate complex assignment', () => {
+	const node = ast.assign(
+		'z',
+		ast.add(ast.identifier('x'), ast.identifier('y')),
+	)
+	const code = generate(node)
+	expect(code).toBe('z = x + y')
+})
+
+test('CodeGen: precedence - multiply binds tighter than add', () => {
+	const node = ast.add(
+		ast.number(1),
+		ast.multiply(ast.number(2), ast.number(3)),
+	)
+	const code = generate(node)
+	expect(code).toBe('1 + 2 * 3')
+})
+
+test('CodeGen: precedence - add on left needs parens', () => {
+	const node = ast.multiply(
+		ast.add(ast.number(1), ast.number(2)),
+		ast.number(3),
+	)
+	const code = generate(node)
+	expect(code).toBe('(1 + 2) * 3')
+})
+
+test('CodeGen: precedence - power binds tighter than multiply', () => {
+	const node = ast.multiply(
+		ast.number(2),
+		ast.exponentiate(ast.number(3), ast.number(2)),
+	)
+	const code = generate(node)
+	expect(code).toBe('2 * 3 ^ 2')
+})
+
+test('CodeGen: precedence - nested operations', () => {
+	const node = ast.add(
+		ast.multiply(ast.number(2), ast.number(3)),
+		ast.divide(ast.number(10), ast.number(2)),
+	)
+	const code = generate(node)
+	expect(code).toBe('2 * 3 + 10 / 2')
+})
+
+test('CodeGen: precedence - subtract left side', () => {
+	const node = ast.subtract(
+		ast.add(ast.number(10), ast.number(5)),
+		ast.number(3),
+	)
+	const code = generate(node)
+	// (10 + 5) - 3 parses as (10 + 5) - 3 due to left-associativity,
+	// so no parens needed on left side of lower precedence operator
+	expect(code).toBe('10 + 5 - 3')
+})
+
+test('CodeGen: precedence - subtract right side', () => {
+	const node = ast.subtract(
+		ast.number(10),
+		ast.subtract(ast.number(5), ast.number(2)),
+	)
+	const code = generate(node)
+	expect(code).toBe('10 - (5 - 2)')
+})
+
+test('CodeGen: precedence - divide right side needs parens', () => {
+	const node = ast.divide(
+		ast.number(20),
+		ast.multiply(ast.number(2), ast.number(5)),
+	)
+	const code = generate(node)
+	expect(code).toBe('20 / (2 * 5)')
+})
+
+test('CodeGen: precedence - exponentiation is right associative', () => {
+	const node = ast.exponentiate(
+		ast.number(2),
+		ast.exponentiate(ast.number(3), ast.number(2)),
+	)
+	const code = generate(node)
+	expect(code).toBe('2 ^ 3 ^ 2')
+})
+
+test('CodeGen: precedence - left exponentiation needs parens', () => {
+	const node = ast.exponentiate(
+		ast.exponentiate(ast.number(2), ast.number(3)),
+		ast.number(2),
+	)
+	const code = generate(node)
+	// (2 ^ 3) ^ 2 needs parens because without them 2 ^ 3 ^ 2
+	// would parse as 2 ^ (3 ^ 2) due to right-associativity
+	expect(code).toBe('(2 ^ 3) ^ 2')
+})
+
+test('CodeGen: round-trip simple expression', () => {
+	const source = '2 + 3'
+	const ast1 = parseSource(source)
+	const code = generate(ast1)
+	const ast2 = parseSource(code)
+	const result1 = new Executor().execute(ast1)
+	const result2 = new Executor().execute(ast2)
+	expect(result1).toBe(result2)
+})
+
+test('CodeGen: round-trip with precedence', () => {
+	const source = '2 + 3 * 4'
+	const ast1 = parseSource(source)
+	const code = generate(ast1)
+	const ast2 = parseSource(code)
+	const result1 = new Executor().execute(ast1)
+	const result2 = new Executor().execute(ast2)
+	expect(result1).toBe(result2)
+})
+
+test('CodeGen: round-trip with parentheses', () => {
+	const source = '(2 + 3) * 4'
+	const ast1 = parseSource(source)
+	const code = generate(ast1)
+	const ast2 = parseSource(code)
+	const result1 = new Executor().execute(ast1)
+	const result2 = new Executor().execute(ast2)
+	expect(result1).toBe(result2)
+})
+
+test('CodeGen: round-trip with variables', () => {
+	const source = 'x = 5; y = x + 10'
+	const ast1 = parseSource(source)
+	const code = generate(ast1)
+	const ast2 = parseSource(code)
+	const executor1 = new Executor()
+	const result1 = executor1.execute(ast1)
+	const executor2 = new Executor()
+	const result2 = executor2.execute(ast2)
+	expect(result1).toBe(result2)
+})
+
+test('CodeGen: round-trip with functions', () => {
+	const source = 'abs(-5)'
+	const ast1 = parseSource(source)
+	const code = generate(ast1)
+	const ast2 = parseSource(code)
+	const executor1 = new Executor({ functions: { abs: Math.abs } })
+	const result1 = executor1.execute(ast1)
+	const executor2 = new Executor({ functions: { abs: Math.abs } })
+	const result2 = executor2.execute(ast2)
+	expect(result1).toBe(result2)
+})
+
+test('CodeGen: round-trip complex expression', () => {
+	const source = '2 ^ 3 * 4 + 5'
+	const ast1 = parseSource(source)
+	const code = generate(ast1)
+	const ast2 = parseSource(code)
+	const result1 = new Executor().execute(ast1)
+	const result2 = new Executor().execute(ast2)
+	expect(result1).toBe(result2)
+})
+
+test('CodeGen: program with multiple statements', () => {
+	const node = {
+		type: 'Program' as const,
+		statements: [
+			ast.assign('x', ast.number(5)),
+			ast.assign('y', ast.number(10)),
+			ast.add(ast.identifier('x'), ast.identifier('y')),
+		],
+	}
+	const code = generate(node)
+	expect(code).toBe('x = 5; y = 10; x + y')
+})
+
+test('CodeGen: generated code is syntactically valid', () => {
+	const node = ast.multiply(
+		ast.add(ast.number(2), ast.number(3)),
+		ast.exponentiate(ast.number(2), ast.number(3)),
+	)
+	const code = generate(node)
+	// Should not throw
+	const parsed = parseSource(code)
+	expect(parsed).toBeDefined()
 })

@@ -5,6 +5,9 @@
 // AST builders
 export * as ast from './ast'
 
+// Code generation
+export { CodeGenerator, generate } from './codegen'
+
 // Defaults
 export { defaultContext } from './defaults'
 
