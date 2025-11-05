@@ -1,5 +1,5 @@
 import * as ast from './ast'
-import type { ASTNode, Operator } from './types'
+import type { ASTNode } from './types'
 import {
 	isAssignment,
 	isBinaryOp,
@@ -11,6 +11,7 @@ import {
 	isProgram,
 	isUnaryOp,
 } from './types'
+import { evaluateBinaryOperation } from './utils'
 
 /**
  * Optimize an AST using a theoretically optimal O(n) algorithm.
@@ -401,7 +402,11 @@ function evaluateWithConstants(
 		const right = evaluateWithConstants(node.right, constants)
 
 		if (isNumberLiteral(left) && isNumberLiteral(right)) {
-			const result = evaluateBinaryOp(node.operator, left.value, right.value)
+			const result = evaluateBinaryOperation(
+				node.operator,
+				left.value,
+				right.value,
+			)
 			return ast.number(result)
 		}
 
@@ -597,7 +602,11 @@ function basicOptimize(node: ASTNode): ASTNode {
 		const right = basicOptimize(node.right)
 
 		if (isNumberLiteral(left) && isNumberLiteral(right)) {
-			const result = evaluateBinaryOp(node.operator, left.value, right.value)
+			const result = evaluateBinaryOperation(
+				node.operator,
+				left.value,
+				right.value,
+			)
 			return ast.number(result)
 		}
 
@@ -654,52 +663,4 @@ function basicOptimize(node: ASTNode): ASTNode {
 	}
 
 	return node
-}
-
-/**
- * Evaluate a binary operation on two numbers
- */
-function evaluateBinaryOp(
-	operator: Operator,
-	left: number,
-	right: number,
-): number {
-	switch (operator) {
-		case '+':
-			return left + right
-		case '-':
-			return left - right
-		case '*':
-			return left * right
-		case '/':
-			if (right === 0) {
-				throw new Error('Division by zero in constant folding')
-			}
-			return left / right
-		case '%':
-			if (right === 0) {
-				throw new Error('Modulo by zero in constant folding')
-			}
-			return left % right
-		case '^':
-			return left ** right
-		case '==':
-			return left === right ? 1 : 0
-		case '!=':
-			return left !== right ? 1 : 0
-		case '<':
-			return left < right ? 1 : 0
-		case '>':
-			return left > right ? 1 : 0
-		case '<=':
-			return left <= right ? 1 : 0
-		case '>=':
-			return left >= right ? 1 : 0
-		case '&&':
-			return left !== 0 && right !== 0 ? 1 : 0
-		case '||':
-			return left !== 0 || right !== 0 ? 1 : 0
-		default:
-			throw new Error(`Unknown operator: ${operator}`)
-	}
 }

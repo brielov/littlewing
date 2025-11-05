@@ -22,6 +22,7 @@ import {
 	isProgram,
 	isUnaryOp,
 } from './types'
+import { getOperatorPrecedence } from './utils'
 
 /**
  * CodeGenerator - converts AST nodes back to source code
@@ -132,7 +133,7 @@ export class CodeGenerator {
 		const conditionNeedsParens =
 			isAssignment(node.condition) ||
 			(isBinaryOp(node.condition) &&
-				this.getPrecedence(node.condition.operator) <= 2)
+				getOperatorPrecedence(node.condition.operator) <= 2)
 		const conditionCode = conditionNeedsParens ? `(${condition})` : condition
 
 		return `${conditionCode} ? ${consequent} : ${alternate}`
@@ -146,8 +147,8 @@ export class CodeGenerator {
 	private needsParensLeft(node: ASTNode, operator: Operator): boolean {
 		if (!isBinaryOp(node)) return false
 
-		const nodePrecedence = this.getPrecedence(node.operator)
-		const operatorPrecedence = this.getPrecedence(operator)
+		const nodePrecedence = getOperatorPrecedence(node.operator)
+		const operatorPrecedence = getOperatorPrecedence(operator)
 
 		// For right-associative operators (^), need parens if lower or equal precedence
 		if (operator === '^') {
@@ -166,8 +167,8 @@ export class CodeGenerator {
 	private needsParensRight(node: ASTNode, operator: Operator): boolean {
 		if (!isBinaryOp(node)) return false
 
-		const nodePrecedence = this.getPrecedence(node.operator)
-		const operatorPrecedence = this.getPrecedence(operator)
+		const nodePrecedence = getOperatorPrecedence(node.operator)
+		const operatorPrecedence = getOperatorPrecedence(operator)
 
 		// For right-associative operators (^), only need parens if strictly lower precedence
 		if (operator === '^') {
@@ -177,37 +178,6 @@ export class CodeGenerator {
 		// For left-associative operators (+ - * / %), need parens if lower or equal precedence
 		// This prevents reordering: a - (b - c) is different from a - b - c
 		return nodePrecedence <= operatorPrecedence
-	}
-
-	/**
-	 * Get precedence of an operator (higher number = higher precedence)
-	 * Must match the precedence in parser.ts
-	 */
-	private getPrecedence(operator: Operator): number {
-		switch (operator) {
-			case '^':
-				return 8 // Exponentiation
-			case '*':
-			case '/':
-			case '%':
-				return 7 // Multiplication/Division/Modulo
-			case '+':
-			case '-':
-				return 6 // Addition/Subtraction
-			case '==':
-			case '!=':
-			case '<':
-			case '>':
-			case '<=':
-			case '>=':
-				return 5 // Comparison
-			case '&&':
-				return 4 // Logical AND
-			case '||':
-				return 3 // Logical OR
-			default:
-				return 0
-		}
 	}
 }
 

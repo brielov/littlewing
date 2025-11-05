@@ -24,6 +24,7 @@ import {
 	isProgram,
 	isUnaryOp,
 } from './types'
+import { evaluateBinaryOperation } from './utils'
 
 /**
  * Executor - evaluates an AST with given context
@@ -89,45 +90,7 @@ export class Executor {
 	private executeBinaryOp(node: BinaryOp): number {
 		const left = this.execute(node.left)
 		const right = this.execute(node.right)
-
-		switch (node.operator) {
-			case '+':
-				return left + right
-			case '-':
-				return left - right
-			case '*':
-				return left * right
-			case '/':
-				if (right === 0) {
-					throw new Error('Division by zero')
-				}
-				return left / right
-			case '%':
-				if (right === 0) {
-					throw new Error('Modulo by zero')
-				}
-				return left % right
-			case '^':
-				return left ** right
-			case '==':
-				return left === right ? 1 : 0
-			case '!=':
-				return left !== right ? 1 : 0
-			case '<':
-				return left < right ? 1 : 0
-			case '>':
-				return left > right ? 1 : 0
-			case '<=':
-				return left <= right ? 1 : 0
-			case '>=':
-				return left >= right ? 1 : 0
-			case '&&':
-				return left !== 0 && right !== 0 ? 1 : 0
-			case '||':
-				return left !== 0 || right !== 0 ? 1 : 0
-			default:
-				throw new Error(`Unknown operator: ${node.operator}`)
-		}
+		return evaluateBinaryOperation(node.operator, left, right)
 	}
 
 	/**

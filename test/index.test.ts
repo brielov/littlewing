@@ -631,15 +631,11 @@ test('Optimization: execution result same with or without optimization', () => {
 })
 
 test('Optimization: division by zero error during folding', () => {
-	expect(() => optimize(parseSource('1 / 0'))).toThrow(
-		'Division by zero in constant folding',
-	)
+	expect(() => optimize(parseSource('1 / 0'))).toThrow('Division by zero')
 })
 
 test('Optimization: modulo by zero error during folding', () => {
-	expect(() => optimize(parseSource('10 % 0'))).toThrow(
-		'Modulo by zero in constant folding',
-	)
+	expect(() => optimize(parseSource('10 % 0'))).toThrow('Modulo by zero')
 })
 
 test('Optimization: function call arguments are optimized recursively', () => {
