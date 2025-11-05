@@ -117,18 +117,23 @@ function analyzeProgram(node: ASTNode): ProgramAnalysis {
 
 			dependencies.set(varName, deps)
 
-			// Variable is constant if:
-			// 1. Assigned exactly once (check after full scan)
-			// 2. Right-hand side is a literal OR all dependencies are constants
-			// 3. No function calls in the value
-			// Note: NullishAssignment can still be optimized if it's the only assignment
-			if (count === 0 && isNumberLiteral(stmt.value)) {
-				constants.set(varName, stmt.value.value)
-			}
-
-			// Variable is tainted if it depends on function calls
-			if (hasFunctionCall) {
+			// NullishAssignment variables are ALWAYS tainted because they depend on
+			// external variables that may or may not be defined at runtime
+			if (isNullishAssignment(stmt)) {
 				tainted.add(varName)
+			} else {
+				// Regular assignment: Variable is constant if:
+				// 1. Assigned exactly once (check after full scan)
+				// 2. Right-hand side is a literal OR all dependencies are constants
+				// 3. No function calls in the value
+				if (count === 0 && isNumberLiteral(stmt.value)) {
+					constants.set(varName, stmt.value.value)
+				}
+
+				// Variable is tainted if it depends on function calls
+				if (hasFunctionCall) {
+					tainted.add(varName)
+				}
 			}
 		}
 	}

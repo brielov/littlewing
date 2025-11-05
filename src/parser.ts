@@ -255,9 +255,12 @@ export class Parser {
 
 	/**
 	 * Get unary operator precedence
+	 * Returns 6 which is higher than add/sub (6) but lower than exponentiation (8)
+	 * This means: -2^2 parses as -(2^2) = -4, not (-2)^2 = 4
+	 * This matches the behavior of Python, Ruby, and most languages
 	 */
 	private getUnaryPrecedence(): number {
-		return 6 // Higher than all binary operators
+		return 6
 	}
 
 	/**

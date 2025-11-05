@@ -1854,10 +1854,17 @@ test('AST: nullish assignment builder', () => {
 test('Optimizer: constant folding with ??=', () => {
 	const ast1 = parseSource('x ??= 100; x')
 	const optimized = optimize(ast1)
-	// Should optimize to just the literal 100
-	expect(isNumberLiteral(optimized)).toBe(true)
-	if (isNumberLiteral(optimized)) {
-		expect(optimized.value).toBe(100)
+	// Nullish assignment variables are tainted (depend on external variables)
+	// so they cannot be optimized away
+	expect(isProgram(optimized)).toBe(true)
+	if (isProgram(optimized)) {
+		expect(optimized.statements.length).toBe(2)
+		const assignment = optimized.statements[0]
+		expect(assignment?.type).toBe('NullishAssignment')
+		const expr = optimized.statements[1]
+		if (expr) {
+			expect(isIdentifier(expr)).toBe(true)
+		}
 	}
 })
 
@@ -2262,4 +2269,33 @@ test('CodeGen: error on unknown node type', () => {
 	const invalidNode = { type: 'InvalidType' } as any
 	const generator = new CodeGenerator()
 	expect(() => generator.generate(invalidNode)).toThrow('Unknown node type')
+})
+
+test('Optimizer: nullish assignment with external variables should not optimize to constant', () => {
+	// This test demonstrates the bug: nullish assignments should NOT be optimized
+	// because the variable might be provided externally
+	const source = `
+		price ??= 100;
+		quantity ??= 1;
+		discount ??= 0;
+		total = price * quantity * (1 - discount);
+		total
+	`
+	const ast1 = parseSource(source)
+	const optimized = optimize(ast1)
+
+	// The optimizer should NOT reduce this to a constant because
+	// price, quantity, and discount might be provided externally
+	expect(isNumberLiteral(optimized)).toBe(false)
+
+	// Verify that execution with external variables works correctly
+	const result1 = execute(source, {
+		variables: { price: 50 }, // Override price
+	})
+	expect(result1).toBe(50) // 50 * 1 * (1 - 0) = 50
+
+	const result2 = execute(source, {
+		variables: { price: 50, quantity: 2, discount: 0.1 },
+	})
+	expect(result2).toBe(90) // 50 * 2 * (1 - 0.1) = 90
 })
