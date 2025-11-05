@@ -647,6 +647,133 @@ test('Optimization: modulo by zero error during folding', () => {
 	)
 })
 
+test('Optimization: function call arguments are optimized recursively', () => {
+	// max(2 + 3, 4 * 5) should optimize to max(5, 20)
+	const node = optimize(parseSource('max(2 + 3, 4 * 5)'))
+	expect(isFunctionCall(node)).toBe(true)
+	if (isFunctionCall(node)) {
+		expect(node.arguments.length).toBe(2)
+		// First argument should be folded to 5
+		const firstArg = node.arguments[0]
+		expect(firstArg).toBeDefined()
+		if (firstArg) {
+			expect(isNumberLiteral(firstArg)).toBe(true)
+			if (isNumberLiteral(firstArg)) {
+				expect(firstArg.value).toBe(5)
+			}
+		}
+		// Second argument should be folded to 20
+		const secondArg = node.arguments[1]
+		expect(secondArg).toBeDefined()
+		if (secondArg) {
+			expect(isNumberLiteral(secondArg)).toBe(true)
+			if (isNumberLiteral(secondArg)) {
+				expect(secondArg.value).toBe(20)
+			}
+		}
+	}
+})
+
+test('Optimization: nested function calls with constant folding', () => {
+	// max(min(10, 5 + 5), 2 ^ 3) should optimize to max(min(10, 10), 8)
+	const node = optimize(parseSource('max(min(10, 5 + 5), 2 ^ 3)'))
+	expect(isFunctionCall(node)).toBe(true)
+	if (isFunctionCall(node)) {
+		expect(node.name).toBe('max')
+		// First arg should be nested function call with optimized args
+		const firstArg = node.arguments[0]
+		expect(firstArg).toBeDefined()
+		if (firstArg && isFunctionCall(firstArg)) {
+			expect(firstArg.name).toBe('min')
+			const minFirstArg = firstArg.arguments[0]
+			const minSecondArg = firstArg.arguments[1]
+			if (minFirstArg && isNumberLiteral(minFirstArg)) {
+				expect(minFirstArg.value).toBe(10)
+			}
+			if (minSecondArg && isNumberLiteral(minSecondArg)) {
+				expect(minSecondArg.value).toBe(10)
+			}
+		}
+		// Second arg should be folded to 8
+		const secondArg = node.arguments[1]
+		if (secondArg && isNumberLiteral(secondArg)) {
+			expect(secondArg.value).toBe(8)
+		}
+	}
+})
+
+test('Optimization: assignment with deeply nested expression', () => {
+	// x = -(3 + 4) * 2 should optimize to x = -14
+	const node = optimize(parseSource('x = -(3 + 4) * 2'))
+	expect(isAssignment(node)).toBe(true)
+	if (isAssignment(node)) {
+		expect(node.name).toBe('x')
+		expect(isNumberLiteral(node.value)).toBe(true)
+		if (isNumberLiteral(node.value)) {
+			expect(node.value.value).toBe(-14)
+		}
+	}
+})
+
+test('Optimization: function call with nested unary and binary ops', () => {
+	// abs(-(2 + 3) * 4) should optimize to abs(-20)
+	const node = optimize(parseSource('abs(-(2 + 3) * 4)'))
+	expect(isFunctionCall(node)).toBe(true)
+	if (isFunctionCall(node)) {
+		expect(node.name).toBe('abs')
+		const arg = node.arguments[0]
+		if (arg && isNumberLiteral(arg)) {
+			expect(arg.value).toBe(-20)
+		}
+	}
+})
+
+test('Optimization: program with multiple complex statements', () => {
+	// Multiple statements with various levels of nesting
+	const source = 'a = 2 + 3; b = -(4 * 5); max(a, 10 + 10)'
+	const node = optimize(parseSource(source))
+	expect(isProgram(node)).toBe(true)
+	if (isProgram(node)) {
+		expect(node.statements.length).toBe(3)
+
+		// First statement: a = 5
+		const stmt1 = node.statements[0]
+		if (stmt1 && isAssignment(stmt1)) {
+			expect(stmt1.name).toBe('a')
+			expect(isNumberLiteral(stmt1.value)).toBe(true)
+			if (isNumberLiteral(stmt1.value)) {
+				expect(stmt1.value.value).toBe(5)
+			}
+		}
+
+		// Second statement: b = -20
+		const stmt2 = node.statements[1]
+		if (stmt2 && isAssignment(stmt2)) {
+			expect(stmt2.name).toBe('b')
+			expect(isNumberLiteral(stmt2.value)).toBe(true)
+			if (isNumberLiteral(stmt2.value)) {
+				expect(stmt2.value.value).toBe(-20)
+			}
+		}
+
+		// Third statement: max with variable and constant
+		const stmt3 = node.statements[2]
+		if (stmt3 && isFunctionCall(stmt3)) {
+			expect(stmt3.name).toBe('max')
+			// First arg is variable 'a', cannot be optimized
+			const arg1 = stmt3.arguments[0]
+			if (arg1) {
+				expect(isIdentifier(arg1)).toBe(true)
+			}
+			// Second arg should be folded to 20
+			const arg2 = stmt3.arguments[1]
+			if (arg2 && isNumberLiteral(arg2)) {
+				expect(arg2.value).toBe(20)
+			}
+		}
+	}
+})
+
 // ============================================================================
 // DEFAULT CONTEXT TESTS
 // ============================================================================

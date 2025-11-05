@@ -3,6 +3,7 @@ import type { ASTNode } from './types'
 import {
 	isAssignment,
 	isBinaryOp,
+	isFunctionCall,
 	isNumberLiteral,
 	isProgram,
 	isUnaryOp,
@@ -67,7 +68,15 @@ export function optimize(node: ASTNode): ASTNode {
 		}
 	}
 
-	// Other node types (identifiers, function calls) can't be optimized
+	// Function call: optimize all arguments recursively
+	if (isFunctionCall(node)) {
+		return {
+			...node,
+			arguments: node.arguments.map((arg) => optimize(arg)),
+		}
+	}
+
+	// Other node types (identifiers) can't be optimized
 	return node
 }
 

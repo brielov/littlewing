@@ -5,10 +5,10 @@ A minimal, high-performance arithmetic expression language with a complete lexer
 ## Features
 
 - 🚀 **Minimal & Fast** - O(n) algorithms throughout (lexer, parser, executor)
-- 📦 **Tiny Bundle** - 4.19 KB gzipped, zero dependencies
+- 📦 **Tiny Bundle** - 4.20 KB gzipped, zero dependencies
 - 🌐 **Browser Ready** - 100% ESM, no Node.js APIs
 - 🔒 **Type-Safe** - Strict TypeScript with full type coverage
-- ✅ **Thoroughly Tested** - 128 tests, 98.61% line coverage
+- ✅ **Thoroughly Tested** - 136 tests, 99.52% line coverage
 - 📐 **Pure Arithmetic** - Numbers-only, clean semantics
 - 🎯 **Clean API** - Intuitive dual API (class-based + functional)
 - 📝 **Well Documented** - Complete JSDoc and examples
@@ -495,15 +495,15 @@ const dueTimes = tasks.map((task) => ({
 
 ### Bundle Size
 
-- **4.19 KB gzipped** (19.60 KB raw)
+- **4.20 KB gzipped** (19.72 KB raw)
 - Zero dependencies
 - Includes optimizer for constant folding
 - Fully tree-shakeable
 
 ### Test Coverage
 
-- **128 tests** with **98.61% line coverage**
-- **98.52% function coverage**
+- **136 tests** with **99.52% line coverage**
+- **99.26% function coverage**
 - All edge cases handled
 - Type-safe execution guaranteed
 
