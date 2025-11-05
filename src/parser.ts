@@ -1,5 +1,5 @@
 import { Lexer } from './lexer'
-import { type ASTNode, type Token, TokenType } from './types'
+import { type ASTNode, type Operator, type Token, TokenType } from './types'
 
 /**
  * Parser using Pratt parsing (top-down operator precedence)
@@ -72,7 +72,7 @@ export class Parser {
 				}
 			} else if (this.isBinaryOperator(token.type)) {
 				// Binary operation
-				const operator = token.value as string as '+' | '-' | '*' | '/' | '%'
+				const operator = token.value as Operator
 				this.advance() // consume operator
 				const right = this.parseExpression(precedence + 1)
 				left = {
@@ -123,15 +123,6 @@ export class Parser {
 			return {
 				type: 'NumberLiteral',
 				value: token.value as number,
-			}
-		}
-
-		// String literal
-		if (token.type === TokenType.STRING) {
-			this.advance()
-			return {
-				type: 'StringLiteral',
-				value: token.value as string,
 			}
 		}
 
@@ -251,6 +242,9 @@ export class Parser {
 
 /**
  * Parse source code string into AST
+ *
+ * @param source - The source code to parse
+ * @returns Parsed AST
  */
 export function parseSource(source: string): ASTNode {
 	const lexer = new Lexer(source)

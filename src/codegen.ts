@@ -5,8 +5,8 @@ import type {
 	FunctionCall,
 	Identifier,
 	NumberLiteral,
+	Operator,
 	Program,
-	StringLiteral,
 	UnaryOp,
 } from './types'
 import {
@@ -16,7 +16,6 @@ import {
 	isIdentifier,
 	isNumberLiteral,
 	isProgram,
-	isStringLiteral,
 	isUnaryOp,
 } from './types'
 
@@ -30,7 +29,6 @@ export class CodeGenerator {
 	generate(node: ASTNode): string {
 		if (isProgram(node)) return this.generateProgram(node)
 		if (isNumberLiteral(node)) return this.generateNumberLiteral(node)
-		if (isStringLiteral(node)) return this.generateStringLiteral(node)
 		if (isIdentifier(node)) return this.generateIdentifier(node)
 		if (isBinaryOp(node)) return this.generateBinaryOp(node)
 		if (isUnaryOp(node)) return this.generateUnaryOp(node)
@@ -51,13 +49,6 @@ export class CodeGenerator {
 	 */
 	private generateNumberLiteral(node: NumberLiteral): string {
 		return String(node.value)
-	}
-
-	/**
-	 * Generate code for a string literal
-	 */
-	private generateStringLiteral(node: StringLiteral): string {
-		return `'${node.value}'`
 	}
 
 	/**
@@ -119,10 +110,7 @@ export class CodeGenerator {
 	 * - For left-associative operators: parens only if strictly lower precedence
 	 * - For right-associative operators (^): parens if lower or equal precedence
 	 */
-	private needsParensLeft(
-		node: ASTNode,
-		operator: '+' | '-' | '*' | '/' | '%' | '^',
-	): boolean {
+	private needsParensLeft(node: ASTNode, operator: Operator): boolean {
 		if (!isBinaryOp(node)) return false
 
 		const nodePrecedence = this.getPrecedence(node.operator)
@@ -142,10 +130,7 @@ export class CodeGenerator {
 	 * - For right-associative operators (^): parens if strictly lower precedence
 	 * - For left-associative operators: parens if lower or equal precedence
 	 */
-	private needsParensRight(
-		node: ASTNode,
-		operator: '+' | '-' | '*' | '/' | '%' | '^',
-	): boolean {
+	private needsParensRight(node: ASTNode, operator: Operator): boolean {
 		if (!isBinaryOp(node)) return false
 
 		const nodePrecedence = this.getPrecedence(node.operator)
@@ -164,7 +149,7 @@ export class CodeGenerator {
 	/**
 	 * Get precedence of an operator (higher number = higher precedence)
 	 */
-	private getPrecedence(operator: '+' | '-' | '*' | '/' | '%' | '^'): number {
+	private getPrecedence(operator: Operator): number {
 		switch (operator) {
 			case '^':
 				return 4

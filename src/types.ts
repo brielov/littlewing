@@ -1,17 +1,22 @@
 /**
- * Runtime value type - can be a number, Date, or unknown (for function results)
+ * Runtime value type - only numbers
  */
-export type RuntimeValue = number | Date | unknown
+export type RuntimeValue = number
+
+/**
+ * Binary operator types
+ */
+export type Operator = '+' | '-' | '*' | '/' | '%' | '^'
 
 /**
  * Execution context providing global functions and variables
- * Functions must accept any arguments and return a number or Date
- * Variables must be numbers or Dates
+ * Functions must accept any arguments and return a number
+ * Variables must be numbers
  */
 export interface ExecutionContext {
 	// biome-ignore lint/suspicious/noExplicitAny: variadic function signature
-	functions?: Record<string, (...args: any[]) => number | Date>
-	variables?: Record<string, number | Date>
+	functions?: Record<string, (...args: any[]) => number>
+	variables?: Record<string, number>
 }
 
 /**
@@ -20,7 +25,6 @@ export interface ExecutionContext {
 export enum TokenType {
 	// Literals
 	NUMBER = 'NUMBER',
-	STRING = 'STRING',
 	IDENTIFIER = 'IDENTIFIER',
 
 	// Operators
@@ -56,7 +60,6 @@ export interface Token {
 export type ASTNode =
 	| Program
 	| NumberLiteral
-	| StringLiteral
 	| Identifier
 	| BinaryOp
 	| UnaryOp
@@ -80,14 +83,6 @@ export interface NumberLiteral {
 }
 
 /**
- * String literal ('hello', '2025-10-01')
- */
-export interface StringLiteral {
-	type: 'StringLiteral'
-	value: string
-}
-
-/**
  * Identifier (variable or function name)
  */
 export interface Identifier {
@@ -101,7 +96,7 @@ export interface Identifier {
 export interface BinaryOp {
 	type: 'BinaryOp'
 	left: ASTNode
-	operator: '+' | '-' | '*' | '/' | '%' | '^'
+	operator: Operator
 	right: ASTNode
 }
 
@@ -137,10 +132,6 @@ export interface Assignment {
  */
 export function isNumberLiteral(node: ASTNode): node is NumberLiteral {
 	return node.type === 'NumberLiteral'
-}
-
-export function isStringLiteral(node: ASTNode): node is StringLiteral {
-	return node.type === 'StringLiteral'
 }
 
 export function isIdentifier(node: ASTNode): node is Identifier {

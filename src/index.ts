@@ -17,6 +17,9 @@ export { Executor, execute } from './executor'
 // Lexer
 export { Lexer } from './lexer'
 
+// Optimizer
+export { optimize } from './optimizer'
+
 // Parser
 export { Parser, parseSource } from './parser'
 
@@ -30,7 +33,6 @@ export {
 	isIdentifier,
 	isNumberLiteral,
 	isProgram,
-	isStringLiteral,
 	isUnaryOp,
 	type Token,
 	TokenType,

@@ -5,6 +5,7 @@ import type {
 	FunctionCall,
 	Identifier,
 	NumberLiteral,
+	Operator,
 	UnaryOp,
 } from './types'
 
@@ -37,7 +38,7 @@ export function identifier(name: string): Identifier {
  */
 export function binaryOp(
 	left: ASTNode,
-	operator: '+' | '-' | '*' | '/' | '%' | '^',
+	operator: Operator,
 	right: ASTNode,
 ): BinaryOp {
 	return {

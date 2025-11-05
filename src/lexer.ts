@@ -46,11 +46,6 @@ export class Lexer {
 			return this.readNumber()
 		}
 
-		// String literals
-		if (char === "'") {
-			return this.readString()
-		}
-
 		// Identifiers and keywords
 		if (this.isLetter(char) || char === '_') {
 			return this.readIdentifier()
@@ -128,19 +123,48 @@ export class Lexer {
 
 	/**
 	 * Read a number token
+	 * Supports: integers (42), decimals (3.14), and scientific notation (1.5e6, 2e-3)
 	 */
 	private readNumber(): Token {
 		const start = this.position
 		let hasDecimal = false
+		let hasExponent = false
 
+		// Read digits and optional decimal point
 		while (this.position < this.source.length) {
 			const char = this.getCharAt(this.position)
 
 			if (this.isDigit(char)) {
 				this.position++
-			} else if (char === '.' && !hasDecimal) {
+			} else if (char === '.' && !hasDecimal && !hasExponent) {
 				hasDecimal = true
 				this.position++
+			} else if ((char === 'e' || char === 'E') && !hasExponent) {
+				// Scientific notation exponent
+				hasExponent = true
+				this.position++
+
+				// Optional + or - sign after e/E
+				const nextChar = this.getCharAt(this.position)
+				if (nextChar === '+' || nextChar === '-') {
+					this.position++
+				}
+
+				// Must have at least one digit after e/E
+				if (!this.isDigit(this.getCharAt(this.position))) {
+					throw new Error(
+						`Invalid number: expected digit after exponent at position ${this.position}`,
+					)
+				}
+
+				// Read exponent digits
+				while (
+					this.position < this.source.length &&
+					this.isDigit(this.getCharAt(this.position))
+				) {
+					this.position++
+				}
+				break
 			} else {
 				break
 			}
@@ -169,55 +193,6 @@ export class Lexer {
 		const name = this.source.slice(start, this.position)
 
 		return { type: TokenType.IDENTIFIER, value: name, position: start }
-	}
-
-	/**
-	 * Read a string token
-	 */
-	private readString(): Token {
-		const start = this.position
-		this.position++ // skip opening quote
-
-		let value = ''
-		while (this.position < this.source.length) {
-			const char = this.getCharAt(this.position)
-
-			if (char === "'") {
-				this.position++ // skip closing quote
-				break
-			}
-
-			if (char === '\\' && this.position + 1 < this.source.length) {
-				// Handle escape sequences
-				this.position++
-				const escaped = this.getCharAt(this.position)
-				switch (escaped) {
-					case 'n':
-						value += '\n'
-						break
-					case 't':
-						value += '\t'
-						break
-					case 'r':
-						value += '\r'
-						break
-					case "'":
-						value += "'"
-						break
-					case '\\':
-						value += '\\'
-						break
-					default:
-						value += escaped
-				}
-				this.position++
-			} else {
-				value += char
-				this.position++
-			}
-		}
-
-		return { type: TokenType.STRING, value, position: start }
 	}
 
 	/**

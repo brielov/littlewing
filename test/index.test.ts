@@ -10,12 +10,14 @@ import {
 	isFunctionCall,
 	isIdentifier,
 	isNumberLiteral,
-	isStringLiteral,
+	isProgram,
 	isUnaryOp,
 	Lexer,
+	optimize,
 	parseSource,
 	TokenType,
 } from '../src'
+import { CodeGenerator } from '../src/codegen'
 
 // ============================================================================
 // LEXER TESTS
@@ -43,13 +45,14 @@ test('Lexer: tokenize identifiers', () => {
 })
 
 test('Lexer: tokenize operators', () => {
-	const lexer = new Lexer('+ - * / %')
+	const lexer = new Lexer('+ - * / % ^')
 	const tokens = lexer.tokenize()
 	expect(tokens[0]?.type).toBe(TokenType.PLUS)
 	expect(tokens[1]?.type).toBe(TokenType.MINUS)
 	expect(tokens[2]?.type).toBe(TokenType.STAR)
 	expect(tokens[3]?.type).toBe(TokenType.SLASH)
 	expect(tokens[4]?.type).toBe(TokenType.PERCENT)
+	expect(tokens[5]?.type).toBe(TokenType.CARET)
 })
 
 test('Lexer: skip comments', () => {
@@ -76,18 +79,45 @@ test('Lexer: tokenize full expression', () => {
 	expect(tokens[4]?.value).toBe(2)
 })
 
-test('Lexer: tokenize string literal', () => {
-	const lexer = new Lexer("'hello'")
+test('Lexer: tokenize decimal numbers', () => {
+	const lexer = new Lexer('3.14159 0.5 100.0')
 	const tokens = lexer.tokenize()
-	expect(tokens[0]?.type).toBe(TokenType.STRING)
-	expect(tokens[0]?.value).toBe('hello')
+	expect(tokens[0]?.type).toBe(TokenType.NUMBER)
+	// biome-ignore lint/suspicious/noApproximativeNumericConstant: testing lexer parsing of literal
+	expect(tokens[0]?.value).toBeCloseTo(3.14159)
+	expect(tokens[1]?.type).toBe(TokenType.NUMBER)
+	expect(tokens[1]?.value).toBe(0.5)
+	expect(tokens[2]?.type).toBe(TokenType.NUMBER)
+	expect(tokens[2]?.value).toBe(100.0)
 })
 
-test('Lexer: tokenize string with escape sequences', () => {
-	const lexer = new Lexer("'hello\\'world'")
+test('Lexer: tokenize large numbers', () => {
+	const lexer = new Lexer('1704067200000')
 	const tokens = lexer.tokenize()
-	expect(tokens[0]?.type).toBe(TokenType.STRING)
-	expect(tokens[0]?.value).toBe("hello'world")
+	expect(tokens[0]?.type).toBe(TokenType.NUMBER)
+	expect(tokens[0]?.value).toBe(1704067200000)
+})
+
+test('Lexer: tokenize scientific notation', () => {
+	const lexer = new Lexer('1.5e6 2e10 3e-2 4E+5')
+	const tokens = lexer.tokenize()
+	expect(tokens[0]?.type).toBe(TokenType.NUMBER)
+	expect(tokens[0]?.value).toBe(1500000)
+	expect(tokens[1]?.type).toBe(TokenType.NUMBER)
+	expect(tokens[1]?.value).toBe(20000000000)
+	expect(tokens[2]?.type).toBe(TokenType.NUMBER)
+	expect(tokens[2]?.value).toBe(0.03)
+	expect(tokens[3]?.type).toBe(TokenType.NUMBER)
+	expect(tokens[3]?.value).toBe(400000)
+})
+
+test('Lexer: error on invalid scientific notation', () => {
+	expect(() => new Lexer('1e').tokenize()).toThrow(
+		'expected digit after exponent',
+	)
+	expect(() => new Lexer('1e+').tokenize()).toThrow(
+		'expected digit after exponent',
+	)
 })
 
 // ============================================================================
@@ -99,14 +129,6 @@ test('Parser: parse number literal', () => {
 	expect(isNumberLiteral(node)).toBe(true)
 	if (isNumberLiteral(node)) {
 		expect(node.value).toBe(42)
-	}
-})
-
-test('Parser: parse string literal', () => {
-	const node = parseSource("'hello'")
-	expect(isStringLiteral(node)).toBe(true)
-	if (isStringLiteral(node)) {
-		expect(node.value).toBe('hello')
 	}
 })
 
@@ -303,91 +325,81 @@ test('Executor: error on division by zero', () => {
 })
 
 test('Executor: error on modulo by zero', () => {
-	expect(() => execute('10 % 0')).toThrow('Division by zero')
+	expect(() => execute('10 % 0')).toThrow('Modulo by zero')
 })
 
-test('Executor: error on string variable assignment', () => {
-	expect(() => execute("x = 'foo'")).toThrow('Cannot assign string to variable')
+test('Executor: floating point arithmetic', () => {
+	expect(execute('0.1 + 0.2')).toBeCloseTo(0.3)
+	expect(execute('3.14 * 2')).toBeCloseTo(6.28)
 })
 
 // ============================================================================
-// DATE SUPPORT TESTS
+// TIMESTAMP ARITHMETIC TESTS
 // ============================================================================
 
-test('Executor: function returning Date', () => {
-	const now = new Date('2024-01-01T00:00:00Z').getTime()
+test('Timestamp: add milliseconds to timestamp', () => {
+	const timestamp = 1704067200000 // 2024-01-01T00:00:00Z
+	const result = execute('t + 1000', {
+		variables: { t: timestamp },
+	})
+	expect(result).toBe(timestamp + 1000)
+})
+
+test('Timestamp: subtract milliseconds from timestamp', () => {
+	const timestamp = 1704067200000
+	const result = execute('t - 1000', {
+		variables: { t: timestamp },
+	})
+	expect(result).toBe(timestamp - 1000)
+})
+
+test('Timestamp: difference between two timestamps', () => {
+	const t1 = 1704067200000 // 2024-01-01T00:00:00Z
+	const t2 = 1704153600000 // 2024-01-02T00:00:00Z
+	const result = execute('t2 - t1', {
+		variables: { t1, t2 },
+	})
+	expect(result).toBe(t2 - t1) // 86400000 milliseconds (1 day)
+})
+
+test('Timestamp: now() returns timestamp', () => {
+	const now = 1704067200000
 	const result = execute('now()', {
-		functions: { now: () => new Date(now) },
+		functions: { now: () => now },
 	})
-	expect(result instanceof Date).toBe(true)
-	expect((result as Date).getTime()).toBe(now)
+	expect(result).toBe(now)
 })
 
-test('Executor: Date + number', () => {
-	const date = new Date('2024-01-01T00:00:00Z')
-	const result = execute('d + 1000', {
-		variables: { d: date },
-	})
-	expect(result instanceof Date).toBe(true)
-	expect((result as Date).getTime()).toBe(date.getTime() + 1000)
-})
-
-test('Executor: number + Date', () => {
-	const date = new Date('2024-01-01T00:00:00Z')
-	const result = execute('1000 + d', {
-		variables: { d: date },
-	})
-	expect(result instanceof Date).toBe(true)
-	expect((result as Date).getTime()).toBe(date.getTime() + 1000)
-})
-
-test('Executor: Date - number', () => {
-	const date = new Date('2024-01-01T00:00:00Z')
-	const result = execute('d - 1000', {
-		variables: { d: date },
-	})
-	expect(result instanceof Date).toBe(true)
-	expect((result as Date).getTime()).toBe(date.getTime() - 1000)
-})
-
-test('Executor: Date + Date', () => {
-	const date1 = new Date('2024-01-01T00:00:00Z')
-	const date2 = new Date('2024-01-02T00:00:00Z')
-	const result = execute('d1 + d2', {
-		variables: { d1: date1, d2: date2 },
-	})
-	expect(result instanceof Date).toBe(true)
-	expect((result as Date).getTime()).toBe(date1.getTime() + date2.getTime())
-})
-
-test('Executor: Date - Date', () => {
-	const date1 = new Date('2024-01-02T00:00:00Z')
-	const date2 = new Date('2024-01-01T00:00:00Z')
-	const result = execute('d1 - d2', {
-		variables: { d1: date1, d2: date2 },
-	})
-	expect(result).toBe(date1.getTime() - date2.getTime())
-})
-
-test('Executor: now() + milliseconds', () => {
-	const now = new Date('2024-01-01T00:00:00Z').getTime()
-	const result = execute('now() + 60000', {
-		functions: { now: () => new Date(now) },
-	})
-	expect(result instanceof Date).toBe(true)
-	expect((result as Date).getTime()).toBe(now + 60000)
-})
-
-test('Executor: Date arithmetic with functions', () => {
-	const now = new Date('2024-01-01T00:00:00Z').getTime()
-	const result = execute('now() + minutes(2)', {
+test('Timestamp: timestamp + time duration', () => {
+	const now = 1704067200000
+	const result = execute('now() + minutes(5)', {
 		functions: {
-			now: () => new Date(now),
-			minutes: (m) => m * 60 * 1000,
+			now: () => now,
+			minutes: (m: number) => m * 60 * 1000,
 		},
 	})
-	expect(result instanceof Date).toBe(true)
-	expect((result as Date).getTime()).toBe(now + 2 * 60 * 1000)
+	expect(result).toBe(now + 5 * 60 * 1000)
+})
+
+test('Timestamp: complex date arithmetic', () => {
+	const now = 1704067200000
+	const result = execute('now() + hours(2) + minutes(30)', {
+		functions: {
+			now: () => now,
+			hours: (h: number) => h * 60 * 60 * 1000,
+			minutes: (m: number) => m * 60 * 1000,
+		},
+	})
+	expect(result).toBe(now + 2 * 60 * 60 * 1000 + 30 * 60 * 1000)
+})
+
+test('Timestamp: calculate deadline', () => {
+	const start = 1704067200000
+	const duration = 7 * 24 * 60 * 60 * 1000 // 7 days in ms
+	const result = execute('start + duration', {
+		variables: { start, duration },
+	})
+	expect(result).toBe(start + duration)
 })
 
 // ============================================================================
@@ -419,7 +431,7 @@ test('AST builders: with variables', () => {
 })
 
 test('AST builders: function call', () => {
-	const node = ast.functionCall('abs', [ast.number(-5)])
+	const node = ast.functionCall('abs', [ast.negate(ast.number(5))])
 	const executor = new Executor({
 		functions: { abs: Math.abs },
 	})
@@ -438,7 +450,7 @@ test('AST builders: unary operator', () => {
 // INTEGRATION TESTS
 // ============================================================================
 
-test('Integration: lang.txt example 1', () => {
+test('Integration: multiple variable assignments', () => {
 	const code = `
 x = 1;
 y = 2;
@@ -448,18 +460,16 @@ z = x + y
 	expect(result).toBe(3)
 })
 
-test('Integration: lang.txt example 2', () => {
-	const code = `
-d = now()
-	`
-	const now = new Date('2024-01-01T00:00:00Z')
+test('Integration: timestamp calculation', () => {
+	const code = `t = now()`
+	const now = 1704067200000
 	const result = execute(code, {
 		functions: { now: () => now },
 	})
 	expect(result).toBe(now)
 })
 
-test('Integration: lang.txt example 3', () => {
+test('Integration: variable arithmetic', () => {
 	const code = `p = i - 10`
 	const result = execute(code, {
 		variables: { i: 25 },
@@ -478,8 +488,8 @@ total = base + interest
 	expect(result).toBe(105)
 })
 
-test('Integration: date-based calculation', () => {
-	const now = new Date('2024-01-01T00:00:00Z').getTime()
+test('Integration: timestamp-based calculation', () => {
+	const now = 1704067200000
 	const code = `
 start = now();
 duration = minutes(5);
@@ -487,12 +497,154 @@ end = start + duration
 	`
 	const result = execute(code, {
 		functions: {
-			now: () => new Date(now),
-			minutes: (m) => m * 60 * 1000,
+			now: () => now,
+			minutes: (m: number) => m * 60 * 1000,
 		},
 	})
-	expect(result instanceof Date).toBe(true)
-	expect((result as Date).getTime()).toBe(now + 5 * 60 * 1000)
+	expect(result).toBe(now + 5 * 60 * 1000)
+})
+
+test('Integration: compound interest calculation', () => {
+	const code = `
+principal = 1000;
+rate = 0.05;
+years = 3;
+amount = principal * (1 + rate) ^ years
+	`
+	const result = execute(code)
+	expect(result).toBeCloseTo(1157.625)
+})
+
+// ============================================================================
+// OPTIMIZATION TESTS
+// ============================================================================
+
+test('Optimization: constant folding binary operations', () => {
+	const node = optimize(parseSource('2 + 3'))
+	expect(isNumberLiteral(node)).toBe(true)
+	if (isNumberLiteral(node)) {
+		expect(node.value).toBe(5)
+	}
+})
+
+test('Optimization: constant folding with multiplication', () => {
+	const node = optimize(parseSource('4 * 5'))
+	expect(isNumberLiteral(node)).toBe(true)
+	if (isNumberLiteral(node)) {
+		expect(node.value).toBe(20)
+	}
+})
+
+test('Optimization: constant folding complex expression', () => {
+	const node = optimize(parseSource('2 + 3 * 4'))
+	expect(isNumberLiteral(node)).toBe(true)
+	if (isNumberLiteral(node)) {
+		expect(node.value).toBe(14)
+	}
+})
+
+test('Optimization: constant folding with exponentiation', () => {
+	const node = optimize(parseSource('2 ^ 3'))
+	expect(isNumberLiteral(node)).toBe(true)
+	if (isNumberLiteral(node)) {
+		expect(node.value).toBe(8)
+	}
+})
+
+test('Optimization: constant folding unary minus', () => {
+	const node = optimize(parseSource('-5'))
+	expect(isNumberLiteral(node)).toBe(true)
+	if (isNumberLiteral(node)) {
+		expect(node.value).toBe(-5)
+	}
+})
+
+test('Optimization: constant folding nested unary and binary', () => {
+	const node = optimize(parseSource('-(2 + 3)'))
+	expect(isNumberLiteral(node)).toBe(true)
+	if (isNumberLiteral(node)) {
+		expect(node.value).toBe(-5)
+	}
+})
+
+test('Optimization: does not fold with variables', () => {
+	const node = optimize(parseSource('x + 3'))
+	// Should remain a binary operation since x is not a literal
+	expect(isBinaryOp(node)).toBe(true)
+	if (isBinaryOp(node)) {
+		expect(node.operator).toBe('+')
+		expect(node.left.type).toBe('Identifier')
+		// Right side should be optimized
+		expect(isNumberLiteral(node.right)).toBe(true)
+	}
+})
+
+test('Optimization: partial folding in assignments', () => {
+	const node = optimize(parseSource('x = 2 + 3'))
+	expect(isAssignment(node)).toBe(true)
+	if (isAssignment(node)) {
+		expect(node.name).toBe('x')
+		// Value should be folded to 5
+		expect(isNumberLiteral(node.value)).toBe(true)
+		if (isNumberLiteral(node.value)) {
+			expect(node.value.value).toBe(5)
+		}
+	}
+})
+
+test('Optimization: multiple statements with folding', () => {
+	const node = optimize(parseSource('x = 5; y = 2 * 3'))
+	expect(isProgram(node)).toBe(true)
+	if (isProgram(node)) {
+		expect(node.statements.length).toBe(2)
+		// Second statement should have folded value
+		const secondStmt = node.statements[1]
+		if (secondStmt && isAssignment(secondStmt)) {
+			expect(isNumberLiteral(secondStmt.value)).toBe(true)
+			if (isNumberLiteral(secondStmt.value)) {
+				expect(secondStmt.value.value).toBe(6)
+			}
+		}
+	}
+})
+
+test('Optimization: scientific notation folding', () => {
+	const node = optimize(parseSource('1e6 + 2e6'))
+	expect(isNumberLiteral(node)).toBe(true)
+	if (isNumberLiteral(node)) {
+		expect(node.value).toBe(3000000)
+	}
+})
+
+test('Optimization: manual optimize() function', () => {
+	const unoptimized = parseSource('10 * 5')
+	const optimized = optimize(unoptimized)
+	expect(isNumberLiteral(optimized)).toBe(true)
+	if (isNumberLiteral(optimized)) {
+		expect(optimized.value).toBe(50)
+	}
+})
+
+test('Optimization: execution result same with or without optimization', () => {
+	const source = '2 + 3 * 4 - 1'
+	const unoptimized = execute(source)
+	const optimizedAst = optimize(parseSource(source))
+	const executor = new Executor()
+	const optimized = executor.execute(optimizedAst)
+	expect(optimized).toBe(unoptimized)
+	expect(optimized).toBe(13)
+})
+
+test('Optimization: division by zero error during folding', () => {
+	expect(() => optimize(parseSource('1 / 0'))).toThrow(
+		'Division by zero in constant folding',
+	)
+})
+
+test('Optimization: modulo by zero error during folding', () => {
+	expect(() => optimize(parseSource('10 % 0'))).toThrow(
+		'Modulo by zero in constant folding',
+	)
 })
 
 // ============================================================================
@@ -539,38 +691,31 @@ test('Default context: Math.min', () => {
 	expect(result).toBe(1)
 })
 
-test('Default context: now()', () => {
+test('Default context: now() returns timestamp', () => {
 	const before = Date.now()
 	const result = execute('now()', defaultContext)
 	const after = Date.now()
-	expect(result instanceof Date).toBe(true)
-	expect((result as Date).getTime()).toBeGreaterThanOrEqual(before)
-	expect((result as Date).getTime()).toBeLessThanOrEqual(after)
+	expect(typeof result).toBe('number')
+	expect(result).toBeGreaterThanOrEqual(before)
+	expect(result).toBeLessThanOrEqual(after)
 })
 
-test('Default context: date() with timestamp', () => {
-	const timestamp = 1704067200000 // 2024-01-01T00:00:00Z
-	const result = execute('date(1704067200000)', defaultContext)
-	expect(result instanceof Date).toBe(true)
-	expect((result as Date).getTime()).toBe(timestamp)
+test('Default context: timestamp() creates timestamp', () => {
+	const result = execute('timestamp(2024, 1, 1)', defaultContext)
+	expect(typeof result).toBe('number')
+	const date = new Date(result)
+	expect(date.getFullYear()).toBe(2024)
+	expect(date.getMonth()).toBe(0) // January is 0
+	expect(date.getDate()).toBe(1)
 })
 
-test('Default context: date() with ISO string', () => {
-	const result = execute("date('2025-10-01')", defaultContext)
-	expect(result instanceof Date).toBe(true)
-	const date = result as Date
-	expect(date.getUTCFullYear()).toBe(2025)
-	expect(date.getUTCMonth()).toBe(9) // October is month 9 (0-indexed)
-	expect(date.getUTCDate()).toBe(1)
-})
-
-test('Default context: date() no arguments', () => {
-	const before = Date.now()
-	const result = execute('date()', defaultContext)
-	const after = Date.now()
-	expect(result instanceof Date).toBe(true)
-	expect((result as Date).getTime()).toBeGreaterThanOrEqual(before)
-	expect((result as Date).getTime()).toBeLessThanOrEqual(after)
+test('Default context: timestamp() with time components', () => {
+	const result = execute('timestamp(2024, 1, 1, 12, 30, 0)', defaultContext)
+	expect(typeof result).toBe('number')
+	const date = new Date(result)
+	expect(date.getFullYear()).toBe(2024)
+	expect(date.getHours()).toBe(12)
+	expect(date.getMinutes()).toBe(30)
 })
 
 test('Default context: seconds()', () => {
@@ -593,9 +738,79 @@ test('Default context: days()', () => {
 	expect(result).toBe(24 * 60 * 60 * 1000)
 })
 
+test('Default context: weeks()', () => {
+	const result = execute('weeks(1)', defaultContext)
+	expect(result).toBe(7 * 24 * 60 * 60 * 1000)
+})
+
+test('Default context: year() extracts year from timestamp', () => {
+	const timestamp = new Date('2024-06-15').getTime()
+	const result = execute('year(t)', {
+		...defaultContext,
+		variables: { t: timestamp },
+	})
+	expect(result).toBe(2024)
+})
+
+test('Default context: month() extracts month from timestamp', () => {
+	const timestamp = new Date('2024-06-15').getTime()
+	const result = execute('month(t)', {
+		...defaultContext,
+		variables: { t: timestamp },
+	})
+	expect(result).toBe(6) // 1-based: June = 6
+})
+
+test('Default context: day() extracts day from timestamp', () => {
+	const timestamp = new Date('2024-06-15').getTime()
+	const result = execute('day(t)', {
+		...defaultContext,
+		variables: { t: timestamp },
+	})
+	expect(result).toBe(15)
+})
+
+test('Default context: hour() extracts hour from timestamp', () => {
+	const timestamp = new Date('2024-06-15T14:30:00').getTime()
+	const result = execute('hour(t)', {
+		...defaultContext,
+		variables: { t: timestamp },
+	})
+	expect(result).toBe(14)
+})
+
+test('Default context: minute() extracts minute from timestamp', () => {
+	const timestamp = new Date('2024-06-15T14:30:00').getTime()
+	const result = execute('minute(t)', {
+		...defaultContext,
+		variables: { t: timestamp },
+	})
+	expect(result).toBe(30)
+})
+
+test('Default context: second() extracts second from timestamp', () => {
+	const timestamp = new Date('2024-06-15T14:30:45').getTime()
+	const result = execute('second(t)', {
+		...defaultContext,
+		variables: { t: timestamp },
+	})
+	expect(result).toBe(45)
+})
+
+test('Default context: weekday() extracts day of week', () => {
+	const timestamp = new Date('2024-01-01').getTime() // Monday
+	const result = execute('weekday(t)', {
+		...defaultContext,
+		variables: { t: timestamp },
+	})
+	expect(result).toBeGreaterThanOrEqual(0)
+	expect(result).toBeLessThanOrEqual(6)
+})
+
 test('Default context: now() + minutes()', () => {
 	const result = execute('now() + minutes(5)', defaultContext)
-	expect(result instanceof Date).toBe(true)
+	expect(typeof result).toBe('number')
+	expect(result).toBeGreaterThan(Date.now())
 })
 
 test('Default context: spread into custom context', () => {
@@ -677,7 +892,7 @@ test('CodeGen: generate function call without arguments', () => {
 })
 
 test('CodeGen: generate function call with single argument', () => {
-	const node = ast.functionCall('abs', [ast.number(-5)])
+	const node = ast.functionCall('abs', [ast.negate(ast.number(5))])
 	const code = generate(node)
 	expect(code).toBe('abs(-5)')
 })
@@ -749,8 +964,6 @@ test('CodeGen: precedence - subtract left side', () => {
 		ast.number(3),
 	)
 	const code = generate(node)
-	// (10 + 5) - 3 parses as (10 + 5) - 3 due to left-associativity,
-	// so no parens needed on left side of lower precedence operator
 	expect(code).toBe('10 + 5 - 3')
 })
 
@@ -787,8 +1000,6 @@ test('CodeGen: precedence - left exponentiation needs parens', () => {
 		ast.number(2),
 	)
 	const code = generate(node)
-	// (2 ^ 3) ^ 2 needs parens because without them 2 ^ 3 ^ 2
-	// would parse as 2 ^ (3 ^ 2) due to right-associativity
 	expect(code).toBe('(2 ^ 3) ^ 2')
 })
 
@@ -875,7 +1086,35 @@ test('CodeGen: generated code is syntactically valid', () => {
 		ast.exponentiate(ast.number(2), ast.number(3)),
 	)
 	const code = generate(node)
-	// Should not throw
 	const parsed = parseSource(code)
 	expect(parsed).toBeDefined()
+})
+
+// ============================================================================
+// ADDITIONAL COVERAGE TESTS
+// ============================================================================
+
+test('Optimization: unary operation with variable (cannot fold)', () => {
+	// Test unary operation that can't be folded (lines 61, 64-67 in optimizer.ts)
+	const ast1 = parseSource('-x')
+	const optimized = optimize(ast1)
+	// Should still be a unary op because x is a variable, not a literal
+	expect(isUnaryOp(optimized)).toBe(true)
+	if (isUnaryOp(optimized)) {
+		expect(isIdentifier(optimized.argument)).toBe(true)
+	}
+})
+
+test('Default context: milliseconds() returns milliseconds', () => {
+	// Test milliseconds function (uncovered in defaults.ts)
+	const result = execute('milliseconds(1500)', defaultContext)
+	expect(result).toBe(1500)
+})
+
+test('CodeGen: error on unknown node type', () => {
+	// Test error handling for invalid AST node
+	// biome-ignore lint/suspicious/noExplicitAny: testing error handling with intentionally invalid node type
+	const invalidNode = { type: 'InvalidType' } as any
+	const generator = new CodeGenerator()
+	expect(() => generator.generate(invalidNode)).toThrow('Unknown node type')
 })
