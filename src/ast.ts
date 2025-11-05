@@ -2,8 +2,10 @@ import type {
 	ASTNode,
 	Assignment,
 	BinaryOp,
+	ConditionalExpression,
 	FunctionCall,
 	Identifier,
+	NullishAssignment,
 	NumberLiteral,
 	Operator,
 	UnaryOp,
@@ -83,6 +85,34 @@ export function assign(name: string, value: ASTNode): Assignment {
 }
 
 /**
+ * Create a nullish assignment node (x ??= 5)
+ * Assigns only if variable is undefined
+ */
+export function nullishAssign(name: string, value: ASTNode): NullishAssignment {
+	return {
+		type: 'NullishAssignment',
+		name,
+		value,
+	}
+}
+
+/**
+ * Create a conditional expression node (ternary operator)
+ */
+export function conditional(
+	condition: ASTNode,
+	consequent: ASTNode,
+	alternate: ASTNode,
+): ConditionalExpression {
+	return {
+		type: 'ConditionalExpression',
+		condition,
+		consequent,
+		alternate,
+	}
+}
+
+/**
  * Convenience functions for common operations
  */
 
@@ -133,4 +163,68 @@ export function exponentiate(left: ASTNode, right: ASTNode): BinaryOp {
  */
 export function negate(argument: ASTNode): UnaryOp {
 	return unaryOp(argument)
+}
+
+/**
+ * Comparison operator convenience functions
+ */
+
+/**
+ * Create an equality comparison (==)
+ */
+export function equals(left: ASTNode, right: ASTNode): BinaryOp {
+	return binaryOp(left, '==', right)
+}
+
+/**
+ * Create a not-equals comparison (!=)
+ */
+export function notEquals(left: ASTNode, right: ASTNode): BinaryOp {
+	return binaryOp(left, '!=', right)
+}
+
+/**
+ * Create a less-than comparison (<)
+ */
+export function lessThan(left: ASTNode, right: ASTNode): BinaryOp {
+	return binaryOp(left, '<', right)
+}
+
+/**
+ * Create a greater-than comparison (>)
+ */
+export function greaterThan(left: ASTNode, right: ASTNode): BinaryOp {
+	return binaryOp(left, '>', right)
+}
+
+/**
+ * Create a less-than-or-equal comparison (<=)
+ */
+export function lessEqual(left: ASTNode, right: ASTNode): BinaryOp {
+	return binaryOp(left, '<=', right)
+}
+
+/**
+ * Create a greater-than-or-equal comparison (>=)
+ */
+export function greaterEqual(left: ASTNode, right: ASTNode): BinaryOp {
+	return binaryOp(left, '>=', right)
+}
+
+/**
+ * Logical operator convenience functions
+ */
+
+/**
+ * Create a logical AND operation (&&)
+ */
+export function logicalAnd(left: ASTNode, right: ASTNode): BinaryOp {
+	return binaryOp(left, '&&', right)
+}
+
+/**
+ * Create a logical OR operation (||)
+ */
+export function logicalOr(left: ASTNode, right: ASTNode): BinaryOp {
+	return binaryOp(left, '||', right)
 }

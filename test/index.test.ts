@@ -7,6 +7,7 @@ import {
 	generate,
 	isAssignment,
 	isBinaryOp,
+	isConditionalExpression,
 	isFunctionCall,
 	isIdentifier,
 	isNumberLiteral,
@@ -1376,6 +1377,862 @@ test('CodeGen: generated code is syntactically valid', () => {
 	const code = generate(node)
 	const parsed = parseSource(code)
 	expect(parsed).toBeDefined()
+})
+
+// ============================================================================
+// COMPARISON OPERATORS TESTS
+// ============================================================================
+
+test('Lexer: tokenize comparison operators', () => {
+	const lexer = new Lexer('== != < > <= >=')
+	const tokens = lexer.tokenize()
+	expect(tokens[0]?.type).toBe(TokenType.DOUBLE_EQUALS)
+	expect(tokens[0]?.value).toBe('==')
+	expect(tokens[1]?.type).toBe(TokenType.NOT_EQUALS)
+	expect(tokens[1]?.value).toBe('!=')
+	expect(tokens[2]?.type).toBe(TokenType.LESS_THAN)
+	expect(tokens[2]?.value).toBe('<')
+	expect(tokens[3]?.type).toBe(TokenType.GREATER_THAN)
+	expect(tokens[3]?.value).toBe('>')
+	expect(tokens[4]?.type).toBe(TokenType.LESS_EQUAL)
+	expect(tokens[4]?.value).toBe('<=')
+	expect(tokens[5]?.type).toBe(TokenType.GREATER_EQUAL)
+	expect(tokens[5]?.value).toBe('>=')
+})
+
+test('Lexer: distinguish = from ==', () => {
+	const lexer = new Lexer('x = 5 == 5')
+	const tokens = lexer.tokenize()
+	expect(tokens[1]?.type).toBe(TokenType.EQUALS)
+	expect(tokens[3]?.type).toBe(TokenType.DOUBLE_EQUALS)
+})
+
+test('Lexer: != requires both characters', () => {
+	const lexer = new Lexer('!')
+	expect(() => lexer.tokenize()).toThrow('Unexpected character')
+})
+
+test('Execute: equality operator returns 1 or 0', () => {
+	expect(execute('5 == 5')).toBe(1)
+	expect(execute('5 == 3')).toBe(0)
+	expect(execute('10 == 10')).toBe(1)
+	expect(execute('7.5 == 7.5')).toBe(1)
+})
+
+test('Execute: not-equals operator', () => {
+	expect(execute('5 != 3')).toBe(1)
+	expect(execute('5 != 5')).toBe(0)
+	expect(execute('10 != 10')).toBe(0)
+})
+
+test('Execute: less-than operator', () => {
+	expect(execute('3 < 5')).toBe(1)
+	expect(execute('5 < 3')).toBe(0)
+	expect(execute('5 < 5')).toBe(0)
+})
+
+test('Execute: greater-than operator', () => {
+	expect(execute('5 > 3')).toBe(1)
+	expect(execute('3 > 5')).toBe(0)
+	expect(execute('5 > 5')).toBe(0)
+})
+
+test('Execute: less-than-or-equal operator', () => {
+	expect(execute('3 <= 5')).toBe(1)
+	expect(execute('5 <= 5')).toBe(1)
+	expect(execute('7 <= 5')).toBe(0)
+})
+
+test('Execute: greater-than-or-equal operator', () => {
+	expect(execute('5 >= 3')).toBe(1)
+	expect(execute('5 >= 5')).toBe(1)
+	expect(execute('3 >= 5')).toBe(0)
+})
+
+test('Execute: comparison operators with variables', () => {
+	expect(execute('x = 10; y = 5; x > y')).toBe(1)
+	expect(execute('x = 5; y = 10; x < y')).toBe(1)
+	expect(execute('x = 7; y = 7; x == y')).toBe(1)
+})
+
+test('Execute: comparison operator precedence (lower than arithmetic)', () => {
+	// Comparisons have lower precedence than arithmetic
+	expect(execute('2 + 3 == 5')).toBe(1) // (2 + 3) == 5 = 5 == 5 = 1
+	expect(execute('10 - 5 > 3')).toBe(1) // (10 - 5) > 3 = 5 > 3 = 1
+	expect(execute('2 * 3 < 10')).toBe(1) // (2 * 3) < 10 = 6 < 10 = 1
+})
+
+test('Execute: chained comparisons (left-to-right)', () => {
+	// Note: Unlike Python, this evaluates left-to-right as binary ops
+	// (5 > 3) > 0 = 1 > 0 = 1
+	expect(execute('5 > 3 > 0')).toBe(1)
+	// (3 < 5) < 2 = 1 < 2 = 1
+	expect(execute('3 < 5 < 2')).toBe(1)
+})
+
+test('Execute: comparison in arithmetic expression', () => {
+	// Comparison returns 0 or 1, can be used in arithmetic
+	expect(execute('(5 > 3) * 10')).toBe(10) // 1 * 10 = 10
+	expect(execute('(5 < 3) * 10')).toBe(0) // 0 * 10 = 0
+	expect(execute('(10 == 10) + 5')).toBe(6) // 1 + 5 = 6
+})
+
+test('AST: comparison operator builders', () => {
+	const node1 = ast.equals(ast.number(5), ast.number(5))
+	expect(isBinaryOp(node1)).toBe(true)
+	if (isBinaryOp(node1)) {
+		expect(node1.operator).toBe('==')
+	}
+
+	const node2 = ast.notEquals(ast.number(5), ast.number(3))
+	expect(isBinaryOp(node2)).toBe(true)
+	if (isBinaryOp(node2)) {
+		expect(node2.operator).toBe('!=')
+	}
+
+	const node3 = ast.lessThan(ast.number(3), ast.number(5))
+	expect(isBinaryOp(node3)).toBe(true)
+	if (isBinaryOp(node3)) {
+		expect(node3.operator).toBe('<')
+	}
+
+	const node4 = ast.greaterThan(ast.number(5), ast.number(3))
+	expect(isBinaryOp(node4)).toBe(true)
+	if (isBinaryOp(node4)) {
+		expect(node4.operator).toBe('>')
+	}
+
+	const node5 = ast.lessEqual(ast.number(3), ast.number(5))
+	expect(isBinaryOp(node5)).toBe(true)
+	if (isBinaryOp(node5)) {
+		expect(node5.operator).toBe('<=')
+	}
+
+	const node6 = ast.greaterEqual(ast.number(5), ast.number(3))
+	expect(isBinaryOp(node6)).toBe(true)
+	if (isBinaryOp(node6)) {
+		expect(node6.operator).toBe('>=')
+	}
+})
+
+test('Optimizer: constant folding for comparison operators', () => {
+	expect(execute('x = 5 > 3; x')).toBe(1)
+	const ast1 = parseSource('5 == 5')
+	const optimized1 = optimize(ast1)
+	expect(isNumberLiteral(optimized1)).toBe(true)
+	if (isNumberLiteral(optimized1)) {
+		expect(optimized1.value).toBe(1)
+	}
+
+	const ast2 = parseSource('10 < 5')
+	const optimized2 = optimize(ast2)
+	expect(isNumberLiteral(optimized2)).toBe(true)
+	if (isNumberLiteral(optimized2)) {
+		expect(optimized2.value).toBe(0)
+	}
+
+	const ast3 = parseSource('x = 10; y = 5; z = x > y; z')
+	const optimized3 = optimize(ast3)
+	expect(isNumberLiteral(optimized3)).toBe(true)
+	if (isNumberLiteral(optimized3)) {
+		expect(optimized3.value).toBe(1)
+	}
+})
+
+test('CodeGen: comparison operators', () => {
+	const node1 = ast.equals(ast.number(5), ast.number(3))
+	expect(generate(node1)).toBe('5 == 3')
+
+	const node2 = ast.lessThan(ast.number(10), ast.number(20))
+	expect(generate(node2)).toBe('10 < 20')
+
+	const node3 = ast.greaterEqual(ast.identifier('x'), ast.number(5))
+	expect(generate(node3)).toBe('x >= 5')
+})
+
+test('CodeGen: comparison with arithmetic (precedence)', () => {
+	// Arithmetic has higher precedence than comparison, no parens needed
+	const node = ast.lessThan(
+		ast.add(ast.number(2), ast.number(3)),
+		ast.number(10),
+	)
+	expect(generate(node)).toBe('2 + 3 < 10')
+})
+
+// ============================================================================
+// TERNARY OPERATOR TESTS
+// ============================================================================
+
+test('Lexer: tokenize ternary operator', () => {
+	const lexer = new Lexer('x ? y : z')
+	const tokens = lexer.tokenize()
+	expect(tokens[1]?.type).toBe(TokenType.QUESTION)
+	expect(tokens[1]?.value).toBe('?')
+	expect(tokens[3]?.type).toBe(TokenType.COLON)
+	expect(tokens[3]?.value).toBe(':')
+})
+
+test('Execute: ternary with truthy condition', () => {
+	expect(execute('1 ? 100 : 50')).toBe(100)
+	expect(execute('5 ? 10 : 20')).toBe(10)
+	expect(execute('-1 ? 7 : 3')).toBe(7)
+})
+
+test('Execute: ternary with falsy condition', () => {
+	expect(execute('0 ? 100 : 50')).toBe(50)
+})
+
+test('Execute: ternary with comparison', () => {
+	expect(execute('5 > 3 ? 100 : 50')).toBe(100)
+	expect(execute('5 < 3 ? 100 : 50')).toBe(50)
+	expect(execute('10 == 10 ? 1 : 0')).toBe(1)
+})
+
+test('Execute: ternary with variables', () => {
+	expect(execute('x = 10; y = 5; x > y ? 100 : 50')).toBe(100)
+	expect(execute('x = 3; y = 7; x > y ? 100 : 50')).toBe(50)
+})
+
+test('Execute: nested ternary expressions', () => {
+	expect(execute('1 ? 2 ? 3 : 4 : 5')).toBe(3)
+	expect(execute('0 ? 2 ? 3 : 4 : 5')).toBe(5)
+	expect(execute('1 ? 0 ? 3 : 4 : 5')).toBe(4)
+})
+
+test('Execute: ternary with arithmetic', () => {
+	expect(execute('5 > 3 ? 10 + 5 : 20 + 5')).toBe(15)
+	expect(execute('5 < 3 ? 10 + 5 : 20 + 5')).toBe(25)
+})
+
+test('Execute: ternary result in arithmetic', () => {
+	expect(execute('(1 ? 10 : 5) * 2')).toBe(20)
+	expect(execute('(0 ? 10 : 5) * 2')).toBe(10)
+})
+
+test('Execute: multi-level conditional logic', () => {
+	// Simulating: if (age < 18) return 10 else if (age > 65) return 8 else return 15
+	expect(execute('age = 15; age < 18 ? 10 : age > 65 ? 8 : 15')).toBe(10)
+	expect(execute('age = 70; age < 18 ? 10 : age > 65 ? 8 : 15')).toBe(8)
+	expect(execute('age = 30; age < 18 ? 10 : age > 65 ? 8 : 15')).toBe(15)
+})
+
+test('Execute: ternary in assignment', () => {
+	expect(execute('x = 5 > 3 ? 100 : 50; x')).toBe(100)
+	expect(execute('x = 5 < 3 ? 100 : 50; x')).toBe(50)
+})
+
+test('AST: conditional expression builder', () => {
+	const node = ast.conditional(
+		ast.greaterThan(ast.number(5), ast.number(3)),
+		ast.number(100),
+		ast.number(50),
+	)
+	expect(node.type).toBe('ConditionalExpression')
+	expect(node.condition).toBeDefined()
+	expect(node.consequent).toBeDefined()
+	expect(node.alternate).toBeDefined()
+})
+
+test('Optimizer: constant folding for ternary (true condition)', () => {
+	const ast1 = parseSource('1 ? 100 : 50')
+	const optimized1 = optimize(ast1)
+	expect(isNumberLiteral(optimized1)).toBe(true)
+	if (isNumberLiteral(optimized1)) {
+		expect(optimized1.value).toBe(100)
+	}
+})
+
+test('Optimizer: constant folding for ternary (false condition)', () => {
+	const ast1 = parseSource('0 ? 100 : 50')
+	const optimized1 = optimize(ast1)
+	expect(isNumberLiteral(optimized1)).toBe(true)
+	if (isNumberLiteral(optimized1)) {
+		expect(optimized1.value).toBe(50)
+	}
+})
+
+test('Optimizer: ternary with constant comparison', () => {
+	const ast1 = parseSource('5 > 3 ? 100 : 50')
+	const optimized1 = optimize(ast1)
+	expect(isNumberLiteral(optimized1)).toBe(true)
+	if (isNumberLiteral(optimized1)) {
+		expect(optimized1.value).toBe(100)
+	}
+
+	const ast2 = parseSource('5 < 3 ? 100 : 50')
+	const optimized2 = optimize(ast2)
+	expect(isNumberLiteral(optimized2)).toBe(true)
+	if (isNumberLiteral(optimized2)) {
+		expect(optimized2.value).toBe(50)
+	}
+})
+
+test('Optimizer: complex ternary optimization', () => {
+	const source = 'x = 10; y = 5; result = x > y ? 100 : 50; result'
+	const ast1 = parseSource(source)
+	const optimized = optimize(ast1)
+	expect(isNumberLiteral(optimized)).toBe(true)
+	if (isNumberLiteral(optimized)) {
+		expect(optimized.value).toBe(100)
+	}
+})
+
+test('Optimizer: nested ternary optimization', () => {
+	const ast1 = parseSource('1 ? 1 ? 100 : 200 : 300')
+	const optimized1 = optimize(ast1)
+	expect(isNumberLiteral(optimized1)).toBe(true)
+	if (isNumberLiteral(optimized1)) {
+		expect(optimized1.value).toBe(100)
+	}
+})
+
+test('CodeGen: ternary operator', () => {
+	const node = ast.conditional(
+		ast.greaterThan(ast.number(5), ast.number(3)),
+		ast.number(100),
+		ast.number(50),
+	)
+	expect(generate(node)).toBe('5 > 3 ? 100 : 50')
+})
+
+test('CodeGen: ternary with complex condition', () => {
+	const node = ast.conditional(
+		ast.add(ast.number(2), ast.number(3)),
+		ast.number(100),
+		ast.number(50),
+	)
+	expect(generate(node)).toBe('2 + 3 ? 100 : 50')
+})
+
+test('CodeGen: nested ternary', () => {
+	const node = ast.conditional(
+		ast.number(1),
+		ast.conditional(ast.number(1), ast.number(100), ast.number(200)),
+		ast.number(300),
+	)
+	expect(generate(node)).toBe('1 ? 1 ? 100 : 200 : 300')
+})
+
+test('CodeGen: ternary round-trip', () => {
+	const source = 'x > 5 ? 100 : 50'
+	const ast1 = parseSource(source)
+	const code = generate(ast1)
+	const _ast2 = parseSource(code)
+	const result1 = execute(source, { variables: { x: 10 } })
+	const result2 = execute(code, { variables: { x: 10 } })
+	expect(result1).toBe(result2)
+	expect(result1).toBe(100)
+})
+
+test('Execute: max using ternary', () => {
+	expect(execute('a = 10; b = 20; a > b ? a : b')).toBe(20)
+	expect(execute('a = 30; b = 20; a > b ? a : b')).toBe(30)
+})
+
+test('Execute: min using ternary', () => {
+	expect(execute('a = 10; b = 20; a < b ? a : b')).toBe(10)
+	expect(execute('a = 30; b = 20; a < b ? a : b')).toBe(20)
+})
+
+test('Execute: discount calculation with ternary', () => {
+	// Premium customers get 20% discount, others get 0
+	expect(
+		execute('price = 100; isPremium = 1; price * (1 - (isPremium ? 0.2 : 0))'),
+	).toBe(80)
+	expect(
+		execute('price = 100; isPremium = 0; price * (1 - (isPremium ? 0.2 : 0))'),
+	).toBe(100)
+})
+
+test('Execute: age-based pricing with ternary', () => {
+	// Children (< 18) pay 10, seniors (> 65) pay 8, others pay 15
+	expect(execute('age = 12; age < 18 ? 10 : age > 65 ? 8 : 15')).toBe(10)
+	expect(execute('age = 70; age < 18 ? 10 : age > 65 ? 8 : 15')).toBe(8)
+	expect(execute('age = 35; age < 18 ? 10 : age > 65 ? 8 : 15')).toBe(15)
+})
+
+test('Parser: ternary error on missing colon', () => {
+	expect(() => parseSource('1 ? 2')).toThrow('Expected : in ternary expression')
+})
+
+// ============================================================================
+// NULLISH ASSIGNMENT (??=) TESTS
+// ============================================================================
+
+test('Lexer: tokenize ??= operator', () => {
+	const lexer = new Lexer('x ??= 10')
+	const tokens = lexer.tokenize()
+	expect(tokens[1]?.type).toBe(TokenType.NULLISH_ASSIGN)
+	expect(tokens[1]?.value).toBe('??=')
+})
+
+test('Execute: ??= assigns when variable is undefined', () => {
+	// Variable doesn't exist, should assign
+	expect(execute('price ??= 100')).toBe(100)
+	expect(execute('price ??= 100; price')).toBe(100)
+})
+
+test('Execute: ??= does not assign when variable exists', () => {
+	// Variable exists in context, should keep existing value
+	expect(execute('price ??= 100', { variables: { price: 50 } })).toBe(50)
+	expect(execute('price ??= 100; price', { variables: { price: 50 } })).toBe(50)
+})
+
+test('Execute: ??= preserves zero values', () => {
+	// Key difference from ||=: zero is a valid value, not "falsy"
+	expect(execute('discount ??= 0.2', { variables: { discount: 0 } })).toBe(0)
+	expect(
+		execute('discount ??= 0.2; discount', { variables: { discount: 0 } }),
+	).toBe(0)
+})
+
+test('Execute: ??= with complex default value', () => {
+	expect(execute('price ??= 50 * 2')).toBe(100)
+	expect(execute('price ??= 50 * 2; price')).toBe(100)
+})
+
+test('Execute: ??= does not evaluate right side when variable exists', () => {
+	// The right side should not be evaluated if variable exists
+	// This is important for performance and side effects
+	const source = 'x ??= y + 1; x'
+	expect(execute(source, { variables: { x: 10 } })).toBe(10)
+	// Note: y is not defined, but no error because right side not evaluated
+})
+
+test('Execute: multiple ??= statements', () => {
+	expect(
+		execute('price ??= 100; discount ??= 0.1; price * (1 - discount)'),
+	).toBe(90)
+})
+
+test('Execute: ??= with external variables use case', () => {
+	// Typical use case: provide defaults for optional external variables
+	const script = `
+		price ??= 100
+		tax ??= 0.1
+		discount ??= 0
+		total = price * (1 + tax) * (1 - discount)
+		total
+	`
+
+	// With no context, uses all defaults
+	expect(execute(script)).toBeCloseTo(110, 5)
+
+	// With partial context, uses some defaults
+	expect(execute(script, { variables: { price: 200 } })).toBeCloseTo(220, 5)
+
+	// With full context, uses no defaults
+	expect(
+		execute(script, { variables: { price: 200, tax: 0.2, discount: 0.1 } }),
+	).toBeCloseTo(216, 5)
+})
+
+test('Execute: ??= in program with regular assignment', () => {
+	// Mix of ??= and regular =
+	const script = `
+		price ??= 100
+		price = price * 2
+		price
+	`
+	expect(execute(script)).toBe(200)
+	expect(execute(script, { variables: { price: 50 } })).toBe(100)
+})
+
+test('Execute: ??= chain (right-associative)', () => {
+	// x ??= y ??= 5 should work like x ??= (y ??= 5)
+	expect(execute('x ??= y ??= 5; x')).toBe(5)
+	expect(execute('x ??= y ??= 5; y')).toBe(5)
+})
+
+test('AST: nullish assignment builder', () => {
+	const node = ast.nullishAssign('price', ast.number(100))
+	expect(node.type).toBe('NullishAssignment')
+	expect(node.name).toBe('price')
+	expect(isNumberLiteral(node.value) && node.value.value).toBe(100)
+})
+
+test('Optimizer: constant folding with ??=', () => {
+	const ast1 = parseSource('x ??= 100; x')
+	const optimized = optimize(ast1)
+	// Should optimize to just the literal 100
+	expect(isNumberLiteral(optimized)).toBe(true)
+	if (isNumberLiteral(optimized)) {
+		expect(optimized.value).toBe(100)
+	}
+})
+
+test('Optimizer: ??= with complex expression', () => {
+	const source = 'price ??= 50 * 2; price'
+	const ast1 = parseSource(source)
+	const optimized = optimize(ast1)
+	// Note: ??= cannot be fully optimized away because it's conditional
+	// The value expression should be optimized to 100, but the assignment remains
+	expect(isProgram(optimized)).toBe(true)
+	if (isProgram(optimized)) {
+		expect(optimized.statements.length).toBe(2)
+		const assignment = optimized.statements[0]
+		// The right side should be optimized to a literal
+		expect(assignment?.type).toBe('NullishAssignment')
+		if (assignment?.type === 'NullishAssignment') {
+			expect(isNumberLiteral(assignment.value)).toBe(true)
+			if (isNumberLiteral(assignment.value)) {
+				expect(assignment.value.value).toBe(100)
+			}
+		}
+	}
+})
+
+test('CodeGen: nullish assignment', () => {
+	const node = ast.nullishAssign('price', ast.number(100))
+	expect(generate(node)).toBe('price ??= 100')
+})
+
+test('CodeGen: nullish assignment with expression', () => {
+	const node = ast.nullishAssign(
+		'price',
+		ast.add(ast.number(50), ast.number(50)),
+	)
+	expect(generate(node)).toBe('price ??= 50 + 50')
+})
+
+test('CodeGen: ??= round-trip', () => {
+	const source = 'price ??= 100'
+	const ast1 = parseSource(source)
+	const code = generate(ast1)
+	const _ast2 = parseSource(code)
+	expect(code).toBe('price ??= 100')
+
+	// Execute both and verify same result
+	const result1 = execute(source, { variables: { price: 50 } })
+	const result2 = execute(code, { variables: { price: 50 } })
+	expect(result1).toBe(result2)
+	expect(result1).toBe(50)
+})
+
+test('Execute: ??= with ternary operator', () => {
+	// Complex expression: default with conditional logic
+	expect(execute('price ??= 100 > 50 ? 100 : 50; price')).toBe(100)
+})
+
+test('Execute: realistic pricing script with ??=', () => {
+	const pricingScript = `
+		// Provide defaults for external variables
+		basePrice ??= 100
+		isPremium ??= 0
+		age ??= 30
+
+		// Calculate discount based on user type
+		discount = isPremium ? 0.2 : age > 65 ? 0.15 : age < 18 ? 0.1 : 0
+
+		// Final price
+		finalPrice = basePrice * (1 - discount)
+		finalPrice
+	`
+
+	// Default customer (no context)
+	expect(execute(pricingScript)).toBe(100)
+
+	// Premium customer
+	expect(execute(pricingScript, { variables: { isPremium: 1 } })).toBe(80)
+
+	// Senior with custom base price
+	expect(
+		execute(pricingScript, { variables: { basePrice: 200, age: 70 } }),
+	).toBe(170)
+
+	// Child
+	expect(execute(pricingScript, { variables: { age: 12 } })).toBe(90)
+})
+
+test('Execute: ??= preserves assignment return value', () => {
+	// ??= should return the value (existing or newly assigned)
+	expect(execute('x ??= 10')).toBe(10)
+	expect(execute('(x ??= 10) * 2', { variables: { x: 5 } })).toBe(10)
+	expect(execute('(x ??= 10) * 2')).toBe(20)
+})
+
+test('Parser: ??= has same precedence as =', () => {
+	// Should parse similar to regular assignment
+	const ast1 = parseSource('x ??= 5 + 3')
+	expect(ast1.type).toBe('NullishAssignment')
+})
+
+// ============================================================================
+// LOGICAL OPERATORS (&& and ||)
+// ============================================================================
+
+test('Lexer: tokenize && operator', () => {
+	const lexer = new Lexer('1 && 2')
+	const tokens = lexer.tokenize()
+	expect(tokens[0]?.type).toBe(TokenType.NUMBER)
+	expect(tokens[1]?.type).toBe(TokenType.LOGICAL_AND)
+	expect(tokens[1]?.value).toBe('&&')
+	expect(tokens[2]?.type).toBe(TokenType.NUMBER)
+})
+
+test('Lexer: tokenize || operator', () => {
+	const lexer = new Lexer('1 || 0')
+	const tokens = lexer.tokenize()
+	expect(tokens[0]?.type).toBe(TokenType.NUMBER)
+	expect(tokens[1]?.type).toBe(TokenType.LOGICAL_OR)
+	expect(tokens[1]?.value).toBe('||')
+	expect(tokens[2]?.type).toBe(TokenType.NUMBER)
+})
+
+test('Lexer: single & throws error', () => {
+	const lexer = new Lexer('5 & 3')
+	expect(() => lexer.tokenize()).toThrow("Unexpected character '&'")
+})
+
+test('Lexer: single | throws error', () => {
+	const lexer = new Lexer('5 | 3')
+	expect(() => lexer.tokenize()).toThrow("Unexpected character '|'")
+})
+
+test('Parser: parse && operator', () => {
+	const ast = parseSource('5 && 3')
+	expect(isBinaryOp(ast)).toBe(true)
+	if (isBinaryOp(ast)) {
+		expect(ast.operator).toBe('&&')
+	}
+})
+
+test('Parser: parse || operator', () => {
+	const ast = parseSource('5 || 0')
+	expect(isBinaryOp(ast)).toBe(true)
+	if (isBinaryOp(ast)) {
+		expect(ast.operator).toBe('||')
+	}
+})
+
+test('Execute: && returns 1 when both operands are truthy', () => {
+	expect(execute('1 && 1')).toBe(1)
+	expect(execute('5 && 3')).toBe(1)
+	expect(execute('100 && 200')).toBe(1)
+	expect(execute('-1 && -2')).toBe(1)
+})
+
+test('Execute: && returns 0 when left operand is 0', () => {
+	expect(execute('0 && 1')).toBe(0)
+	expect(execute('0 && 5')).toBe(0)
+	expect(execute('0 && 0')).toBe(0)
+})
+
+test('Execute: && returns 0 when right operand is 0', () => {
+	expect(execute('1 && 0')).toBe(0)
+	expect(execute('5 && 0')).toBe(0)
+})
+
+test('Execute: || returns 1 when left operand is truthy', () => {
+	expect(execute('1 || 0')).toBe(1)
+	expect(execute('5 || 0')).toBe(1)
+	expect(execute('100 || 0')).toBe(1)
+	expect(execute('-1 || 0')).toBe(1)
+})
+
+test('Execute: || returns 1 when right operand is truthy', () => {
+	expect(execute('0 || 1')).toBe(1)
+	expect(execute('0 || 5')).toBe(1)
+})
+
+test('Execute: || returns 1 when both operands are truthy', () => {
+	expect(execute('1 || 1')).toBe(1)
+	expect(execute('5 || 3')).toBe(1)
+})
+
+test('Execute: || returns 0 when both operands are 0', () => {
+	expect(execute('0 || 0')).toBe(0)
+})
+
+test('Execute: && with comparison operators', () => {
+	expect(execute('5 > 3 && 10 > 8')).toBe(1)
+	expect(execute('5 > 3 && 10 < 8')).toBe(0)
+	expect(execute('5 < 3 && 10 > 8')).toBe(0)
+	expect(execute('5 < 3 && 10 < 8')).toBe(0)
+})
+
+test('Execute: || with comparison operators', () => {
+	expect(execute('5 > 3 || 10 > 8')).toBe(1)
+	expect(execute('5 > 3 || 10 < 8')).toBe(1)
+	expect(execute('5 < 3 || 10 > 8')).toBe(1)
+	expect(execute('5 < 3 || 10 < 8')).toBe(0)
+})
+
+test('Execute: chained && operators', () => {
+	expect(execute('1 && 1 && 1')).toBe(1)
+	expect(execute('1 && 1 && 0')).toBe(0)
+	expect(execute('1 && 0 && 1')).toBe(0)
+	expect(execute('0 && 1 && 1')).toBe(0)
+})
+
+test('Execute: chained || operators', () => {
+	expect(execute('0 || 0 || 0')).toBe(0)
+	expect(execute('0 || 0 || 1')).toBe(1)
+	expect(execute('0 || 1 || 0')).toBe(1)
+	expect(execute('1 || 0 || 0')).toBe(1)
+})
+
+test('Execute: mixed && and || operators', () => {
+	// && has higher precedence than ||
+	expect(execute('0 || 1 && 1')).toBe(1) // 0 || (1 && 1) = 0 || 1 = 1
+	expect(execute('1 && 0 || 1')).toBe(1) // (1 && 0) || 1 = 0 || 1 = 1
+	expect(execute('1 || 0 && 0')).toBe(1) // 1 || (0 && 0) = 1 || 0 = 1
+	expect(execute('0 && 1 || 0')).toBe(0) // (0 && 1) || 0 = 0 || 0 = 0
+})
+
+test('Execute: && and || with ternary operator', () => {
+	expect(execute('1 && 1 ? 100 : 50')).toBe(100)
+	expect(execute('0 && 1 ? 100 : 50')).toBe(50)
+	expect(execute('0 || 1 ? 100 : 50')).toBe(100)
+	expect(execute('0 || 0 ? 100 : 50')).toBe(50)
+})
+
+test('Execute: logical operators in assignment', () => {
+	expect(execute('x = 5 > 3 && 10 > 8; x')).toBe(1)
+	expect(execute('x = 5 < 3 || 10 > 8; x')).toBe(1)
+	expect(execute('x = 0 && 1; x')).toBe(0)
+	expect(execute('x = 0 || 0; x')).toBe(0)
+})
+
+test('Execute: logical operators with variables', () => {
+	const context = { variables: { a: 5, b: 0, c: 10 } }
+	expect(execute('a && c', context)).toBe(1)
+	expect(execute('a && b', context)).toBe(0)
+	expect(execute('b && c', context)).toBe(0)
+	expect(execute('a || b', context)).toBe(1)
+	expect(execute('b || c', context)).toBe(1)
+	expect(execute('b || 0', context)).toBe(0)
+})
+
+test('Execute: logical operators with parentheses', () => {
+	expect(execute('(1 && 0) || 1')).toBe(1)
+	expect(execute('1 && (0 || 1)')).toBe(1)
+	expect(execute('(0 || 0) && 1')).toBe(0)
+	expect(execute('0 || (0 && 1)')).toBe(0)
+})
+
+test('Execute: realistic boolean logic examples', () => {
+	// Age check: between 18 and 65
+	expect(execute('age = 25; age >= 18 && age <= 65')).toBe(1)
+	expect(execute('age = 15; age >= 18 && age <= 65')).toBe(0)
+	expect(execute('age = 70; age >= 18 && age <= 65')).toBe(0)
+
+	// Discount eligibility: student or senior
+	const studentScript = 'isStudent = 1; age = 20; isStudent || age >= 65'
+	const seniorScript = 'isStudent = 0; age = 70; isStudent || age >= 65'
+	const neitherScript = 'isStudent = 0; age = 30; isStudent || age >= 65'
+	expect(execute(studentScript)).toBe(1)
+	expect(execute(seniorScript)).toBe(1)
+	expect(execute(neitherScript)).toBe(0)
+})
+
+test('Optimization: constant folding for &&', () => {
+	expect(optimize(parseSource('1 && 1'))).toEqual(ast.number(1))
+	expect(optimize(parseSource('1 && 0'))).toEqual(ast.number(0))
+	expect(optimize(parseSource('0 && 1'))).toEqual(ast.number(0))
+	expect(optimize(parseSource('5 && 3'))).toEqual(ast.number(1))
+})
+
+test('Optimization: constant folding for ||', () => {
+	expect(optimize(parseSource('1 || 1'))).toEqual(ast.number(1))
+	expect(optimize(parseSource('1 || 0'))).toEqual(ast.number(1))
+	expect(optimize(parseSource('0 || 1'))).toEqual(ast.number(1))
+	expect(optimize(parseSource('0 || 0'))).toEqual(ast.number(0))
+})
+
+test('Optimization: logical operators with comparisons', () => {
+	expect(optimize(parseSource('5 > 3 && 10 > 8'))).toEqual(ast.number(1))
+	expect(optimize(parseSource('5 < 3 || 10 > 8'))).toEqual(ast.number(1))
+	expect(optimize(parseSource('5 < 3 && 10 < 8'))).toEqual(ast.number(0))
+})
+
+test('AST builders: logicalAnd', () => {
+	const node = ast.logicalAnd(ast.number(1), ast.number(1))
+	expect(node.type).toBe('BinaryOp')
+	expect(node.operator).toBe('&&')
+	const result = new Executor().execute(node)
+	expect(result).toBe(1)
+})
+
+test('AST builders: logicalOr', () => {
+	const node = ast.logicalOr(ast.number(0), ast.number(1))
+	expect(node.type).toBe('BinaryOp')
+	expect(node.operator).toBe('||')
+	const result = new Executor().execute(node)
+	expect(result).toBe(1)
+})
+
+test('CodeGen: && operator', () => {
+	const source = '5 && 3'
+	const ast1 = parseSource(source)
+	const code = generate(ast1)
+	expect(code).toBe('5 && 3')
+})
+
+test('CodeGen: || operator', () => {
+	const source = '0 || 1'
+	const ast1 = parseSource(source)
+	const code = generate(ast1)
+	expect(code).toBe('0 || 1')
+})
+
+test('CodeGen: mixed logical and comparison operators', () => {
+	const source = '5 > 3 && 10 < 20'
+	const ast1 = parseSource(source)
+	const code = generate(ast1)
+	const _ast2 = parseSource(code)
+	expect(execute(source)).toBe(execute(code))
+})
+
+test('CodeGen: logical operators with parentheses', () => {
+	const source = '(1 && 0) || 1'
+	const ast1 = parseSource(source)
+	const code = generate(ast1)
+	expect(execute(source)).toBe(execute(code))
+})
+
+test('Precedence: logical operators vs comparison', () => {
+	// Comparison (2) has higher precedence than logical (1.75)
+	// So: 5 > 3 && 10 > 8 should parse as (5 > 3) && (10 > 8)
+	const ast1 = parseSource('5 > 3 && 10 > 8')
+	expect(isBinaryOp(ast1)).toBe(true)
+	if (isBinaryOp(ast1)) {
+		expect(ast1.operator).toBe('&&')
+		expect(isBinaryOp(ast1.left)).toBe(true)
+		expect(isBinaryOp(ast1.right)).toBe(true)
+		if (isBinaryOp(ast1.left)) {
+			expect(ast1.left.operator).toBe('>')
+		}
+		if (isBinaryOp(ast1.right)) {
+			expect(ast1.right.operator).toBe('>')
+		}
+	}
+})
+
+test('Precedence: logical operators vs ternary', () => {
+	// Ternary (1.5) has lower precedence than logical (1.75)
+	// So: 1 && 1 ? 100 : 50 should parse as (1 && 1) ? 100 : 50
+	const ast1 = parseSource('1 && 1 ? 100 : 50')
+	expect(isConditionalExpression(ast1)).toBe(true)
+	if (isConditionalExpression(ast1)) {
+		expect(isBinaryOp(ast1.condition)).toBe(true)
+		if (isBinaryOp(ast1.condition)) {
+			expect(ast1.condition.operator).toBe('&&')
+		}
+	}
+})
+
+test('Precedence: logical operators vs assignment', () => {
+	// Assignment (1) has lower precedence than logical (1.75)
+	// So: x = 1 && 0 should parse as x = (1 && 0)
+	const ast1 = parseSource('x = 1 && 0')
+	expect(isAssignment(ast1)).toBe(true)
+	if (isAssignment(ast1)) {
+		expect(isBinaryOp(ast1.value)).toBe(true)
+		if (isBinaryOp(ast1.value)) {
+			expect(ast1.value.operator).toBe('&&')
+		}
+	}
 })
 
 // ============================================================================

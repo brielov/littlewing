@@ -58,17 +58,49 @@ export class Parser {
 			}
 
 			if (token.type === TokenType.EQUALS) {
-				// Variable assignment
+				// Variable assignment (right-associative)
 				if (left.type !== 'Identifier') {
 					throw new Error('Invalid assignment target')
 				}
 				const identName = left.name
 				this.advance() // consume =
-				const value = this.parseExpression(precedence + 1)
+				// Use precedence (not precedence + 1) for right-associativity
+				// This allows: x = y = 5 and x = 5 > 3 ? 100 : 50
+				const value = this.parseExpression(precedence)
 				left = {
 					type: 'Assignment',
 					name: identName,
 					value,
+				}
+			} else if (token.type === TokenType.NULLISH_ASSIGN) {
+				// Nullish assignment (right-associative)
+				// Assigns only if variable is undefined
+				if (left.type !== 'Identifier') {
+					throw new Error('Invalid assignment target')
+				}
+				const identName = left.name
+				this.advance() // consume ??=
+				const value = this.parseExpression(precedence)
+				left = {
+					type: 'NullishAssignment',
+					name: identName,
+					value,
+				}
+			} else if (token.type === TokenType.QUESTION) {
+				// Ternary conditional expression (right-associative)
+				this.advance() // consume ?
+				const consequent = this.parseExpression(0)
+				if (this.peek().type !== TokenType.COLON) {
+					throw new Error('Expected : in ternary expression')
+				}
+				this.advance() // consume :
+				// Use precedence for right-associativity
+				const alternate = this.parseExpression(precedence)
+				left = {
+					type: 'ConditionalExpression',
+					condition: left,
+					consequent,
+					alternate,
 				}
 			} else if (this.isBinaryOperator(token.type)) {
 				// Binary operation
@@ -178,20 +210,44 @@ export class Parser {
 
 	/**
 	 * Get operator precedence
+	 * Precedence hierarchy:
+	 * 0: None
+	 * 1: Assignment (=, ??=)
+	 * 2: Ternary conditional (? :)
+	 * 3: Logical OR (||)
+	 * 4: Logical AND (&&)
+	 * 5: Comparison (==, !=, <, >, <=, >=)
+	 * 6: Addition/Subtraction (+, -)
+	 * 7: Multiplication/Division/Modulo (*, /, %)
+	 * 8: Exponentiation (^)
 	 */
 	private getPrecedence(type: TokenType): number {
 		switch (type) {
 			case TokenType.EQUALS:
+			case TokenType.NULLISH_ASSIGN:
 				return 1 // Assignment has lowest precedence
+			case TokenType.QUESTION:
+				return 2 // Ternary conditional
+			case TokenType.LOGICAL_OR:
+				return 3 // Logical OR
+			case TokenType.LOGICAL_AND:
+				return 4 // Logical AND (binds tighter than OR)
+			case TokenType.DOUBLE_EQUALS:
+			case TokenType.NOT_EQUALS:
+			case TokenType.LESS_THAN:
+			case TokenType.GREATER_THAN:
+			case TokenType.LESS_EQUAL:
+			case TokenType.GREATER_EQUAL:
+				return 5 // Comparison operators
 			case TokenType.PLUS:
 			case TokenType.MINUS:
-				return 2
+				return 6
 			case TokenType.STAR:
 			case TokenType.SLASH:
 			case TokenType.PERCENT:
-				return 3
+				return 7
 			case TokenType.CARET:
-				return 4 // Exponentiation has highest precedence
+				return 8 // Exponentiation has highest precedence
 			default:
 				return 0
 		}
@@ -201,7 +257,7 @@ export class Parser {
 	 * Get unary operator precedence
 	 */
 	private getUnaryPrecedence(): number {
-		return 5 // Higher than all binary operators
+		return 6 // Higher than all binary operators
 	}
 
 	/**
@@ -214,7 +270,15 @@ export class Parser {
 			type === TokenType.STAR ||
 			type === TokenType.SLASH ||
 			type === TokenType.PERCENT ||
-			type === TokenType.CARET
+			type === TokenType.CARET ||
+			type === TokenType.DOUBLE_EQUALS ||
+			type === TokenType.NOT_EQUALS ||
+			type === TokenType.LESS_THAN ||
+			type === TokenType.GREATER_THAN ||
+			type === TokenType.LESS_EQUAL ||
+			type === TokenType.GREATER_EQUAL ||
+			type === TokenType.LOGICAL_AND ||
+			type === TokenType.LOGICAL_OR
 		)
 	}
 

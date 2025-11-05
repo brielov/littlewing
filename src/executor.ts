@@ -3,9 +3,11 @@ import type {
 	ASTNode,
 	Assignment,
 	BinaryOp,
+	ConditionalExpression,
 	ExecutionContext,
 	FunctionCall,
 	Identifier,
+	NullishAssignment,
 	NumberLiteral,
 	Program,
 	RuntimeValue,
@@ -14,8 +16,10 @@ import type {
 import {
 	isAssignment,
 	isBinaryOp,
+	isConditionalExpression,
 	isFunctionCall,
 	isIdentifier,
+	isNullishAssignment,
 	isNumberLiteral,
 	isProgram,
 	isUnaryOp,
@@ -44,6 +48,9 @@ export class Executor {
 		if (isUnaryOp(node)) return this.executeUnaryOp(node)
 		if (isFunctionCall(node)) return this.executeFunctionCall(node)
 		if (isAssignment(node)) return this.executeAssignment(node)
+		if (isNullishAssignment(node)) return this.executeNullishAssignment(node)
+		if (isConditionalExpression(node))
+			return this.executeConditionalExpression(node)
 		throw new Error(`Unknown node type`)
 	}
 
@@ -102,6 +109,22 @@ export class Executor {
 				return left % right
 			case '^':
 				return left ** right
+			case '==':
+				return left === right ? 1 : 0
+			case '!=':
+				return left !== right ? 1 : 0
+			case '<':
+				return left < right ? 1 : 0
+			case '>':
+				return left > right ? 1 : 0
+			case '<=':
+				return left <= right ? 1 : 0
+			case '>=':
+				return left >= right ? 1 : 0
+			case '&&':
+				return left !== 0 && right !== 0 ? 1 : 0
+			case '||':
+				return left !== 0 || right !== 0 ? 1 : 0
 			default:
 				throw new Error(`Unknown operator: ${node.operator}`)
 		}
@@ -143,6 +166,35 @@ export class Executor {
 		const value = this.execute(node.value)
 		this.variables.set(node.name, value)
 		return value
+	}
+
+	/**
+	 * Execute a nullish assignment (??=)
+	 * Only assigns if the variable is undefined (not in variables map)
+	 * Returns the existing value if defined, otherwise evaluates and assigns the value
+	 */
+	private executeNullishAssignment(node: NullishAssignment): number {
+		// Check if variable already exists
+		if (this.variables.has(node.name)) {
+			// Variable exists, return its current value without executing the right side
+			return this.variables.get(node.name) as number
+		}
+
+		// Variable doesn't exist, evaluate and assign the default value
+		const value = this.execute(node.value)
+		this.variables.set(node.name, value)
+		return value
+	}
+
+	/**
+	 * Execute a conditional expression (ternary operator)
+	 * Returns consequent if condition !== 0, otherwise returns alternate
+	 */
+	private executeConditionalExpression(node: ConditionalExpression): number {
+		const condition = this.execute(node.condition)
+		return condition !== 0
+			? this.execute(node.consequent)
+			: this.execute(node.alternate)
 	}
 }
 

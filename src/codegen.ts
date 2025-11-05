@@ -2,8 +2,10 @@ import type {
 	ASTNode,
 	Assignment,
 	BinaryOp,
+	ConditionalExpression,
 	FunctionCall,
 	Identifier,
+	NullishAssignment,
 	NumberLiteral,
 	Operator,
 	Program,
@@ -12,8 +14,10 @@ import type {
 import {
 	isAssignment,
 	isBinaryOp,
+	isConditionalExpression,
 	isFunctionCall,
 	isIdentifier,
+	isNullishAssignment,
 	isNumberLiteral,
 	isProgram,
 	isUnaryOp,
@@ -34,6 +38,9 @@ export class CodeGenerator {
 		if (isUnaryOp(node)) return this.generateUnaryOp(node)
 		if (isFunctionCall(node)) return this.generateFunctionCall(node)
 		if (isAssignment(node)) return this.generateAssignment(node)
+		if (isNullishAssignment(node)) return this.generateNullishAssignment(node)
+		if (isConditionalExpression(node))
+			return this.generateConditionalExpression(node)
 		throw new Error(`Unknown node type`)
 	}
 
@@ -106,6 +113,32 @@ export class CodeGenerator {
 	}
 
 	/**
+	 * Generate code for a nullish assignment
+	 */
+	private generateNullishAssignment(node: NullishAssignment): string {
+		const value = this.generate(node.value)
+		return `${node.name} ??= ${value}`
+	}
+
+	/**
+	 * Generate code for a conditional expression (ternary operator)
+	 */
+	private generateConditionalExpression(node: ConditionalExpression): string {
+		const condition = this.generate(node.condition)
+		const consequent = this.generate(node.consequent)
+		const alternate = this.generate(node.alternate)
+
+		// Add parentheses to condition if it's an assignment or lower-precedence operation
+		const conditionNeedsParens =
+			isAssignment(node.condition) ||
+			(isBinaryOp(node.condition) &&
+				this.getPrecedence(node.condition.operator) <= 2)
+		const conditionCode = conditionNeedsParens ? `(${condition})` : condition
+
+		return `${conditionCode} ? ${consequent} : ${alternate}`
+	}
+
+	/**
 	 * Check if left operand needs parentheses based on operator precedence
 	 * - For left-associative operators: parens only if strictly lower precedence
 	 * - For right-associative operators (^): parens if lower or equal precedence
@@ -148,18 +181,30 @@ export class CodeGenerator {
 
 	/**
 	 * Get precedence of an operator (higher number = higher precedence)
+	 * Must match the precedence in parser.ts
 	 */
 	private getPrecedence(operator: Operator): number {
 		switch (operator) {
 			case '^':
-				return 4
+				return 8 // Exponentiation
 			case '*':
 			case '/':
 			case '%':
-				return 3
+				return 7 // Multiplication/Division/Modulo
 			case '+':
 			case '-':
-				return 2
+				return 6 // Addition/Subtraction
+			case '==':
+			case '!=':
+			case '<':
+			case '>':
+			case '<=':
+			case '>=':
+				return 5 // Comparison
+			case '&&':
+				return 4 // Logical AND
+			case '||':
+				return 3 // Logical OR
 			default:
 				return 0
 		}

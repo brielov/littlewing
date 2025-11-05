@@ -1,10 +1,12 @@
 import * as ast from './ast'
-import type { ASTNode } from './types'
+import type { ASTNode, Operator } from './types'
 import {
 	isAssignment,
 	isBinaryOp,
+	isConditionalExpression,
 	isFunctionCall,
 	isIdentifier,
+	isNullishAssignment,
 	isNumberLiteral,
 	isProgram,
 	isUnaryOp,
@@ -101,7 +103,7 @@ function analyzeProgram(node: ASTNode): ProgramAnalysis {
 		const stmt = node.statements[i]
 		if (!stmt) continue
 
-		if (isAssignment(stmt)) {
+		if (isAssignment(stmt) || isNullishAssignment(stmt)) {
 			const varName = stmt.name
 			const count = assignmentCounts.get(varName) || 0
 			assignmentCounts.set(varName, count + 1)
@@ -119,6 +121,7 @@ function analyzeProgram(node: ASTNode): ProgramAnalysis {
 			// 1. Assigned exactly once (check after full scan)
 			// 2. Right-hand side is a literal OR all dependencies are constants
 			// 3. No function calls in the value
+			// Note: NullishAssignment can still be optimized if it's the only assignment
 			if (count === 0 && isNumberLiteral(stmt.value)) {
 				constants.set(varName, stmt.value.value)
 			}
@@ -223,7 +226,7 @@ function collectDependencies(node: ASTNode, deps: Set<string>): boolean {
 		return false
 	}
 
-	if (isAssignment(node)) {
+	if (isAssignment(node) || isNullishAssignment(node)) {
 		return collectDependencies(node.value, deps)
 	}
 
@@ -243,6 +246,13 @@ function collectDependencies(node: ASTNode, deps: Set<string>): boolean {
 			collectDependencies(arg, deps)
 		}
 		return true
+	}
+
+	if (isConditionalExpression(node)) {
+		const condHasCall = collectDependencies(node.condition, deps)
+		const consHasCall = collectDependencies(node.consequent, deps)
+		const altHasCall = collectDependencies(node.alternate, deps)
+		return condHasCall || consHasCall || altHasCall
 	}
 
 	if (isProgram(node)) {
@@ -419,7 +429,32 @@ function evaluateWithConstants(
 		}
 	}
 
+	if (isConditionalExpression(node)) {
+		const condition = evaluateWithConstants(node.condition, constants)
+		const consequent = evaluateWithConstants(node.consequent, constants)
+		const alternate = evaluateWithConstants(node.alternate, constants)
+
+		// If condition is a constant, evaluate at compile time
+		if (isNumberLiteral(condition)) {
+			return condition.value !== 0 ? consequent : alternate
+		}
+
+		return {
+			...node,
+			condition,
+			consequent,
+			alternate,
+		}
+	}
+
 	if (isAssignment(node)) {
+		return {
+			...node,
+			value: evaluateWithConstants(node.value, constants),
+		}
+	}
+
+	if (isNullishAssignment(node)) {
 		return {
 			...node,
 			value: evaluateWithConstants(node.value, constants),
@@ -482,7 +517,7 @@ function eliminateDeadCodeOptimal(
 
 		// For assignments: only keep if the variable is still referenced
 		// (hasn't been fully propagated)
-		if (isAssignment(stmt)) {
+		if (isAssignment(stmt) || isNullishAssignment(stmt)) {
 			if (variablesInUse.has(stmt.name)) {
 				filteredStatements.push(stmt)
 			}
@@ -545,6 +580,13 @@ function basicOptimize(node: ASTNode): ASTNode {
 		}
 	}
 
+	if (isNullishAssignment(node)) {
+		return {
+			...node,
+			value: basicOptimize(node.value),
+		}
+	}
+
 	if (isBinaryOp(node)) {
 		const left = basicOptimize(node.left)
 		const right = basicOptimize(node.right)
@@ -581,6 +623,24 @@ function basicOptimize(node: ASTNode): ASTNode {
 		}
 	}
 
+	if (isConditionalExpression(node)) {
+		const condition = basicOptimize(node.condition)
+		const consequent = basicOptimize(node.consequent)
+		const alternate = basicOptimize(node.alternate)
+
+		// If condition is a constant, evaluate at compile time
+		if (isNumberLiteral(condition)) {
+			return condition.value !== 0 ? consequent : alternate
+		}
+
+		return {
+			...node,
+			condition,
+			consequent,
+			alternate,
+		}
+	}
+
 	if (isProgram(node)) {
 		return {
 			...node,
@@ -595,7 +655,7 @@ function basicOptimize(node: ASTNode): ASTNode {
  * Evaluate a binary operation on two numbers
  */
 function evaluateBinaryOp(
-	operator: '+' | '-' | '*' | '/' | '%' | '^',
+	operator: Operator,
 	left: number,
 	right: number,
 ): number {
@@ -618,6 +678,22 @@ function evaluateBinaryOp(
 			return left % right
 		case '^':
 			return left ** right
+		case '==':
+			return left === right ? 1 : 0
+		case '!=':
+			return left !== right ? 1 : 0
+		case '<':
+			return left < right ? 1 : 0
+		case '>':
+			return left > right ? 1 : 0
+		case '<=':
+			return left <= right ? 1 : 0
+		case '>=':
+			return left >= right ? 1 : 0
+		case '&&':
+			return left !== 0 && right !== 0 ? 1 : 0
+		case '||':
+			return left !== 0 || right !== 0 ? 1 : 0
 		default:
 			throw new Error(`Unknown operator: ${operator}`)
 	}

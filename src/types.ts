@@ -6,16 +6,29 @@ export type RuntimeValue = number
 /**
  * Binary operator types
  */
-export type Operator = '+' | '-' | '*' | '/' | '%' | '^'
+export type Operator =
+	| '+'
+	| '-'
+	| '*'
+	| '/'
+	| '%'
+	| '^'
+	| '=='
+	| '!='
+	| '<'
+	| '>'
+	| '<='
+	| '>='
+	| '&&'
+	| '||'
 
 /**
  * Execution context providing global functions and variables
- * Functions must accept any arguments and return a number
+ * Functions must accept zero or more number arguments and return a number
  * Variables must be numbers
  */
 export interface ExecutionContext {
-	// biome-ignore lint/suspicious/noExplicitAny: variadic function signature
-	functions?: Record<string, (...args: any[]) => number>
+	functions?: Record<string, (...args: number[]) => number>
 	variables?: Record<string, number>
 }
 
@@ -35,11 +48,26 @@ export enum TokenType {
 	PERCENT = 'PERCENT',
 	CARET = 'CARET',
 
+	// Comparison operators
+	DOUBLE_EQUALS = 'DOUBLE_EQUALS',
+	NOT_EQUALS = 'NOT_EQUALS',
+	LESS_THAN = 'LESS_THAN',
+	GREATER_THAN = 'GREATER_THAN',
+	LESS_EQUAL = 'LESS_EQUAL',
+	GREATER_EQUAL = 'GREATER_EQUAL',
+
+	// Logical operators
+	LOGICAL_AND = 'LOGICAL_AND',
+	LOGICAL_OR = 'LOGICAL_OR',
+
 	// Punctuation
 	LPAREN = 'LPAREN',
 	RPAREN = 'RPAREN',
 	EQUALS = 'EQUALS',
 	COMMA = 'COMMA',
+	QUESTION = 'QUESTION',
+	COLON = 'COLON',
+	NULLISH_ASSIGN = 'NULLISH_ASSIGN',
 
 	// End of file
 	EOF = 'EOF',
@@ -65,6 +93,8 @@ export type ASTNode =
 	| UnaryOp
 	| FunctionCall
 	| Assignment
+	| ConditionalExpression
+	| NullishAssignment
 
 /**
  * Program node (multiple statements)
@@ -128,6 +158,28 @@ export interface Assignment {
 }
 
 /**
+ * Conditional expression (ternary operator: condition ? consequent : alternate)
+ * Returns consequent if condition !== 0, otherwise returns alternate
+ */
+export interface ConditionalExpression {
+	type: 'ConditionalExpression'
+	condition: ASTNode
+	consequent: ASTNode
+	alternate: ASTNode
+}
+
+/**
+ * Nullish assignment (x ??= 5)
+ * Assigns value only if variable is undefined (not provided in context)
+ * Used for providing defaults for external variables
+ */
+export interface NullishAssignment {
+	type: 'NullishAssignment'
+	name: string
+	value: ASTNode
+}
+
+/**
  * Type guard functions for discriminated union narrowing
  */
 export function isNumberLiteral(node: ASTNode): node is NumberLiteral {
@@ -156,4 +208,14 @@ export function isAssignment(node: ASTNode): node is Assignment {
 
 export function isProgram(node: ASTNode): node is Program {
 	return node.type === 'Program'
+}
+
+export function isConditionalExpression(
+	node: ASTNode,
+): node is ConditionalExpression {
+	return node.type === 'ConditionalExpression'
+}
+
+export function isNullishAssignment(node: ASTNode): node is NullishAssignment {
+	return node.type === 'NullishAssignment'
 }

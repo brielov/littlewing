@@ -5,10 +5,10 @@ A minimal, high-performance arithmetic expression language with a complete lexer
 ## Features
 
 - 🚀 **Minimal & Fast** - O(n) algorithms throughout (lexer, parser, executor)
-- 📦 **Small Bundle** - 5.62 KB gzipped, zero dependencies
+- 📦 **Small Bundle** - 6.89 KB gzipped, zero dependencies
 - 🌐 **Browser Ready** - 100% ESM, no Node.js APIs
 - 🔒 **Type-Safe** - Strict TypeScript with full type coverage
-- ✅ **Thoroughly Tested** - 136 tests, 99.52% line coverage
+- ✅ **Thoroughly Tested** - 247 tests, 98.61% line coverage
 - 📐 **Pure Arithmetic** - Numbers-only, clean semantics
 - 🎯 **Clean API** - Intuitive dual API (class-based + functional)
 - 📝 **Well Documented** - Complete JSDoc and examples
@@ -126,7 +126,7 @@ z = x * y;
 
 ### Operators
 
-All standard arithmetic operators with proper precedence:
+#### Arithmetic Operators
 
 ```typescript
 2 + 3; // addition
@@ -134,23 +134,98 @@ All standard arithmetic operators with proper precedence:
 3 * 4; // multiplication
 10 / 2; // division
 10 % 3; // modulo
-2 ^
-	(3 - // exponentiation (power)
-		5); // unary minus
+2 ^ 3; // exponentiation (power)
+-5; // unary minus
+```
+
+#### Comparison Operators
+
+Returns `1` for true, `0` for false (following the numbers-only philosophy):
+
+```typescript
+5 == 5; // equality → 1
+5 != 3; // not equal → 1
+5 > 3; // greater than → 1
+5 < 3; // less than → 0
+5 >= 5; // greater than or equal → 1
+5 <= 3; // less than or equal → 0
+```
+
+#### Logical Operators
+
+Returns `1` for true, `0` for false. Treats `0` as false, any non-zero value as true:
+
+```typescript
+1 && 1; // logical AND → 1 (both truthy)
+1 && 0; // logical AND → 0 (right is falsy)
+0 || 1; // logical OR → 1 (right is truthy)
+0 || 0; // logical OR → 0 (both falsy)
+
+// Commonly used with comparisons
+5 > 3 && 10 > 8; // → 1 (both conditions true)
+5 < 3 || 10 > 8; // → 1 (second condition true)
+age >= 18 && age <= 65; // age range check
+isStudent || age >= 65; // student or senior discount
+```
+
+#### Ternary Operator
+
+Conditional expression with `? :` syntax:
+
+```typescript
+5 > 3 ? 100 : 50; // → 100 (condition is true)
+0 ? 100 : 50; // → 50 (0 is falsy)
+x = age >= 18 ? 1 : 0; // assign based on condition
+
+// Nested ternaries
+age < 18 ? 10 : age >= 65 ? 15 : 0; // age-based discount
+```
+
+#### Assignment Operators
+
+```typescript
+x = 5; // regular assignment
+price ??= 100; // nullish assignment - only assigns if variable doesn't exist
+```
+
+The `??=` operator is useful for providing default values to external variables:
+
+```typescript
+// Without ??=
+execute("price * 2", { variables: { price: 50 } }); // → 100
+execute("price * 2", {}); // Error: Undefined variable: price
+
+// With ??=
+execute("price ??= 100; price * 2", { variables: { price: 50 } }); // → 100 (uses existing)
+execute("price ??= 100; price * 2", {}); // → 200 (uses default)
+```
+
+Unlike `||`, the `??=` operator preserves `0` values:
+
+```typescript
+execute("x ??= 10; x", { variables: { x: 0 } }); // → 0 (preserves zero)
+execute("x ??= 10; x", {}); // → 10 (assigns default)
 ```
 
 ### Operator Precedence
 
-1. Unary minus (`-`) - Highest
-2. Exponentiation (`^`)
-3. Multiplication, division, modulo (`*`, `/`, `%`)
-4. Addition, subtraction (`+`, `-`)
-5. Assignment (`=`) - Lowest
+From lowest to highest:
+
+1. Assignment (`=`, `??=`) - Lowest
+2. Ternary conditional (`? :`)
+3. Logical OR (`||`)
+4. Logical AND (`&&`)
+5. Comparison (`==`, `!=`, `<`, `>`, `<=`, `>=`)
+6. Addition, subtraction (`+`, `-`)
+7. Multiplication, division, modulo (`*`, `/`, `%`)
+8. Exponentiation (`^`)
+9. Unary minus (`-`) - Highest
 
 Parentheses override precedence:
 
 ```typescript
 (2 + 3) * 4; // → 20 (not 14)
+5 > 3 && 10 > 8; // → 1 (explicit grouping, though not necessary)
 ```
 
 ### Functions
@@ -292,8 +367,11 @@ The `ast` namespace provides convenient functions for building AST nodes:
 ```typescript
 import { ast } from "littlewing";
 
+// Literals and identifiers
 ast.number(42);
 ast.identifier("x");
+
+// Arithmetic operators
 ast.add(left, right);
 ast.subtract(left, right);
 ast.multiply(left, right);
@@ -301,7 +379,27 @@ ast.divide(left, right);
 ast.modulo(left, right);
 ast.exponentiate(left, right);
 ast.negate(argument);
-ast.assign("x", value);
+
+// Comparison operators
+ast.equals(left, right); // ==
+ast.notEquals(left, right); // !=
+ast.lessThan(left, right); // <
+ast.greaterThan(left, right); // >
+ast.lessEqual(left, right); // <=
+ast.greaterEqual(left, right); // >=
+
+// Logical operators
+ast.logicalAnd(left, right); // &&
+ast.logicalOr(left, right); // ||
+
+// Control flow
+ast.conditional(condition, consequent, alternate); // ? :
+
+// Assignment
+ast.assign("x", value); // =
+ast.nullishAssign("x", value); // ??=
+
+// Functions
 ast.functionCall("abs", [ast.number(-5)]);
 ```
 
@@ -509,6 +607,101 @@ execute("fahrenheit(roomTemp)", context); // → 68
 execute("kilometers(5)", context); // → 8.0467
 ```
 
+### Conditional Logic & Validation
+
+```typescript
+import { execute } from "littlewing";
+
+// Age-based discount system
+const discountScript = `
+  age ??= 30;
+  isStudent ??= 0;
+  isPremium ??= 0;
+
+  discount = isPremium ? 0.2 :
+             age < 18 ? 0.15 :
+             age >= 65 ? 0.15 :
+             isStudent ? 0.1 : 0;
+
+  discount
+`;
+
+execute(discountScript); // → 0 (default 30-year-old)
+execute(discountScript, { variables: { age: 16 } }); // → 0.15 (under 18)
+execute(discountScript, { variables: { isPremium: 1 } }); // → 0.2 (premium)
+execute(discountScript, { variables: { isStudent: 1 } }); // → 0.1 (student)
+
+// Range validation
+const validateAge = "age >= 18 && age <= 120";
+execute(validateAge, { variables: { age: 25 } }); // → 1 (valid)
+execute(validateAge, { variables: { age: 15 } }); // → 0 (too young)
+execute(validateAge, { variables: { age: 150 } }); // → 0 (invalid)
+
+// Complex business logic
+const eligibilityScript = `
+  age ??= 0;
+  income ??= 0;
+  creditScore ??= 0;
+
+  hasGoodCredit = creditScore >= 700;
+  hasStableIncome = income >= 30000;
+  isAdult = age >= 18;
+
+  eligible = isAdult && hasGoodCredit && hasStableIncome;
+  eligible
+`;
+
+execute(eligibilityScript, {
+	variables: { age: 25, income: 45000, creditScore: 750 },
+}); // → 1 (eligible)
+```
+
+### Dynamic Pricing
+
+```typescript
+import { execute } from "littlewing";
+
+const pricingFormula = `
+  // Defaults
+  basePrice ??= 100;
+  isPeakHour ??= 0;
+  isWeekend ??= 0;
+  quantity ??= 1;
+  isMember ??= 0;
+
+  // Surge pricing
+  surgeMultiplier = isPeakHour ? 1.5 : isWeekend ? 1.2 : 1.0;
+
+  // Volume discount
+  volumeDiscount = quantity >= 10 ? 0.15 :
+                   quantity >= 5 ? 0.1 :
+                   quantity >= 3 ? 0.05 : 0;
+
+  // Member discount (stacks with volume)
+  memberDiscount = isMember ? 0.1 : 0;
+
+  // Calculate final price
+  adjustedPrice = basePrice * surgeMultiplier;
+  afterVolumeDiscount = adjustedPrice * (1 - volumeDiscount);
+  finalPrice = afterVolumeDiscount * (1 - memberDiscount);
+
+  finalPrice * quantity
+`;
+
+// Regular customer, 1 item
+execute(pricingFormula); // → 100
+
+// Peak hour, 5 items, member
+execute(pricingFormula, {
+	variables: { isPeakHour: 1, quantity: 5, isMember: 1 },
+}); // → 607.5
+
+// Weekend, bulk order (10 items)
+execute(pricingFormula, {
+	variables: { isWeekend: 1, quantity: 10 },
+}); // → 1020
+```
+
 ### Scheduling System
 
 ```typescript
@@ -538,15 +731,17 @@ const dueTimes = tasks.map((task) => ({
 
 ### Bundle Size
 
-- **5.62 KB gzipped** (28.22 KB raw)
+- **6.89 KB gzipped** (37.66 KB raw)
 - Zero dependencies
 - Includes production-grade O(n) optimizer
+- Full feature set: arithmetic, comparisons, logical operators, ternary, assignments
 - Fully tree-shakeable
 
 ### Test Coverage
 
-- **136 tests** with **99.52% line coverage**
-- **99.26% function coverage**
+- **247 tests** with **98.61% line coverage**
+- **98.21% function coverage**
+- Comprehensive coverage of all operators and features
 - All edge cases handled
 - Type-safe execution guaranteed
 

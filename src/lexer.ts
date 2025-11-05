@@ -78,8 +78,55 @@ export class Lexer {
 				this.position++
 				return { type: TokenType.RPAREN, value: ')', position: start }
 			case '=':
+				// Check for == (equality comparison)
+				if (this.peek() === '=') {
+					this.position += 2
+					return { type: TokenType.DOUBLE_EQUALS, value: '==', position: start }
+				}
+				// Single = is assignment
 				this.position++
 				return { type: TokenType.EQUALS, value: '=', position: start }
+			case '!':
+				// Check for != (not equals)
+				if (this.peek() === '=') {
+					this.position += 2
+					return { type: TokenType.NOT_EQUALS, value: '!=', position: start }
+				}
+				throw new Error(`Unexpected character '${char}' at position ${start}`)
+			case '<':
+				// Check for <= (less than or equal)
+				if (this.peek() === '=') {
+					this.position += 2
+					return { type: TokenType.LESS_EQUAL, value: '<=', position: start }
+				}
+				// Single < is less than
+				this.position++
+				return { type: TokenType.LESS_THAN, value: '<', position: start }
+			case '>':
+				// Check for >= (greater than or equal)
+				if (this.peek() === '=') {
+					this.position += 2
+					return { type: TokenType.GREATER_EQUAL, value: '>=', position: start }
+				}
+				// Single > is greater than
+				this.position++
+				return { type: TokenType.GREATER_THAN, value: '>', position: start }
+			case '?':
+				// Check for ??= (nullish assignment)
+				if (this.peek() === '?' && this.peekAhead(2) === '=') {
+					this.position += 3
+					return {
+						type: TokenType.NULLISH_ASSIGN,
+						value: '??=',
+						position: start,
+					}
+				}
+				// Single ? is ternary
+				this.position++
+				return { type: TokenType.QUESTION, value: '?', position: start }
+			case ':':
+				this.position++
+				return { type: TokenType.COLON, value: ':', position: start }
 			case ',':
 				this.position++
 				return { type: TokenType.COMMA, value: ',', position: start }
@@ -87,6 +134,20 @@ export class Lexer {
 				// Semicolons are ignored (optional)
 				this.position++
 				return this.nextToken()
+			case '&':
+				// Check for && (logical AND)
+				if (this.peek() === '&') {
+					this.position += 2
+					return { type: TokenType.LOGICAL_AND, value: '&&', position: start }
+				}
+				throw new Error(`Unexpected character '${char}' at position ${start}`)
+			case '|':
+				// Check for || (logical OR)
+				if (this.peek() === '|') {
+					this.position += 2
+					return { type: TokenType.LOGICAL_OR, value: '||', position: start }
+				}
+				throw new Error(`Unexpected character '${char}' at position ${start}`)
 			default:
 				throw new Error(`Unexpected character '${char}' at position ${start}`)
 		}
@@ -207,6 +268,13 @@ export class Lexer {
 	 */
 	private peek(): string {
 		return this.getCharAt(this.position + 1)
+	}
+
+	/**
+	 * Peek ahead n positions without consuming
+	 */
+	private peekAhead(n: number): string {
+		return this.getCharAt(this.position + n)
 	}
 
 	/**
