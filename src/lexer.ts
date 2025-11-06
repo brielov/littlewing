@@ -41,8 +41,13 @@ export class Lexer {
 		const char = this.getCharAt(this.position)
 		const start = this.position
 
-		// Numbers
+		// Numbers (including decimal shorthand like .2)
 		if (this.isDigit(char)) {
+			return this.readNumber()
+		}
+
+		// Decimal shorthand (.2 means 0.2)
+		if (char === '.' && this.isDigit(this.peek())) {
 			return this.readNumber()
 		}
 
@@ -184,12 +189,19 @@ export class Lexer {
 
 	/**
 	 * Read a number token
-	 * Supports: integers (42), decimals (3.14), and scientific notation (1.5e6, 2e-3)
+	 * Supports: integers (42), decimals (3.14), decimal shorthand (.2), and scientific notation (1.5e6, 2e-3, .5e2)
 	 */
 	private readNumber(): Token {
 		const start = this.position
 		let hasDecimal = false
 		let hasExponent = false
+
+		// Handle leading decimal point (.2 means 0.2)
+		if (this.getCharAt(this.position) === '.') {
+			hasDecimal = true
+			this.position++
+			// The digit after the decimal point is guaranteed by nextToken()
+		}
 
 		// Read digits and optional decimal point
 		while (this.position < this.source.length) {

@@ -20,7 +20,8 @@ The codebase follows a **three-stage compilation pipeline**:
 
 1. **Lexer** (`src/lexer.ts`) - Tokenizes source code into a token stream
    - Single-pass O(n) tokenization
-   - Handles numbers, identifiers, operators, punctuation, and comments
+   - Handles numbers (including decimal shorthand like `.2`), identifiers, operators, punctuation, and comments
+   - Supports scientific notation (`1.5e6`) and decimal shorthand (`.2` → `0.2`)
    - Skips whitespace and comments automatically
    - No string literal support (numbers-only design)
 
@@ -136,6 +137,16 @@ The lexer supports scientific notation (e.g., `1.5e6`, `2e-3`, `3E+10`):
 - Supports optional `+` or `-` in exponent
 - Validates that exponent has at least one digit
 - JavaScript's `parseFloat()` handles the final conversion
+
+### Decimal Shorthand
+
+The lexer supports JavaScript-style decimal shorthand notation where leading zeros can be omitted:
+
+- `.2` is equivalent to `0.2`
+- `.5e2` is equivalent to `50` (scientific notation works with shorthand)
+- Lone `.` without digits is still an error
+- Code generation normalizes shorthand to standard form (`.2` → `0.2`)
+- Enables more compact expressions: `x = .5; y = .25`
 
 ### Numbers-Only Philosophy
 

@@ -121,6 +121,34 @@ test('Lexer: error on invalid scientific notation', () => {
 	)
 })
 
+test('Lexer: tokenize decimal shorthand', () => {
+	const lexer = new Lexer('.2 .5 .999')
+	const tokens = lexer.tokenize()
+	expect(tokens[0]?.type).toBe(TokenType.NUMBER)
+	expect(tokens[0]?.value).toBe(0.2)
+	expect(tokens[1]?.type).toBe(TokenType.NUMBER)
+	expect(tokens[1]?.value).toBe(0.5)
+	expect(tokens[2]?.type).toBe(TokenType.NUMBER)
+	expect(tokens[2]?.value).toBe(0.999)
+})
+
+test('Lexer: tokenize decimal shorthand with scientific notation', () => {
+	const lexer = new Lexer('.5e2 .3E-1 .1e+3')
+	const tokens = lexer.tokenize()
+	expect(tokens[0]?.type).toBe(TokenType.NUMBER)
+	expect(tokens[0]?.value).toBe(50)
+	expect(tokens[1]?.type).toBe(TokenType.NUMBER)
+	expect(tokens[1]?.value).toBe(0.03)
+	expect(tokens[2]?.type).toBe(TokenType.NUMBER)
+	expect(tokens[2]?.value).toBe(100)
+})
+
+test('Lexer: error on lone decimal point', () => {
+	expect(() => new Lexer('.').tokenize()).toThrow('Unexpected character')
+	expect(() => new Lexer('1 + .').tokenize()).toThrow('Unexpected character')
+	expect(() => new Lexer('. + 1').tokenize()).toThrow('Unexpected character')
+})
+
 // ============================================================================
 // PARSER TESTS
 // ============================================================================
@@ -237,6 +265,30 @@ test('Executor: execute number literal', () => {
 test('Executor: execute simple arithmetic', () => {
 	const result = execute('2 + 3')
 	expect(result).toBe(5)
+})
+
+test('Executor: execute decimal shorthand', () => {
+	expect(execute('.2')).toBe(0.2)
+	expect(execute('.5')).toBe(0.5)
+	expect(execute('.999')).toBe(0.999)
+})
+
+test('Executor: execute decimal shorthand in expressions', () => {
+	expect(execute('.2 + .3')).toBeCloseTo(0.5)
+	expect(execute('.5 * 2')).toBe(1)
+	expect(execute('1 - .25')).toBe(0.75)
+	expect(execute('.1 + .2')).toBeCloseTo(0.3)
+})
+
+test('Executor: execute decimal shorthand with variables', () => {
+	expect(execute('x = .5; x * 2')).toBe(1)
+	expect(execute('y = .25; y + .75')).toBe(1)
+})
+
+test('Executor: execute decimal shorthand with scientific notation', () => {
+	expect(execute('.5e2')).toBe(50)
+	expect(execute('.3e-1')).toBeCloseTo(0.03)
+	expect(execute('.1e+3')).toBe(100)
 })
 
 test('Executor: execute operator precedence', () => {
@@ -1114,6 +1166,20 @@ test('CodeGen: generate number literal', () => {
 	const node = ast.number(42)
 	const code = generate(node)
 	expect(code).toBe('42')
+})
+
+test('CodeGen: decimal shorthand normalizes to standard form', () => {
+	const ast1 = parseSource('.2')
+	const code1 = generate(ast1)
+	expect(code1).toBe('0.2')
+
+	const ast2 = parseSource('.5 + .3')
+	const code2 = generate(ast2)
+	expect(code2).toBe('0.5 + 0.3')
+
+	const ast3 = parseSource('x = .25')
+	const code3 = generate(ast3)
+	expect(code3).toBe('x = 0.25')
 })
 
 test('CodeGen: generate identifier', () => {
