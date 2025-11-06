@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import { execute } from '../src'
+import { defaultContext, execute } from '../src'
 
 describe('Integration', () => {
 	test('multiple variable assignments', () => {
@@ -65,5 +65,13 @@ amount = principal * (1 + rate) ^ years
 		`
 		const result = execute(code)
 		expect(result).toBeCloseTo(1157.625)
+	})
+
+	test('spread defaultContext into custom context', () => {
+		const result = execute('ABS(x * -2)', {
+			...defaultContext,
+			variables: { x: 5 },
+		})
+		expect(result).toBe(10)
 	})
 })
