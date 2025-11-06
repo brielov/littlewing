@@ -401,6 +401,68 @@ describe('Date Utils', () => {
 		})
 	})
 
+	describe('TIME DIFFERENCES', () => {
+		test('DIFFERENCE_IN_SECONDS', () => {
+			const ts1 = new Date('2024-06-15T10:00:00Z').getTime()
+			const ts2 = new Date('2024-06-15T10:00:30Z').getTime()
+			const result = execute('DIFFERENCE_IN_SECONDS(ts1, ts2)', {
+				...defaultContext,
+				variables: { ts1, ts2 },
+			})
+			expect(result).toBe(30)
+		})
+
+		test('DIFFERENCE_IN_MINUTES', () => {
+			const ts1 = new Date('2024-06-15T10:00:00Z').getTime()
+			const ts2 = new Date('2024-06-15T10:15:00Z').getTime()
+			const result = execute('DIFFERENCE_IN_MINUTES(ts1, ts2)', {
+				...defaultContext,
+				variables: { ts1, ts2 },
+			})
+			expect(result).toBe(15)
+		})
+
+		test('DIFFERENCE_IN_HOURS', () => {
+			const ts1 = new Date('2024-06-15T10:00:00Z').getTime()
+			const ts2 = new Date('2024-06-15T14:00:00Z').getTime()
+			const result = execute('DIFFERENCE_IN_HOURS(ts1, ts2)', {
+				...defaultContext,
+				variables: { ts1, ts2 },
+			})
+			expect(result).toBe(4)
+		})
+
+		test('DIFFERENCE_IN_DAYS', () => {
+			const ts1 = new Date('2024-06-15T10:00:00Z').getTime()
+			const ts2 = new Date('2024-06-20T10:00:00Z').getTime()
+			const result = execute('DIFFERENCE_IN_DAYS(ts1, ts2)', {
+				...defaultContext,
+				variables: { ts1, ts2 },
+			})
+			expect(result).toBe(5)
+		})
+
+		test('DIFFERENCE_IN_WEEKS', () => {
+			const ts1 = new Date('2024-06-01T10:00:00Z').getTime()
+			const ts2 = new Date('2024-06-22T10:00:00Z').getTime()
+			const result = execute('DIFFERENCE_IN_WEEKS(ts1, ts2)', {
+				...defaultContext,
+				variables: { ts1, ts2 },
+			})
+			expect(result).toBe(3)
+		})
+
+		test('DIFFERENCE functions return absolute values', () => {
+			const ts1 = new Date('2024-06-15T14:00:00Z').getTime()
+			const ts2 = new Date('2024-06-15T10:00:00Z').getTime()
+			const result = execute('DIFFERENCE_IN_HOURS(ts1, ts2)', {
+				...defaultContext,
+				variables: { ts1, ts2 },
+			})
+			expect(result).toBe(4) // Should be 4, not -4
+		})
+	})
+
 	describe('DATE COMPARISON', () => {
 		test('IS_BEFORE returns 1 when ts1 < ts2', () => {
 			const ts1 = new Date('2024-06-15T10:00:00Z').getTime()
