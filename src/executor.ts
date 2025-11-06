@@ -30,10 +30,13 @@ import { evaluateBinaryOperation } from './utils'
 export class Executor {
 	private context: ExecutionContext
 	private variables: Map<string, number>
+	private externalVariables: Set<string>
 
 	constructor(context: ExecutionContext = {}) {
 		this.context = context
 		this.variables = new Map(Object.entries(context.variables || {}))
+		// Track which variables came from external context
+		this.externalVariables = new Set(Object.keys(context.variables || {}))
 	}
 
 	/**
@@ -125,12 +128,12 @@ export class Executor {
 	 * This allows scripts to define defaults that can be overridden at runtime
 	 */
 	private executeAssignment(node: Assignment): number {
-		// Check if this variable exists as an external variable in the context
-		if (this.context.variables) {
-			const externalValue = this.context.variables[node.name]
+		// Check if this variable was provided externally
+		if (this.externalVariables.has(node.name)) {
+			// External variable exists - return it without evaluating the assignment
+			const externalValue = this.variables.get(node.name)
+			// externalVariables.has guarantees this exists
 			if (externalValue !== undefined) {
-				// External variable exists - use it and DON'T evaluate the assignment
-				this.variables.set(node.name, externalValue)
 				return externalValue
 			}
 		}
