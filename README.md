@@ -23,12 +23,13 @@ execute("score = 85; grade = score >= 90 ? 100 : 90", {
 ## Features
 
 - **Numbers-only** - Every value is a number. Simple, predictable, fast.
-- **Zero dependencies** - 5.20 KB gzipped, perfect for browser bundles
+- **Zero dependencies** - 6.15 KB gzipped, perfect for browser bundles
 - **O(n) performance** - Linear time parsing and execution
 - **Safe evaluation** - No eval(), no code generation, no security risks
 - **Timestamp arithmetic** - Built-in date/time functions using numeric timestamps
 - **Extensible** - Add custom functions and variables via context
 - **Type-safe** - Full TypeScript support with strict types
+- **99%+ test coverage** - 276 tests with 99.39% function coverage, 99.56% line coverage
 
 ## Installation
 
