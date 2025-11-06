@@ -1,17 +1,34 @@
 # littlewing
 
-A minimal, high-performance arithmetic expression language with a complete lexer, parser, and executor. Optimized for browsers with **zero dependencies** and **type-safe execution**.
+A minimal, high-performance arithmetic expression language for JavaScript. Pure numbers, zero dependencies, built for the browser.
+
+```typescript
+import { execute, defaultContext } from "littlewing";
+
+// Simple arithmetic
+execute("2 + 3 * 4"); // → 14
+
+// Variables and functions
+execute("radius = 5; area = 3.14159 * radius ^ 2", defaultContext); // → 78.54
+
+// Date arithmetic with timestamps
+execute("deadline = now() + days(7)", defaultContext); // → timestamp 7 days from now
+
+// Conditional logic
+execute("score = 85; grade = score >= 90 ? 100 : 90", {
+	variables: { score: 85 },
+}); // → 90
+```
 
 ## Features
 
-- 🚀 **Minimal & Fast** - O(n) algorithms throughout (lexer, parser, executor)
-- 📦 **Small Bundle** - 5.20 KB gzipped, zero dependencies
-- 🌐 **Browser Ready** - 100% ESM, no Node.js APIs
-- 🔒 **Type-Safe** - Strict TypeScript with full type coverage
-- ✅ **Thoroughly Tested** - 239 tests, 570 assertions, 100% pass rate
-- 📐 **Pure Arithmetic** - Numbers-only, clean semantics
-- 🎯 **Clean API** - Intuitive dual API (class-based + functional)
-- 📝 **Well Documented** - Complete JSDoc and examples
+- **Numbers-only** - Every value is a number. Simple, predictable, fast.
+- **Zero dependencies** - 5.20 KB gzipped, perfect for browser bundles
+- **O(n) performance** - Linear time parsing and execution
+- **Safe evaluation** - No eval(), no code generation, no security risks
+- **Timestamp arithmetic** - Built-in date/time functions using numeric timestamps
+- **Extensible** - Add custom functions and variables via context
+- **Type-safe** - Full TypeScript support with strict types
 
 ## Installation
 
@@ -24,767 +41,213 @@ npm install littlewing
 ### Basic Usage
 
 ```typescript
-import { execute, defaultContext } from "littlewing";
+import { execute } from "littlewing";
 
-// Simple arithmetic
+// Arithmetic expressions
 execute("2 + 3 * 4"); // → 14
+execute("10 ^ 2"); // → 100
+execute("17 % 5"); // → 2
 
 // Variables
-execute("x = 5; y = 10; x + y"); // → 15
+execute("x = 10; y = 20; x + y"); // → 30
 
-// Functions from context
-execute("abs(-42)", defaultContext); // → 42
-execute("sqrt(16)", defaultContext); // → 4
+// Comparisons (return 1 for true, 0 for false)
+execute("5 > 3"); // → 1
+execute("10 == 10"); // → 1
+execute("2 != 2"); // → 0
+
+// Logical operators
+execute("1 && 1"); // → 1
+execute("0 || 1"); // → 1
+
+// Ternary conditionals
+execute("age >= 18 ? 100 : 0", { variables: { age: 21 } }); // → 100
 ```
 
-### With Custom Context
+### With Built-in Functions
+
+```typescript
+import { execute, defaultContext } from "littlewing";
+
+// Math functions
+execute("abs(-42)", defaultContext); // → 42
+execute("sqrt(16)", defaultContext); // → 4
+execute("max(3, 7, 2)", defaultContext); // → 7
+
+// Current timestamp
+execute("now()", defaultContext); // → 1704067200000
+
+// Date arithmetic
+execute("now() + hours(2)", defaultContext); // → timestamp 2 hours from now
+execute("tomorrow = now() + days(1)", defaultContext); // → tomorrow's timestamp
+
+// Extract date components
+const ctx = { ...defaultContext, variables: { ts: Date.now() } };
+execute("year(ts)", ctx); // → 2024
+execute("month(ts)", ctx); // → 11
+execute("day(ts)", ctx); // → 6
+```
+
+### Custom Functions and Variables
 
 ```typescript
 import { execute } from "littlewing";
 
 const context = {
 	functions: {
-		double: (n) => n * 2,
-		triple: (n) => n * 3,
+		// Custom functions must return numbers
+		fahrenheit: (celsius: number) => (celsius * 9) / 5 + 32,
+		discount: (price: number, percent: number) => price * (1 - percent / 100),
 	},
 	variables: {
 		pi: 3.14159,
-		maxValue: 100,
+		taxRate: 0.08,
 	},
 };
 
-execute("double(5)", context); // → 10
-execute("pi * 2", context); // → 6.28318
-execute("maxValue - 25", context); // → 75
+execute("fahrenheit(20)", context); // → 68
+execute("discount(100, 15)", context); // → 85
+execute("100 * (1 + taxRate)", context); // → 108
 ```
 
-### Timestamp Arithmetic
-
-Littlewing uses a numbers-only type system. Timestamps (milliseconds since Unix epoch) are just numbers, enabling clean date arithmetic:
+### External Variables Override Script Defaults
 
 ```typescript
-import { execute, defaultContext } from "littlewing";
+// Scripts can define default values
+const formula = "multiplier = 2; value = 100; value * multiplier";
 
-// Get current timestamp
-execute("now()", defaultContext); // → 1704067200000 (number)
+// Without external variables: uses script defaults
+execute(formula); // → 200
 
-// Create timestamp from date components
-execute("timestamp(2025, 10, 1)", defaultContext); // → timestamp for Oct 1, 2025
+// External variables override script assignments
+execute(formula, { variables: { multiplier: 3 } }); // → 300
+execute(formula, { variables: { value: 50 } }); // → 100
 
-// Add time durations (all return milliseconds)
-execute("now() + minutes(30)", defaultContext); // → timestamp 30 minutes from now
-execute("now() + hours(2) + minutes(15)", defaultContext); // → 2h 15m from now
+// Useful for configurable formulas
+const pricing = `
+  basePrice = 100;
+  taxRate = 0.08;
+  discount = 0;
+  finalPrice = basePrice * (1 - discount) * (1 + taxRate)
+`;
 
-// Time conversion helpers
-execute("seconds(30)", defaultContext); // → 30000 (milliseconds)
-execute("minutes(5)", defaultContext); // → 300000 (milliseconds)
-execute("hours(2)", defaultContext); // → 7200000 (milliseconds)
-execute("days(7)", defaultContext); // → 604800000 (milliseconds)
-execute("weeks(2)", defaultContext); // → 1209600000 (milliseconds)
-
-// Extract components from timestamps
-const timestamp = new Date("2024-06-15T14:30:00").getTime();
-execute("year(t)", { ...defaultContext, variables: { t: timestamp } }); // → 2024
-execute("month(t)", { ...defaultContext, variables: { t: timestamp } }); // → 6 (June)
-execute("day(t)", { ...defaultContext, variables: { t: timestamp } }); // → 15
-execute("hour(t)", { ...defaultContext, variables: { t: timestamp } }); // → 14
-
-// Convert result back to Date when needed
-const result = execute("now() + days(7)", defaultContext);
-const futureDate = new Date(result); // JavaScript Date object
+execute(pricing); // → 108 (uses all defaults)
+execute(pricing, { variables: { discount: 0.1 } }); // → 97.2 (10% discount)
+execute(pricing, { variables: { basePrice: 200, discount: 0.2 } }); // → 172.8
 ```
 
-### Manual AST Construction
+## Language Reference
 
-```typescript
-import { ast, Executor } from "littlewing";
+For complete language documentation including all operators, functions, and examples, see [LANGUAGE.md](./LANGUAGE.md).
 
-const expr = ast.add(ast.number(2), ast.multiply(ast.number(3), ast.number(4)));
-
-const executor = new Executor();
-executor.execute(expr); // → 14
-```
-
-## Language Syntax
-
-### Literals
-
-```typescript
-42; // integer
-3.14; // floating point
-1.5e6; // scientific notation (1500000)
-2e-3; // negative exponent (0.002)
-```
-
-### Variables
-
-```typescript
-x = 5;
-y = x + 10;
-z = x * y;
-```
-
-### Operators
-
-#### Arithmetic Operators
-
-```typescript
-2 + 3; // addition
-10 - 4; // subtraction
-3 * 4; // multiplication
-10 / 2; // division
-10 % 3; // modulo
-2 ^ 3; // exponentiation (power)
--5; // unary minus
-```
-
-#### Comparison Operators
-
-Returns `1` for true, `0` for false (following the numbers-only philosophy):
-
-```typescript
-5 == 5; // equality → 1
-5 != 3; // not equal → 1
-5 > 3; // greater than → 1
-5 < 3; // less than → 0
-5 >= 5; // greater than or equal → 1
-5 <= 3; // less than or equal → 0
-```
-
-#### Logical Operators
-
-Returns `1` for true, `0` for false. Treats `0` as false, any non-zero value as true:
-
-```typescript
-1 && 1; // logical AND → 1 (both truthy)
-1 && 0; // logical AND → 0 (right is falsy)
-0 || 1; // logical OR → 1 (right is truthy)
-0 || 0; // logical OR → 0 (both falsy)
-
-// Commonly used with comparisons
-5 > 3 && 10 > 8; // → 1 (both conditions true)
-5 < 3 || 10 > 8; // → 1 (second condition true)
-age >= 18 && age <= 65; // age range check
-isStudent || age >= 65; // student or senior discount
-```
-
-#### Ternary Operator
-
-Conditional expression with `? :` syntax:
-
-```typescript
-5 > 3 ? 100 : 50; // → 100 (condition is true)
-0 ? 100 : 50; // → 50 (0 is falsy)
-x = age >= 18 ? 1 : 0; // assign based on condition
-
-// Nested ternaries
-age < 18 ? 10 : age >= 65 ? 15 : 0; // age-based discount
-```
-
-#### Assignment Operators
-
-```typescript
-x = 5; // assignment
-```
-
-**External Variables Override Internal Assignments:**
-
-Assignments in your script define default values, but external variables (passed via context) take precedence. This allows scripts to have sensible defaults while remaining configurable:
-
-```typescript
-// Script defines a default
-execute("price = 100; price * 2"); // → 200 (uses default)
-
-// External variable overrides the default
-execute("price = 100; price * 2", { variables: { price: 50 } }); // → 100 (external wins)
-
-// Useful for configurable formulas stored in database
-const formula = "price = 100; tax = 0.1; total = price * (1 + tax)";
-execute(formula); // → 110 (uses defaults)
-execute(formula, { variables: { price: 200 } }); // → 220 (overrides price)
-```
-
-External variables preserve all values including `0`:
-
-```typescript
-execute("discount = 0.2; discount", { variables: { discount: 0 } }); // → 0 (preserves zero)
-```
-
-### Operator Precedence
-
-From lowest to highest:
-
-1. Assignment (`=`) - Lowest
-2. Ternary conditional (`? :`)
-3. Logical OR (`||`)
-4. Logical AND (`&&`)
-5. Comparison (`==`, `!=`, `<`, `>`, `<=`, `>=`)
-6. Addition, subtraction (`+`, `-`)
-7. Multiplication, division, modulo (`*`, `/`, `%`)
-8. Exponentiation (`^`)
-9. Unary minus (`-`) - Highest
-
-Parentheses override precedence:
-
-```typescript
-(2 + 3) * 4; // → 20 (not 14)
-5 > 3 && 10 > 8; // → 1 (explicit grouping, though not necessary)
-```
-
-### Functions
-
-Functions accept any number of arguments:
-
-```typescript
-abs(-5); // → 5
-max(1, 5, 3); // → 5
-timestamp(2025, 1, 1); // → timestamp
-```
-
-### Comments
-
-Single-line comments with `//`:
-
-```typescript
-x = 5; // this is a comment
-y = x + 10; // another comment
-```
-
-### Return Value
-
-The last expression is always returned:
-
-```typescript
-execute("x = 5; x + 10"); // → 15
-execute("42"); // → 42
-```
-
-## API Reference
+## API
 
 ### Main Functions
 
 #### `execute(source: string, context?: ExecutionContext): number`
 
-Execute source code with an optional execution context. Always returns a number.
+Execute an expression and return the result.
 
 ```typescript
-execute("2 + 2");
-execute("abs(-5)", { functions: { abs: Math.abs } });
+execute("2 + 2"); // → 4
+execute("abs(-5)", { functions: { abs: Math.abs } }); // → 5
 ```
 
 #### `parseSource(source: string): ASTNode`
 
-Parse source code into an Abstract Syntax Tree without executing.
+Parse source into an Abstract Syntax Tree without executing.
 
 ```typescript
 const ast = parseSource("2 + 3 * 4");
-// Returns: BinaryOp(+, NumberLiteral(2), BinaryOp(*, ...))
-```
-
-#### `generate(node: ASTNode): string`
-
-Convert an AST node back to source code. Intelligently adds parentheses only when necessary to preserve semantics.
-
-```typescript
-import { generate, ast } from "littlewing";
-
-// From AST builders
-const expr = ast.multiply(ast.add(ast.number(2), ast.number(3)), ast.number(4));
-generate(expr); // → "(2 + 3) * 4"
-
-// Round-trip: parse → generate → parse
-const code = "2 + 3 * 4";
-const tree = parseSource(code);
-const regenerated = generate(tree); // → "2 + 3 * 4"
-parseSource(regenerated); // Same AST structure
+// Use with Executor class or optimize() function
 ```
 
 #### `optimize(node: ASTNode): ASTNode`
 
-Optimize an AST by performing constant folding. Evaluates expressions with only literals at compile-time.
+Optimize an AST by folding constants. Safe for use with external variables.
 
 ```typescript
-import { optimize, parseSource } from "littlewing";
-
-// Parse first, then optimize
 const ast = parseSource("2 + 3 * 4");
-const optimized = optimize(ast);
-// Transforms BinaryOp tree to NumberLiteral(14)
+const optimized = optimize(ast); // → NumberLiteral(14)
 
-// Useful for storing compact ASTs
-const compactAst = optimize(parseSource("1e6 + 2e6"));
-// → NumberLiteral(3000000)
+// Variables are NOT folded (can be overridden by context)
+const ast2 = parseSource("x = 5; x + 10");
+const opt2 = optimize(ast2); // Still has variable reference
 ```
 
-### Classes
+#### `generate(node: ASTNode): string`
 
-#### `Lexer`
-
-Tokenize source code into a token stream.
+Convert AST back to source code.
 
 ```typescript
-import { Lexer, TokenType } from "littlewing";
-
-const lexer = new Lexer("x = 42");
-const tokens = lexer.tokenize();
-// → [Identifier('x'), Equals, Number(42), EOF]
+const ast = parseSource("2 + 3 * 4");
+generate(ast); // → "2 + 3 * 4"
 ```
 
-#### `Parser`
-
-Parse tokens into an AST.
+### ExecutionContext
 
 ```typescript
-import { Parser } from "littlewing";
-
-const parser = new Parser(tokens);
-const ast = parser.parse();
-```
-
-#### `Executor`
-
-Execute an AST with a given context.
-
-```typescript
-import { Executor } from "littlewing";
-
-const executor = new Executor(context);
-const result = executor.execute(ast);
-```
-
-#### `CodeGenerator`
-
-Convert AST nodes back to source code. Handles operator precedence and associativity automatically.
-
-```typescript
-import { CodeGenerator } from "littlewing";
-
-const generator = new CodeGenerator();
-const code = generator.generate(ast);
-```
-
-### AST Builders
-
-The `ast` namespace provides convenient functions for building AST nodes:
-
-```typescript
-import { ast } from "littlewing";
-
-// Literals and identifiers
-ast.number(42);
-ast.identifier("x");
-
-// Arithmetic operators
-ast.add(left, right);
-ast.subtract(left, right);
-ast.multiply(left, right);
-ast.divide(left, right);
-ast.modulo(left, right);
-ast.exponentiate(left, right);
-ast.negate(argument);
-
-// Comparison operators
-ast.equals(left, right); // ==
-ast.notEquals(left, right); // !=
-ast.lessThan(left, right); // <
-ast.greaterThan(left, right); // >
-ast.lessEqual(left, right); // <=
-ast.greaterEqual(left, right); // >=
-
-// Logical operators
-ast.logicalAnd(left, right); // &&
-ast.logicalOr(left, right); // ||
-
-// Control flow
-ast.conditional(condition, consequent, alternate); // ? :
-
-// Assignment
-ast.assign("x", value); // =
-
-// Functions
-ast.functionCall("abs", [ast.number(-5)]);
-```
-
-### Default Context
-
-The `defaultContext` provides a comprehensive set of built-in functions:
-
-```typescript
-import { defaultContext } from "littlewing";
-
-// Math functions
-(abs, ceil, floor, round, sqrt, min, max);
-(sin, cos, tan, log, log10, exp);
-
-// Timestamp functions
-now(); // Current timestamp
-timestamp(year, month, day); // Create timestamp from date components
-
-// Time conversion (returns milliseconds)
-(milliseconds(n), seconds(n), minutes(n), hours(n), days(n), weeks(n));
-
-// Timestamp component extractors
-year(timestamp); // Extract year (e.g., 2024)
-month(timestamp); // Extract month (1-12, 1 = January)
-day(timestamp); // Extract day of month (1-31)
-hour(timestamp); // Extract hour (0-23)
-minute(timestamp); // Extract minute (0-59)
-second(timestamp); // Extract second (0-59)
-weekday(timestamp); // Extract day of week (0-6, 0 = Sunday)
-```
-
-## Advanced Features
-
-### Optimization
-
-The `optimize()` function performs **safe, local constant folding** designed to work correctly with the language's context variable semantics.
-
-#### How It Works
-
-The optimizer performs **local, expression-level optimizations** only:
-
-1. **Constant Folding** - Evaluates pure arithmetic at compile-time
-   - Binary operations: `2 + 3` → `5`, `10 * 5` → `50`
-   - Unary operations: `-(5)` → `-5`, `-(2 + 3)` → `-5`
-   - Comparisons: `5 > 3` → `1`, `10 < 5` → `0`
-   - Logical operators: `1 && 1` → `1`, `0 || 1` → `1`
-
-2. **Function Argument Pre-evaluation** - Simplifies expressions passed to functions
-   - `max(2 + 3, 4 * 5)` → `max(5, 20)`
-   - `abs(-(2 + 3) * 4)` → `abs(-20)`
-   - The function call itself is not evaluated (runtime-dependent)
-
-3. **Conditional Folding** - Evaluates ternary with constant condition
-   - `1 ? 100 : 50` → `100`
-   - `0 ? 100 : 50` → `50`
-   - `5 > 3 ? 100 : 50` → `100` (condition is constant, foldable)
-
-**Time complexity:** O(n) single pass through AST
-
-#### Simple Examples
-
-```typescript
-import { optimize, parseSource } from "littlewing";
-
-// Basic constant folding
-const ast1 = optimize(parseSource("2 + 3 * 4"));
-// Result: NumberLiteral(14)
-
-// Function arguments are pre-evaluated
-const ast2 = optimize(parseSource("max(2 + 3, 4 * 5)"));
-// Result: FunctionCall('max', [NumberLiteral(5), NumberLiteral(20)])
-
-// Conditional folding
-const ast3 = optimize(parseSource("5 > 3 ? 100 : 50"));
-// Result: NumberLiteral(100)
-```
-
-#### What is NOT Optimized (By Design)
-
-Variables are **NOT propagated** because they can be overridden by `ExecutionContext`:
-
-```typescript
-// Script defines a default
-const script = "x = 5; x + 10";
-
-execute(script); // → 15 (uses default x = 5)
-execute(script, { variables: { x: 100 } }); // → 110 (external x = 100 overrides)
-
-// If we propagated x = 5, the second execution would incorrectly return 15!
-```
-
-The optimizer preserves this important feature:
-
-- ❌ **Variable propagation** - Variables might be overridden by context
-- ❌ **Dead code elimination** - Assignments define defaults that can be overridden
-- ❌ **Cross-statement analysis** - Each statement must remain independent
-- ❌ **Function evaluation** - Functions have runtime behavior (`now()`, etc.)
-
-#### What Gets Optimized
-
-✅ **Constant arithmetic:** `2 + 3 * 4` → `14`
-✅ **Comparison operators:** `5 > 3` → `1`
-✅ **Logical operators:** `1 && 0` → `0`
-✅ **Function arguments:** `max(2+3, 4*5)` → `max(5, 20)`
-✅ **Conditional expressions:** `1 ? 100 : 50` → `100`
-✅ **Scientific notation:** `1e6 + 2e6` → `3000000`
-
-#### When to Use
-
-- **Pre-computation:** Fold constant sub-expressions before execution
-- **Network:** Reduce AST size for transmission (constants become literals)
-- **Storage:** More compact AST representation
-- **Performance:** Slightly faster execution (fewer nodes to evaluate)
-
-### Scientific Notation
-
-Littlewing supports scientific notation for large or small numbers:
-
-```typescript
-execute("1.5e6"); // → 1500000
-execute("2e10"); // → 20000000000
-execute("3e-2"); // → 0.03
-execute("4E+5"); // → 400000
-
-// Works with optimization too
-const ast = parseSource("1e6 * 2", { optimize: true });
-// → NumberLiteral(2000000)
-```
-
-## Examples
-
-### Calculator
-
-```typescript
-import { execute, defaultContext } from "littlewing";
-
-function calculate(expression: string): number {
-	return execute(expression, defaultContext);
+interface ExecutionContext {
+	functions?: Record<string, (...args: any[]) => number>;
+	variables?: Record<string, number>;
 }
-
-calculate("2 + 2 * 3"); // → 8
-calculate("(2 + 2) * 3"); // → 12
-calculate("sqrt(16) + abs(-5)"); // → 9
 ```
 
-### Financial Calculations
+### Default Context Functions
 
-```typescript
-import { execute } from "littlewing";
+The `defaultContext` includes these built-in functions:
 
-const context = {
-	functions: {},
-	variables: {
-		principal: 1000,
-		rate: 0.05,
-		years: 2,
-	},
-};
+**Math:** `abs`, `ceil`, `floor`, `round`, `sqrt`, `min`, `max`, `sin`, `cos`, `tan`, `log`, `log10`, `exp`
 
-const compound = execute("principal * (1 + rate) ^ years", context);
-// → 1102.5
+**Time:** `now`, `timestamp`, `milliseconds`, `seconds`, `minutes`, `hours`, `days`, `weeks`
+
+**Date components:** `year`, `month`, `day`, `hour`, `minute`, `second`, `weekday`
+
+## Use Cases
+
+- **User-defined formulas** - Let users write safe arithmetic expressions
+- **Business rules** - Express logic without eval() or new Function()
+- **Financial calculators** - Compound interest, loan payments, etc.
+- **Date arithmetic** - Deadlines, scheduling, time calculations
+- **Game mechanics** - Damage formulas, score calculations
+- **Configuration expressions** - Dynamic config values
+- **Data transformations** - Process numeric data streams
+
+## Why Littlewing?
+
+### The Problem
+
+Your app needs to evaluate user-provided formulas or dynamic expressions. Using `eval()` is a security risk. Writing a parser is complex. Embedding a full scripting language is overkill.
+
+### The Solution
+
+Littlewing provides just enough: arithmetic expressions with variables and functions. It's safe (no code execution), fast (linear time), and tiny (5KB gzipped).
+
+### What Makes It Different
+
+1. **Numbers-only by design** - No string concatenation, no type coercion, no confusion
+2. **External variables override** - Scripts have defaults, runtime provides overrides
+3. **Timestamp arithmetic** - Dates are just numbers (milliseconds)
+4. **Zero dependencies** - No bloat, no supply chain risks
+5. **O(n) everything** - Predictable performance at any scale
+
+## Development
+
+```bash
+# Install dependencies
+bun install
+
+# Run tests
+bun test
+
+# Build
+bun run build
+
+# Develop with watch mode
+bun run dev
 ```
 
-### Timestamp Arithmetic
-
-```typescript
-import { execute, defaultContext } from "littlewing";
-
-// Calculate deadline
-const deadline = execute("now() + days(7)", defaultContext);
-const deadlineDate = new Date(deadline); // Convert to Date
-
-// Complex time calculations
-const result = execute("now() + weeks(2) + days(3) + hours(4)", defaultContext);
-
-// Time until event
-const eventTime = new Date("2025-12-31").getTime();
-const timeUntil = execute("event - now()", {
-	...defaultContext,
-	variables: { event: eventTime },
-});
-const daysUntil = timeUntil / (1000 * 60 * 60 * 24);
-```
-
-### Custom Functions
-
-```typescript
-import { execute } from "littlewing";
-
-const context = {
-	functions: {
-		fahrenheit: (celsius) => (celsius * 9) / 5 + 32,
-		kilometers: (miles) => miles * 1.60934,
-		factorial: (n) => (n <= 1 ? 1 : n * context.functions.factorial(n - 1)),
-	},
-	variables: {
-		roomTemp: 20,
-	},
-};
-
-execute("fahrenheit(roomTemp)", context); // → 68
-execute("kilometers(5)", context); // → 8.0467
-```
-
-### Conditional Logic & Validation
-
-```typescript
-import { execute } from "littlewing";
-
-// Age-based discount system with defaults
-const discountScript = `
-  age = 30;
-  isStudent = 0;
-  isPremium = 0;
-
-  discount = isPremium ? 0.2 :
-             age < 18 ? 0.15 :
-             age >= 65 ? 0.15 :
-             isStudent ? 0.1 : 0;
-
-  discount
-`;
-
-execute(discountScript); // → 0 (default 30-year-old)
-execute(discountScript, { variables: { age: 16 } }); // → 0.15 (under 18, external overrides)
-execute(discountScript, { variables: { isPremium: 1 } }); // → 0.2 (premium, external overrides)
-execute(discountScript, { variables: { isStudent: 1 } }); // → 0.1 (student, external overrides)
-
-// Range validation
-const validateAge = "age >= 18 && age <= 120";
-execute(validateAge, { variables: { age: 25 } }); // → 1 (valid)
-execute(validateAge, { variables: { age: 15 } }); // → 0 (too young)
-execute(validateAge, { variables: { age: 150 } }); // → 0 (invalid)
-
-// Complex business logic with defaults
-const eligibilityScript = `
-  age = 0;
-  income = 0;
-  creditScore = 0;
-
-  hasGoodCredit = creditScore >= 700;
-  hasStableIncome = income >= 30000;
-  isAdult = age >= 18;
-
-  eligible = isAdult && hasGoodCredit && hasStableIncome;
-  eligible
-`;
-
-execute(eligibilityScript, {
-	variables: { age: 25, income: 45000, creditScore: 750 },
-}); // → 1 (eligible, external values override defaults)
-```
-
-### Dynamic Pricing
-
-```typescript
-import { execute } from "littlewing";
-
-const pricingFormula = `
-  // Defaults (can be overridden by external variables)
-  basePrice = 100;
-  isPeakHour = 0;
-  isWeekend = 0;
-  quantity = 1;
-  isMember = 0;
-
-  // Surge pricing
-  surgeMultiplier = isPeakHour ? 1.5 : isWeekend ? 1.2 : 1.0;
-
-  // Volume discount
-  volumeDiscount = quantity >= 10 ? 0.15 :
-                   quantity >= 5 ? 0.1 :
-                   quantity >= 3 ? 0.05 : 0;
-
-  // Member discount (stacks with volume)
-  memberDiscount = isMember ? 0.1 : 0;
-
-  // Calculate final price
-  adjustedPrice = basePrice * surgeMultiplier;
-  afterVolumeDiscount = adjustedPrice * (1 - volumeDiscount);
-  finalPrice = afterVolumeDiscount * (1 - memberDiscount);
-
-  finalPrice * quantity
-`;
-
-// Regular customer, 1 item
-execute(pricingFormula); // → 100
-
-// Peak hour, 5 items, member
-execute(pricingFormula, {
-	variables: { isPeakHour: 1, quantity: 5, isMember: 1 },
-}); // → 607.5
-
-// Weekend, bulk order (10 items)
-execute(pricingFormula, {
-	variables: { isWeekend: 1, quantity: 10 },
-}); // → 1020
-```
-
-### Scheduling System
-
-```typescript
-import { execute, defaultContext } from "littlewing";
-
-// Parse user's relative time expressions
-const tasks = [
-	{ name: "Review PR", due: "now() + hours(2)" },
-	{ name: "Deploy", due: "now() + days(1)" },
-	{ name: "Meeting", due: "timestamp(2025, 10, 15, 14, 30, 0)" },
-];
-
-const dueTimes = tasks.map((task) => ({
-	name: task.name,
-	dueTimestamp: execute(task.due, defaultContext),
-	dueDate: new Date(execute(task.due, defaultContext)),
-}));
-```
-
-## Performance
-
-### Algorithms
-
-- **Lexer**: O(n) single-pass tokenization
-- **Parser**: Optimal Pratt parsing with O(n) time complexity
-- **Executor**: O(n) tree-walk evaluation with no type checking overhead
-
-### Bundle Size
-
-- **5.20 KB gzipped** (26.11 KB raw)
-- Zero dependencies
-- Includes safe, local constant-folding optimizer
-- Full feature set: arithmetic, comparisons, logical operators, ternary, assignments
-- Fully tree-shakeable ESM
-
-### Test Coverage
-
-- **239 tests** with **570 assertions**
-- **100% test pass rate**
-- Comprehensive coverage of all operators and features
-- All edge cases handled
-- Type-safe execution guaranteed
-- Zero TypeScript errors
-
-## Type Safety
-
-- Strict TypeScript mode
-- Zero implicit `any` types
-- Complete type annotations
-- Single `RuntimeValue = number` type
-- No runtime type checking overhead
-
-## Error Handling
-
-Clear, actionable error messages for:
-
-- Undefined variables: `"Undefined variable: x"`
-- Undefined functions: `"Undefined function: abs"`
-- Division by zero: `"Division by zero"`
-- Modulo by zero: `"Modulo by zero"`
-- Syntax errors with position information
-
-## Browser Support
-
-- ✅ All modern browsers (ES2023+)
-- ✅ No polyfills required
-- ✅ Tree-shakeable for optimal bundle sizes
-- ✅ 100% ESM, no CommonJS
-
-## Node.js Support
-
-Works with Node.js 18+ via ESM imports.
-
-## Philosophy
-
-Littlewing embraces a **numbers-only** type system for maximum simplicity and performance:
-
-- **Pure arithmetic**: Every operation works on numbers
-- **No type checking overhead**: Operators don't need runtime type discrimination
-- **Timestamps as numbers**: Date arithmetic uses millisecond timestamps
-- **Clean semantics**: No ambiguous operations like `Date + Date`
-- **Flexibility**: Convert to/from JavaScript Dates at the boundaries
-
-This design keeps the language minimal while remaining powerful enough for real-world use cases.
+For detailed development docs, see [CLAUDE.md](./CLAUDE.md).
 
 ## License
 
@@ -792,4 +255,4 @@ MIT
 
 ## Contributing
 
-See [CONTRIBUTING.md](./CONTRIBUTING.md) for guidelines.
+See [CONTRIBUTING.md](./CONTRIBUTING.md).
