@@ -97,7 +97,6 @@ export function getOperatorPrecedence(operator: Operator): number {
 export function getTokenPrecedence(type: TokenType): number {
 	switch (type) {
 		case TokenType.EQUALS:
-		case TokenType.NULLISH_ASSIGN:
 			return 1 // Assignment has lowest precedence
 		case TokenType.QUESTION:
 			return 2 // Ternary conditional

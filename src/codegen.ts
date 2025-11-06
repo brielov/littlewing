@@ -5,7 +5,6 @@ import type {
 	ConditionalExpression,
 	FunctionCall,
 	Identifier,
-	NullishAssignment,
 	NumberLiteral,
 	Operator,
 	Program,
@@ -17,7 +16,6 @@ import {
 	isConditionalExpression,
 	isFunctionCall,
 	isIdentifier,
-	isNullishAssignment,
 	isNumberLiteral,
 	isProgram,
 	isUnaryOp,
@@ -39,7 +37,6 @@ export class CodeGenerator {
 		if (isUnaryOp(node)) return this.generateUnaryOp(node)
 		if (isFunctionCall(node)) return this.generateFunctionCall(node)
 		if (isAssignment(node)) return this.generateAssignment(node)
-		if (isNullishAssignment(node)) return this.generateNullishAssignment(node)
 		if (isConditionalExpression(node))
 			return this.generateConditionalExpression(node)
 		throw new Error(`Unknown node type`)
@@ -111,14 +108,6 @@ export class CodeGenerator {
 	private generateAssignment(node: Assignment): string {
 		const value = this.generate(node.value)
 		return `${node.name} = ${value}`
-	}
-
-	/**
-	 * Generate code for a nullish assignment
-	 */
-	private generateNullishAssignment(node: NullishAssignment): string {
-		const value = this.generate(node.value)
-		return `${node.name} ??= ${value}`
 	}
 
 	/**

@@ -67,7 +67,6 @@ export enum TokenType {
 	COMMA = 'COMMA',
 	QUESTION = 'QUESTION',
 	COLON = 'COLON',
-	NULLISH_ASSIGN = 'NULLISH_ASSIGN',
 
 	// End of file
 	EOF = 'EOF',
@@ -94,7 +93,6 @@ export type ASTNode =
 	| FunctionCall
 	| Assignment
 	| ConditionalExpression
-	| NullishAssignment
 
 /**
  * Program node (multiple statements)
@@ -169,17 +167,6 @@ export interface ConditionalExpression {
 }
 
 /**
- * Nullish assignment (x ??= 5)
- * Assigns value only if variable is undefined (not provided in context)
- * Used for providing defaults for external variables
- */
-export interface NullishAssignment {
-	type: 'NullishAssignment'
-	name: string
-	value: ASTNode
-}
-
-/**
  * Type guard functions for discriminated union narrowing
  */
 export function isNumberLiteral(node: ASTNode): node is NumberLiteral {
@@ -214,8 +201,4 @@ export function isConditionalExpression(
 	node: ASTNode,
 ): node is ConditionalExpression {
 	return node.type === 'ConditionalExpression'
-}
-
-export function isNullishAssignment(node: ASTNode): node is NullishAssignment {
-	return node.type === 'NullishAssignment'
 }

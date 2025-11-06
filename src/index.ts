@@ -32,7 +32,6 @@ export {
 	isConditionalExpression,
 	isFunctionCall,
 	isIdentifier,
-	isNullishAssignment,
 	isNumberLiteral,
 	isProgram,
 	isUnaryOp,

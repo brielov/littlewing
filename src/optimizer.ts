@@ -6,7 +6,6 @@ import {
 	isConditionalExpression,
 	isFunctionCall,
 	isIdentifier,
-	isNullishAssignment,
 	isNumberLiteral,
 	isProgram,
 	isUnaryOp,
@@ -104,7 +103,7 @@ function analyzeProgram(node: ASTNode): ProgramAnalysis {
 		const stmt = node.statements[i]
 		if (!stmt) continue
 
-		if (isAssignment(stmt) || isNullishAssignment(stmt)) {
+		if (isAssignment(stmt)) {
 			const varName = stmt.name
 			const count = assignmentCounts.get(varName) || 0
 			assignmentCounts.set(varName, count + 1)
@@ -118,23 +117,17 @@ function analyzeProgram(node: ASTNode): ProgramAnalysis {
 
 			dependencies.set(varName, deps)
 
-			// NullishAssignment variables are ALWAYS tainted because they depend on
-			// external variables that may or may not be defined at runtime
-			if (isNullishAssignment(stmt)) {
-				tainted.add(varName)
-			} else {
-				// Regular assignment: Variable is constant if:
-				// 1. Assigned exactly once (check after full scan)
-				// 2. Right-hand side is a literal OR all dependencies are constants
-				// 3. No function calls in the value
-				if (count === 0 && isNumberLiteral(stmt.value)) {
-					constants.set(varName, stmt.value.value)
-				}
+			// Variable is constant if:
+			// 1. Assigned exactly once (check after full scan)
+			// 2. Right-hand side is a literal OR all dependencies are constants
+			// 3. No function calls in the value
+			if (count === 0 && isNumberLiteral(stmt.value)) {
+				constants.set(varName, stmt.value.value)
+			}
 
-				// Variable is tainted if it depends on function calls
-				if (hasFunctionCall) {
-					tainted.add(varName)
-				}
+			// Variable is tainted if it depends on function calls
+			if (hasFunctionCall) {
+				tainted.add(varName)
 			}
 		}
 	}
@@ -232,7 +225,7 @@ function collectDependencies(node: ASTNode, deps: Set<string>): boolean {
 		return false
 	}
 
-	if (isAssignment(node) || isNullishAssignment(node)) {
+	if (isAssignment(node)) {
 		return collectDependencies(node.value, deps)
 	}
 
@@ -464,13 +457,6 @@ function evaluateWithConstants(
 		}
 	}
 
-	if (isNullishAssignment(node)) {
-		return {
-			...node,
-			value: evaluateWithConstants(node.value, constants),
-		}
-	}
-
 	return node
 }
 
@@ -527,7 +513,7 @@ function eliminateDeadCodeOptimal(
 
 		// For assignments: only keep if the variable is still referenced
 		// (hasn't been fully propagated)
-		if (isAssignment(stmt) || isNullishAssignment(stmt)) {
+		if (isAssignment(stmt)) {
 			if (variablesInUse.has(stmt.name)) {
 				filteredStatements.push(stmt)
 			}
@@ -584,13 +570,6 @@ function eliminateDeadCodeOptimal(
  */
 function basicOptimize(node: ASTNode): ASTNode {
 	if (isAssignment(node)) {
-		return {
-			...node,
-			value: basicOptimize(node.value),
-		}
-	}
-
-	if (isNullishAssignment(node)) {
 		return {
 			...node,
 			value: basicOptimize(node.value),

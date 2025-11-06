@@ -5,7 +5,6 @@ import type {
 	ConditionalExpression,
 	FunctionCall,
 	Identifier,
-	NullishAssignment,
 	NumberLiteral,
 	Operator,
 	UnaryOp,
@@ -79,18 +78,6 @@ export function functionCall(name: string, args: ASTNode[] = []): FunctionCall {
 export function assign(name: string, value: ASTNode): Assignment {
 	return {
 		type: 'Assignment',
-		name,
-		value,
-	}
-}
-
-/**
- * Create a nullish assignment node (x ??= 5)
- * Assigns only if variable is undefined
- */
-export function nullishAssign(name: string, value: ASTNode): NullishAssignment {
-	return {
-		type: 'NullishAssignment',
 		name,
 		value,
 	}

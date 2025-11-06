@@ -1818,212 +1818,91 @@ test('Parser: ternary error on missing colon', () => {
 })
 
 // ============================================================================
-// NULLISH ASSIGNMENT (??=) TESTS
+// ASSIGNMENT WITH EXTERNAL VARIABLE OVERRIDE TESTS
 // ============================================================================
 
-test('Lexer: tokenize ??= operator', () => {
-	const lexer = new Lexer('x ??= 10')
-	const tokens = lexer.tokenize()
-	expect(tokens[1]?.type).toBe(TokenType.NULLISH_ASSIGN)
-	expect(tokens[1]?.value).toBe('??=')
+test('Execute: external variables override internal assignments', () => {
+	// External variable should override the assignment
+	expect(execute('price = 100', { variables: { price: 50 } })).toBe(50)
+	expect(execute('price = 100; price', { variables: { price: 50 } })).toBe(50)
 })
 
-test('Execute: ??= assigns when variable is undefined', () => {
-	// Variable doesn't exist, should assign
-	expect(execute('price ??= 100')).toBe(100)
-	expect(execute('price ??= 100; price')).toBe(100)
+test('Execute: assignments without external variables work normally', () => {
+	// Without external variable, assignment works as usual
+	expect(execute('price = 100')).toBe(100)
+	expect(execute('price = 100; price')).toBe(100)
 })
 
-test('Execute: ??= does not assign when variable exists', () => {
-	// Variable exists in context, should keep existing value
-	expect(execute('price ??= 100', { variables: { price: 50 } })).toBe(50)
-	expect(execute('price ??= 100; price', { variables: { price: 50 } })).toBe(50)
-})
-
-test('Execute: ??= preserves zero values', () => {
-	// Key difference from ||=: zero is a valid value, not "falsy"
-	expect(execute('discount ??= 0.2', { variables: { discount: 0 } })).toBe(0)
-	expect(
-		execute('discount ??= 0.2; discount', { variables: { discount: 0 } }),
-	).toBe(0)
-})
-
-test('Execute: ??= with complex default value', () => {
-	expect(execute('price ??= 50 * 2')).toBe(100)
-	expect(execute('price ??= 50 * 2; price')).toBe(100)
-})
-
-test('Execute: ??= does not evaluate right side when variable exists', () => {
-	// The right side should not be evaluated if variable exists
-	// This is important for performance and side effects
-	const source = 'x ??= y + 1; x'
-	expect(execute(source, { variables: { x: 10 } })).toBe(10)
-	// Note: y is not defined, but no error because right side not evaluated
-})
-
-test('Execute: multiple ??= statements', () => {
-	expect(
-		execute('price ??= 100; discount ??= 0.1; price * (1 - discount)'),
-	).toBe(90)
-})
-
-test('Execute: ??= with external variables use case', () => {
-	// Typical use case: provide defaults for optional external variables
-	const script = `
-		price ??= 100
-		tax ??= 0.1
-		discount ??= 0
+test('Execute: external variables allow script defaults', () => {
+	// Real-world use case: formula with defaults that can be overridden
+	const formula = `
+		price = 100
+		tax = 0.1
+		discount = 0
 		total = price * (1 + tax) * (1 - discount)
 		total
 	`
 
-	// With no context, uses all defaults
-	expect(execute(script)).toBeCloseTo(110, 5)
+	// Use all defaults
+	expect(execute(formula)).toBeCloseTo(110)
 
-	// With partial context, uses some defaults
-	expect(execute(script, { variables: { price: 200 } })).toBeCloseTo(220, 5)
-
-	// With full context, uses no defaults
+	// Override some values
+	expect(execute(formula, { variables: { price: 200 } })).toBeCloseTo(220)
+	expect(execute(formula, { variables: { discount: 0.2 } })).toBeCloseTo(88)
 	expect(
-		execute(script, { variables: { price: 200, tax: 0.2, discount: 0.1 } }),
-	).toBeCloseTo(216, 5)
+		execute(formula, { variables: { price: 200, discount: 0.1 } }),
+	).toBeCloseTo(198)
 })
 
-test('Execute: ??= in program with regular assignment', () => {
-	// Mix of ??= and regular =
-	const script = `
-		price ??= 100
-		price = price * 2
-		price
+test('Execute: external variables preserve zero and falsy values', () => {
+	// Zero should be preserved as an external value
+	expect(execute('discount = 0.2', { variables: { discount: 0 } })).toBe(0)
+	expect(
+		execute('discount = 0.2; discount', { variables: { discount: 0 } }),
+	).toBe(0)
+})
+
+test('Execute: external variable does not evaluate assignment expression', () => {
+	// Right side should not be evaluated when external variable exists
+	const formula = 'price = undefinedVar * 2; price'
+	expect(execute(formula, { variables: { price: 100 } })).toBe(100)
+})
+
+test('Execute: mix of external and internal assignments', () => {
+	const formula = `
+		base = 100
+		multiplier = 2
+		result = base * multiplier
+		result
 	`
-	expect(execute(script)).toBe(200)
-	expect(execute(script, { variables: { price: 50 } })).toBe(100)
+	// Override only 'base', 'multiplier' uses internal default
+	expect(execute(formula, { variables: { base: 50 } })).toBe(100)
 })
 
-test('Execute: ??= chain (right-associative)', () => {
-	// x ??= y ??= 5 should work like x ??= (y ??= 5)
-	expect(execute('x ??= y ??= 5; x')).toBe(5)
-	expect(execute('x ??= y ??= 5; y')).toBe(5)
-})
-
-test('AST: nullish assignment builder', () => {
-	const node = ast.nullishAssign('price', ast.number(100))
-	expect(node.type).toBe('NullishAssignment')
-	expect(node.name).toBe('price')
-	expect(isNumberLiteral(node.value) && node.value.value).toBe(100)
-})
-
-test('Optimizer: constant folding with ??=', () => {
-	const ast1 = parseSource('x ??= 100; x')
-	const optimized = optimize(ast1)
-	// Nullish assignment variables are tainted (depend on external variables)
-	// so they cannot be optimized away
-	expect(isProgram(optimized)).toBe(true)
-	if (isProgram(optimized)) {
-		expect(optimized.statements.length).toBe(2)
-		const assignment = optimized.statements[0]
-		expect(assignment?.type).toBe('NullishAssignment')
-		const expr = optimized.statements[1]
-		if (expr) {
-			expect(isIdentifier(expr)).toBe(true)
-		}
-	}
-})
-
-test('Optimizer: ??= with complex expression', () => {
-	const source = 'price ??= 50 * 2; price'
-	const ast1 = parseSource(source)
-	const optimized = optimize(ast1)
-	// Note: ??= cannot be fully optimized away because it's conditional
-	// The value expression should be optimized to 100, but the assignment remains
-	expect(isProgram(optimized)).toBe(true)
-	if (isProgram(optimized)) {
-		expect(optimized.statements.length).toBe(2)
-		const assignment = optimized.statements[0]
-		// The right side should be optimized to a literal
-		expect(assignment?.type).toBe('NullishAssignment')
-		if (assignment?.type === 'NullishAssignment') {
-			expect(isNumberLiteral(assignment.value)).toBe(true)
-			if (isNumberLiteral(assignment.value)) {
-				expect(assignment.value.value).toBe(100)
-			}
-		}
-	}
-})
-
-test('CodeGen: nullish assignment', () => {
-	const node = ast.nullishAssign('price', ast.number(100))
-	expect(generate(node)).toBe('price ??= 100')
-})
-
-test('CodeGen: nullish assignment with expression', () => {
-	const node = ast.nullishAssign(
-		'price',
-		ast.add(ast.number(50), ast.number(50)),
-	)
-	expect(generate(node)).toBe('price ??= 50 + 50')
-})
-
-test('CodeGen: ??= round-trip', () => {
-	const source = 'price ??= 100'
-	const ast1 = parseSource(source)
-	const code = generate(ast1)
-	const _ast2 = parseSource(code)
-	expect(code).toBe('price ??= 100')
-
-	// Execute both and verify same result
-	const result1 = execute(source, { variables: { price: 50 } })
-	const result2 = execute(code, { variables: { price: 50 } })
-	expect(result1).toBe(result2)
-	expect(result1).toBe(50)
-})
-
-test('Execute: ??= with ternary operator', () => {
-	// Complex expression: default with conditional logic
-	expect(execute('price ??= 100 > 50 ? 100 : 50; price')).toBe(100)
-})
-
-test('Execute: realistic pricing script with ??=', () => {
+test('Execute: realistic pricing with external overrides', () => {
 	const pricingScript = `
-		// Provide defaults for external variables
-		basePrice ??= 100
-		isPremium ??= 0
-		age ??= 30
-
-		// Calculate discount based on user type
-		discount = isPremium ? 0.2 : age > 65 ? 0.15 : age < 18 ? 0.1 : 0
-
-		// Final price
-		finalPrice = basePrice * (1 - discount)
-		finalPrice
+		basePrice = 100
+		quantity = 1
+		discount = quantity > 5 ? 0.1 : 0
+		shipping = 10
+		tax = 0.08
+		subtotal = basePrice * quantity * (1 - discount)
+		total = (subtotal + shipping) * (1 + tax)
+		total
 	`
 
-	// Default customer (no context)
-	expect(execute(pricingScript)).toBe(100)
+	// Default values
+	expect(execute(pricingScript)).toBeCloseTo(118.8)
 
-	// Premium customer
-	expect(execute(pricingScript, { variables: { isPremium: 1 } })).toBe(80)
+	// Bulk order with external quantity
+	expect(execute(pricingScript, { variables: { quantity: 10 } })).toBeCloseTo(
+		982.8,
+	)
 
-	// Senior with custom base price
+	// Custom pricing
 	expect(
-		execute(pricingScript, { variables: { basePrice: 200, age: 70 } }),
-	).toBe(170)
-
-	// Child
-	expect(execute(pricingScript, { variables: { age: 12 } })).toBe(90)
-})
-
-test('Execute: ??= preserves assignment return value', () => {
-	// ??= should return the value (existing or newly assigned)
-	expect(execute('x ??= 10')).toBe(10)
-	expect(execute('(x ??= 10) * 2', { variables: { x: 5 } })).toBe(10)
-	expect(execute('(x ??= 10) * 2')).toBe(20)
-})
-
-test('Parser: ??= has same precedence as =', () => {
-	// Should parse similar to regular assignment
-	const ast1 = parseSource('x ??= 5 + 3')
-	expect(ast1.type).toBe('NullishAssignment')
+		execute(pricingScript, { variables: { basePrice: 50, shipping: 5 } }),
+	).toBeCloseTo(59.4)
 })
 
 // ============================================================================
@@ -2331,33 +2210,4 @@ test('CodeGen: error on unknown node type', () => {
 	const invalidNode = { type: 'InvalidType' } as any
 	const generator = new CodeGenerator()
 	expect(() => generator.generate(invalidNode)).toThrow('Unknown node type')
-})
-
-test('Optimizer: nullish assignment with external variables should not optimize to constant', () => {
-	// This test demonstrates the bug: nullish assignments should NOT be optimized
-	// because the variable might be provided externally
-	const source = `
-		price ??= 100;
-		quantity ??= 1;
-		discount ??= 0;
-		total = price * quantity * (1 - discount);
-		total
-	`
-	const ast1 = parseSource(source)
-	const optimized = optimize(ast1)
-
-	// The optimizer should NOT reduce this to a constant because
-	// price, quantity, and discount might be provided externally
-	expect(isNumberLiteral(optimized)).toBe(false)
-
-	// Verify that execution with external variables works correctly
-	const result1 = execute(source, {
-		variables: { price: 50 }, // Override price
-	})
-	expect(result1).toBe(50) // 50 * 1 * (1 - 0) = 50
-
-	const result2 = execute(source, {
-		variables: { price: 50, quantity: 2, discount: 0.1 },
-	})
-	expect(result2).toBe(90) // 50 * 2 * (1 - 0.1) = 90
 })

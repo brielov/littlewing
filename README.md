@@ -184,34 +184,37 @@ age < 18 ? 10 : age >= 65 ? 15 : 0; // age-based discount
 #### Assignment Operators
 
 ```typescript
-x = 5; // regular assignment
-price ??= 100; // nullish assignment - only assigns if variable doesn't exist
+x = 5; // assignment
 ```
 
-The `??=` operator is useful for providing default values to external variables:
+**External Variables Override Internal Assignments:**
+
+Assignments in your script define default values, but external variables (passed via context) take precedence. This allows scripts to have sensible defaults while remaining configurable:
 
 ```typescript
-// Without ??=
-execute("price * 2", { variables: { price: 50 } }); // → 100
-execute("price * 2", {}); // Error: Undefined variable: price
+// Script defines a default
+execute("price = 100; price * 2"); // → 200 (uses default)
 
-// With ??=
-execute("price ??= 100; price * 2", { variables: { price: 50 } }); // → 100 (uses existing)
-execute("price ??= 100; price * 2", {}); // → 200 (uses default)
+// External variable overrides the default
+execute("price = 100; price * 2", { variables: { price: 50 } }); // → 100 (external wins)
+
+// Useful for configurable formulas stored in database
+const formula = "price = 100; tax = 0.1; total = price * (1 + tax)";
+execute(formula); // → 110 (uses defaults)
+execute(formula, { variables: { price: 200 } }); // → 220 (overrides price)
 ```
 
-Unlike `||`, the `??=` operator preserves `0` values:
+External variables preserve all values including `0`:
 
 ```typescript
-execute("x ??= 10; x", { variables: { x: 0 } }); // → 0 (preserves zero)
-execute("x ??= 10; x", {}); // → 10 (assigns default)
+execute("discount = 0.2; discount", { variables: { discount: 0 } }); // → 0 (preserves zero)
 ```
 
 ### Operator Precedence
 
 From lowest to highest:
 
-1. Assignment (`=`, `??=`) - Lowest
+1. Assignment (`=`) - Lowest
 2. Ternary conditional (`? :`)
 3. Logical OR (`||`)
 4. Logical AND (`&&`)
@@ -397,7 +400,6 @@ ast.conditional(condition, consequent, alternate); // ? :
 
 // Assignment
 ast.assign("x", value); // =
-ast.nullishAssign("x", value); // ??=
 
 // Functions
 ast.functionCall("abs", [ast.number(-5)]);
@@ -612,11 +614,11 @@ execute("kilometers(5)", context); // → 8.0467
 ```typescript
 import { execute } from "littlewing";
 
-// Age-based discount system
+// Age-based discount system with defaults
 const discountScript = `
-  age ??= 30;
-  isStudent ??= 0;
-  isPremium ??= 0;
+  age = 30;
+  isStudent = 0;
+  isPremium = 0;
 
   discount = isPremium ? 0.2 :
              age < 18 ? 0.15 :
@@ -627,9 +629,9 @@ const discountScript = `
 `;
 
 execute(discountScript); // → 0 (default 30-year-old)
-execute(discountScript, { variables: { age: 16 } }); // → 0.15 (under 18)
-execute(discountScript, { variables: { isPremium: 1 } }); // → 0.2 (premium)
-execute(discountScript, { variables: { isStudent: 1 } }); // → 0.1 (student)
+execute(discountScript, { variables: { age: 16 } }); // → 0.15 (under 18, external overrides)
+execute(discountScript, { variables: { isPremium: 1 } }); // → 0.2 (premium, external overrides)
+execute(discountScript, { variables: { isStudent: 1 } }); // → 0.1 (student, external overrides)
 
 // Range validation
 const validateAge = "age >= 18 && age <= 120";
@@ -637,11 +639,11 @@ execute(validateAge, { variables: { age: 25 } }); // → 1 (valid)
 execute(validateAge, { variables: { age: 15 } }); // → 0 (too young)
 execute(validateAge, { variables: { age: 150 } }); // → 0 (invalid)
 
-// Complex business logic
+// Complex business logic with defaults
 const eligibilityScript = `
-  age ??= 0;
-  income ??= 0;
-  creditScore ??= 0;
+  age = 0;
+  income = 0;
+  creditScore = 0;
 
   hasGoodCredit = creditScore >= 700;
   hasStableIncome = income >= 30000;
@@ -653,7 +655,7 @@ const eligibilityScript = `
 
 execute(eligibilityScript, {
 	variables: { age: 25, income: 45000, creditScore: 750 },
-}); // → 1 (eligible)
+}); // → 1 (eligible, external values override defaults)
 ```
 
 ### Dynamic Pricing
@@ -662,12 +664,12 @@ execute(eligibilityScript, {
 import { execute } from "littlewing";
 
 const pricingFormula = `
-  // Defaults
-  basePrice ??= 100;
-  isPeakHour ??= 0;
-  isWeekend ??= 0;
-  quantity ??= 1;
-  isMember ??= 0;
+  // Defaults (can be overridden by external variables)
+  basePrice = 100;
+  isPeakHour = 0;
+  isWeekend = 0;
+  quantity = 1;
+  isMember = 0;
 
   // Surge pricing
   surgeMultiplier = isPeakHour ? 1.5 : isWeekend ? 1.2 : 1.0;

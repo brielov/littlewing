@@ -117,15 +117,6 @@ export class Lexer {
 				this.position++
 				return { type: TokenType.GREATER_THAN, value: '>', position: start }
 			case '?':
-				// Check for ??= (nullish assignment)
-				if (this.peek() === '?' && this.peekAhead(2) === '=') {
-					this.position += 3
-					return {
-						type: TokenType.NULLISH_ASSIGN,
-						value: '??=',
-						position: start,
-					}
-				}
 				// Single ? is ternary
 				this.position++
 				return { type: TokenType.QUESTION, value: '?', position: start }
@@ -280,13 +271,6 @@ export class Lexer {
 	 */
 	private peek(): string {
 		return this.getCharAt(this.position + 1)
-	}
-
-	/**
-	 * Peek ahead n positions without consuming
-	 */
-	private peekAhead(n: number): string {
-		return this.getCharAt(this.position + n)
 	}
 
 	/**

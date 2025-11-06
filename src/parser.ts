@@ -93,20 +93,6 @@ export class Parser {
 					name: identName,
 					value,
 				}
-			} else if (token.type === TokenType.NULLISH_ASSIGN) {
-				// Nullish assignment (right-associative)
-				// Assigns only if variable is undefined
-				if (left.type !== 'Identifier') {
-					throw new Error('Invalid assignment target')
-				}
-				const identName = left.name
-				this.advance() // consume ??=
-				const value = this.parseExpression(precedence)
-				left = {
-					type: 'NullishAssignment',
-					name: identName,
-					value,
-				}
 			} else if (token.type === TokenType.QUESTION) {
 				// Ternary conditional expression (right-associative)
 				this.advance() // consume ?

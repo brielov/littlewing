@@ -7,7 +7,6 @@ import type {
 	ExecutionContext,
 	FunctionCall,
 	Identifier,
-	NullishAssignment,
 	NumberLiteral,
 	Program,
 	RuntimeValue,
@@ -19,7 +18,6 @@ import {
 	isConditionalExpression,
 	isFunctionCall,
 	isIdentifier,
-	isNullishAssignment,
 	isNumberLiteral,
 	isProgram,
 	isUnaryOp,
@@ -49,7 +47,6 @@ export class Executor {
 		if (isUnaryOp(node)) return this.executeUnaryOp(node)
 		if (isFunctionCall(node)) return this.executeFunctionCall(node)
 		if (isAssignment(node)) return this.executeAssignment(node)
-		if (isNullishAssignment(node)) return this.executeNullishAssignment(node)
 		if (isConditionalExpression(node))
 			return this.executeConditionalExpression(node)
 		throw new Error(`Unknown node type`)
@@ -124,26 +121,21 @@ export class Executor {
 
 	/**
 	 * Execute a variable assignment
+	 * External variables (from context) take precedence over script assignments
+	 * This allows scripts to define defaults that can be overridden at runtime
 	 */
 	private executeAssignment(node: Assignment): number {
-		const value = this.execute(node.value)
-		this.variables.set(node.name, value)
-		return value
-	}
-
-	/**
-	 * Execute a nullish assignment (??=)
-	 * Only assigns if the variable is undefined (not in variables map)
-	 * Returns the existing value if defined, otherwise evaluates and assigns the value
-	 */
-	private executeNullishAssignment(node: NullishAssignment): number {
-		// Check if variable already exists
-		if (this.variables.has(node.name)) {
-			// Variable exists, return its current value without executing the right side
-			return this.variables.get(node.name) as number
+		// Check if this variable exists as an external variable in the context
+		if (this.context.variables) {
+			const externalValue = this.context.variables[node.name]
+			if (externalValue !== undefined) {
+				// External variable exists - use it and DON'T evaluate the assignment
+				this.variables.set(node.name, externalValue)
+				return externalValue
+			}
 		}
 
-		// Variable doesn't exist, evaluate and assign the default value
+		// No external variable - evaluate and assign normally
 		const value = this.execute(node.value)
 		this.variables.set(node.name, value)
 		return value
