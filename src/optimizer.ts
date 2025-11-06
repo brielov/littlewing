@@ -363,10 +363,7 @@ function propagateConstantsOptimal(
 	)
 
 	return {
-		propagated: {
-			type: 'Program',
-			statements,
-		},
+		propagated: ast.program(statements),
 		allConstants,
 	}
 }
@@ -403,11 +400,7 @@ function evaluateWithConstants(
 			return ast.number(result)
 		}
 
-		return {
-			...node,
-			left,
-			right,
-		}
+		return ast.binaryOp(left, node.operator, right)
 	}
 
 	if (isUnaryOp(node)) {
@@ -417,19 +410,14 @@ function evaluateWithConstants(
 			return ast.number(-argument.value)
 		}
 
-		return {
-			...node,
-			argument,
-		}
+		return ast.unaryOp(argument)
 	}
 
 	if (isFunctionCall(node)) {
-		return {
-			...node,
-			arguments: node.arguments.map((arg) =>
-				evaluateWithConstants(arg, constants),
-			),
-		}
+		return ast.functionCall(
+			node.name,
+			node.arguments.map((arg) => evaluateWithConstants(arg, constants)),
+		)
 	}
 
 	if (isConditionalExpression(node)) {
@@ -442,19 +430,11 @@ function evaluateWithConstants(
 			return condition.value !== 0 ? consequent : alternate
 		}
 
-		return {
-			...node,
-			condition,
-			consequent,
-			alternate,
-		}
+		return ast.conditional(condition, consequent, alternate)
 	}
 
 	if (isAssignment(node)) {
-		return {
-			...node,
-			value: evaluateWithConstants(node.value, constants),
-		}
+		return ast.assign(node.name, evaluateWithConstants(node.value, constants))
 	}
 
 	return node
@@ -559,10 +539,7 @@ function eliminateDeadCodeOptimal(
 		return node
 	}
 
-	return {
-		type: 'Program',
-		statements: filteredStatements,
-	}
+	return ast.program(filteredStatements)
 }
 
 /**
@@ -570,10 +547,7 @@ function eliminateDeadCodeOptimal(
  */
 function basicOptimize(node: ASTNode): ASTNode {
 	if (isAssignment(node)) {
-		return {
-			...node,
-			value: basicOptimize(node.value),
-		}
+		return ast.assign(node.name, basicOptimize(node.value))
 	}
 
 	if (isBinaryOp(node)) {
@@ -589,11 +563,7 @@ function basicOptimize(node: ASTNode): ASTNode {
 			return ast.number(result)
 		}
 
-		return {
-			...node,
-			left,
-			right,
-		}
+		return ast.binaryOp(left, node.operator, right)
 	}
 
 	if (isUnaryOp(node)) {
@@ -603,17 +573,14 @@ function basicOptimize(node: ASTNode): ASTNode {
 			return ast.number(-argument.value)
 		}
 
-		return {
-			...node,
-			argument,
-		}
+		return ast.unaryOp(argument)
 	}
 
 	if (isFunctionCall(node)) {
-		return {
-			...node,
-			arguments: node.arguments.map((arg) => basicOptimize(arg)),
-		}
+		return ast.functionCall(
+			node.name,
+			node.arguments.map((arg) => basicOptimize(arg)),
+		)
 	}
 
 	if (isConditionalExpression(node)) {
@@ -626,19 +593,11 @@ function basicOptimize(node: ASTNode): ASTNode {
 			return condition.value !== 0 ? consequent : alternate
 		}
 
-		return {
-			...node,
-			condition,
-			consequent,
-			alternate,
-		}
+		return ast.conditional(condition, consequent, alternate)
 	}
 
 	if (isProgram(node)) {
-		return {
-			...node,
-			statements: node.statements.map((stmt) => basicOptimize(stmt)),
-		}
+		return ast.program(node.statements.map((stmt) => basicOptimize(stmt)))
 	}
 
 	return node

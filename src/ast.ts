@@ -7,12 +7,23 @@ import type {
 	Identifier,
 	NumberLiteral,
 	Operator,
+	Program,
 	UnaryOp,
 } from './types'
 
 /**
  * Builder functions for creating AST nodes manually
  */
+
+/**
+ * Create a program node
+ */
+export function program(statements: ASTNode[]): Program {
+	return {
+		type: 'Program',
+		statements,
+	}
+}
 
 /**
  * Create a number literal node

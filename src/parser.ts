@@ -1,3 +1,4 @@
+import * as ast from './ast'
 import { Lexer } from './lexer'
 import { type ASTNode, type Operator, type Token, TokenType } from './types'
 import { getTokenPrecedence } from './utils'
@@ -88,11 +89,7 @@ export class Parser {
 				// Use precedence (not precedence + 1) for right-associativity
 				// This allows: x = y = 5 and x = 5 > 3 ? 100 : 50
 				const value = this.parseExpression(precedence)
-				left = {
-					type: 'Assignment',
-					name: identName,
-					value,
-				}
+				left = ast.assign(identName, value)
 			} else if (token.type === TokenType.QUESTION) {
 				// Ternary conditional expression (right-associative)
 				this.advance() // consume ?
@@ -103,23 +100,13 @@ export class Parser {
 				this.advance() // consume :
 				// Use precedence for right-associativity
 				const alternate = this.parseExpression(precedence)
-				left = {
-					type: 'ConditionalExpression',
-					condition: left,
-					consequent,
-					alternate,
-				}
+				left = ast.conditional(left, consequent, alternate)
 			} else if (this.isBinaryOperator(token.type)) {
 				// Binary operation
 				const operator = token.value as Operator
 				this.advance() // consume operator
 				const right = this.parseExpression(precedence + 1)
-				left = {
-					type: 'BinaryOp',
-					left,
-					operator,
-					right,
-				}
+				left = ast.binaryOp(left, operator, right)
 			} else {
 				break
 			}
@@ -138,11 +125,7 @@ export class Parser {
 		if (token.type === TokenType.MINUS) {
 			this.advance()
 			const argument = this.parseExpression(this.getUnaryPrecedence())
-			return {
-				type: 'UnaryOp',
-				operator: '-',
-				argument,
-			}
+			return ast.unaryOp(argument)
 		}
 
 		// Parenthesized expression
@@ -159,10 +142,7 @@ export class Parser {
 		// Number literal
 		if (token.type === TokenType.NUMBER) {
 			this.advance()
-			return {
-				type: 'NumberLiteral',
-				value: token.value as number,
-			}
+			return ast.number(token.value as number)
 		}
 
 		// Identifier or function call
@@ -178,18 +158,11 @@ export class Parser {
 					throw new Error('Expected closing parenthesis')
 				}
 				this.advance()
-				return {
-					type: 'FunctionCall',
-					name,
-					arguments: args,
-				}
+				return ast.functionCall(name, args)
 			}
 
 			// Just an identifier
-			return {
-				type: 'Identifier',
-				name,
-			}
+			return ast.identifier(name)
 		}
 
 		throw new Error(`Unexpected token: ${token.value}`)
