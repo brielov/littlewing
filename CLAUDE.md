@@ -113,10 +113,23 @@ src/
 ├── executor.ts       # Execution (AST + context → result)
 ├── ast.ts            # AST builder functions
 ├── codegen.ts        # Code generation (AST → source)
+├── date-utils.ts     # Date/time utility functions
 └── defaults.ts       # Default context with built-in functions
 
 test/
-└── index.test.ts     # Comprehensive test suite
+├── lexer.test.ts           # Lexer tests
+├── parser.test.ts          # Parser tests
+├── executor.test.ts        # Executor tests
+├── optimizer.test.ts       # Optimizer tests
+├── codegen.test.ts         # Code generation tests
+├── ast.test.ts             # AST builder tests
+├── defaults.test.ts        # Default context tests
+├── date-utils.test.ts      # Date utility tests
+├── integration.test.ts     # Integration tests
+├── operators.test.ts       # Operator tests
+├── timestamps.test.ts      # Timestamp arithmetic tests
+├── external-variables.test.ts  # Context override tests
+└── precedence.test.ts      # Precedence tests
 ```
 
 ## Key Development Notes
@@ -209,11 +222,16 @@ Run a single test file: `bun test test/index.test.ts`
 
 **Adding timestamp utilities:**
 
-- Add to `defaultContext` in `src/defaults.ts`
+- Add to `src/date-utils.ts` as standalone functions
+- Export from `src/index.ts` as `dateUtils` namespace
+- Include in `defaultContext` by spreading `...dateUtils`
 - All function names use UPPERCASE convention (e.g., `FROM_MINUTES`, `GET_YEAR`)
 - Time converters use `FROM_*` prefix and return milliseconds (e.g., `FROM_MINUTES(5)` → `300000`)
 - Extractors use `GET_*` prefix and take timestamp, return component (e.g., `GET_YEAR(ts)` → `2024`)
 - Difference functions use `DIFFERENCE_IN_*` pattern (e.g., `DIFFERENCE_IN_HOURS(ts1, ts2)`)
+- Date arithmetic uses `ADD_*` pattern (e.g., `ADD_DAYS(ts, 7)`)
+- Start/End functions use `START_OF_*` / `END_OF_*` pattern (e.g., `START_OF_DAY(ts)`)
+- Comparison functions use `IS_*` pattern and return 1 or 0 (e.g., `IS_WEEKEND(ts)`)
 - Use JavaScript's `Date` object internally, return numbers
 
 **Modifying execution behavior:**

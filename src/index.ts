@@ -8,6 +8,9 @@ export * as ast from './ast'
 // Code generation
 export { CodeGenerator, generate } from './codegen'
 
+// Date utilities
+export * as dateUtils from './date-utils'
+
 // Defaults
 export { defaultContext } from './defaults'
 

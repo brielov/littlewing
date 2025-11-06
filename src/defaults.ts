@@ -1,3 +1,4 @@
+import * as dateUtils from './date-utils'
 import type { ExecutionContext } from './types'
 
 /**
@@ -174,5 +175,8 @@ export const defaultContext: ExecutionContext = {
 		 */
 		DIFFERENCE_IN_WEEKS: (ts1: number, ts2: number) =>
 			Math.abs(ts1 - ts2) / (7 * 24 * 60 * 60 * 1000),
+
+		// Additional date utilities (from date-utils module)
+		...dateUtils,
 	},
 }

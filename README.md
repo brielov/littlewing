@@ -92,6 +92,11 @@ const ts1 = Date.now();
 const ts2 = ts1 + 1000 * 60 * 60 * 5; // 5 hours later
 const context = { ...defaultContext, variables: { ts1, ts2 } };
 execute("DIFFERENCE_IN_HOURS(ts1, ts2)", context); // → 5
+
+// Date arithmetic and comparisons
+execute("ADD_DAYS(NOW(), 7)", defaultContext); // → 7 days from now
+execute("START_OF_DAY(NOW())", defaultContext); // → today at 00:00:00.000
+execute("IS_WEEKEND(NOW())", defaultContext); // → 1 if today is Sat/Sun, else 0
 ```
 
 ### Custom Functions and Variables
@@ -207,11 +212,19 @@ The `defaultContext` includes these built-in functions:
 
 **Timestamps:** `NOW`, `TIMESTAMP`
 
-**Time converters (to milliseconds):** `FROM_MILLISECONDS`, `FROM_SECONDS`, `FROM_MINUTES`, `FROM_HOURS`, `FROM_DAYS`, `FROM_WEEKS`
+**Time converters (to milliseconds):** `FROM_MILLISECONDS`, `FROM_SECONDS`, `FROM_MINUTES`, `FROM_HOURS`, `FROM_DAYS`, `FROM_WEEKS`, `FROM_MONTHS`, `FROM_YEARS`
 
-**Date component extractors:** `GET_YEAR`, `GET_MONTH`, `GET_DAY`, `GET_HOUR`, `GET_MINUTE`, `GET_SECOND`, `GET_WEEKDAY`
+**Date component extractors:** `GET_YEAR`, `GET_MONTH`, `GET_DAY`, `GET_HOUR`, `GET_MINUTE`, `GET_SECOND`, `GET_WEEKDAY`, `GET_MILLISECOND`, `GET_DAY_OF_YEAR`, `GET_QUARTER`
 
 **Time differences (always positive):** `DIFFERENCE_IN_MILLISECONDS`, `DIFFERENCE_IN_SECONDS`, `DIFFERENCE_IN_MINUTES`, `DIFFERENCE_IN_HOURS`, `DIFFERENCE_IN_DAYS`, `DIFFERENCE_IN_WEEKS`
+
+**Start/End of period:** `START_OF_DAY`, `END_OF_DAY`, `START_OF_WEEK`, `START_OF_MONTH`, `END_OF_MONTH`, `START_OF_YEAR`, `END_OF_YEAR`, `START_OF_QUARTER`
+
+**Date arithmetic:** `ADD_DAYS`, `ADD_MONTHS`, `ADD_YEARS`
+
+**Date comparisons:** `IS_BEFORE`, `IS_AFTER`, `IS_SAME_DAY`, `IS_WEEKEND`, `IS_LEAP_YEAR`
+
+**Unix time:** `TO_UNIX_SECONDS`, `FROM_UNIX_SECONDS`
 
 ## Use Cases
 
