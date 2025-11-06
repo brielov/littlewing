@@ -210,8 +210,10 @@ Run a single test file: `bun test test/index.test.ts`
 **Adding timestamp utilities:**
 
 - Add to `defaultContext` in `src/defaults.ts`
-- Time converters should return milliseconds (e.g., `minutes(5)` → `300000`)
-- Extractors should take timestamp and return component (e.g., `year(ts)` → `2024`)
+- All function names use UPPERCASE convention (e.g., `FROM_MINUTES`, `GET_YEAR`)
+- Time converters use `FROM_*` prefix and return milliseconds (e.g., `FROM_MINUTES(5)` → `300000`)
+- Extractors use `GET_*` prefix and take timestamp, return component (e.g., `GET_YEAR(ts)` → `2024`)
+- Difference functions use `DIFFERENCE_IN_*` pattern (e.g., `DIFFERENCE_IN_HOURS(ts1, ts2)`)
 - Use JavaScript's `Date` object internally, return numbers
 
 **Modifying execution behavior:**
@@ -291,9 +293,9 @@ const optimized2 = optimize(ast2);
 // Result: Program([Assignment('x', 5), BinaryOp(Identifier('x'), '+', 10)])
 
 // Function arguments are pre-evaluated
-const ast3 = parseSource("max(2 + 3, 4 * 5)");
+const ast3 = parseSource("MAX(2 + 3, 4 * 5)");
 const optimized3 = optimize(ast3);
-// Result: FunctionCall('max', [NumberLiteral(5), NumberLiteral(20)])
+// Result: FunctionCall('MAX', [NumberLiteral(5), NumberLiteral(20)])
 ```
 
 ### Context Override Safety

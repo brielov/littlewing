@@ -12,7 +12,7 @@ execute("2 + 3 * 4"); // → 14
 execute("radius = 5; area = 3.14159 * radius ^ 2", defaultContext); // → 78.54
 
 // Date arithmetic with timestamps
-execute("deadline = now() + days(7)", defaultContext); // → timestamp 7 days from now
+execute("deadline = NOW() + FROM_DAYS(7)", defaultContext); // → timestamp 7 days from now
 
 // Conditional logic
 execute("score = 85; grade = score >= 90 ? 100 : 90", {
@@ -70,22 +70,28 @@ execute("age >= 18 ? 100 : 0", { variables: { age: 21 } }); // → 100
 import { execute, defaultContext } from "littlewing";
 
 // Math functions
-execute("abs(-42)", defaultContext); // → 42
-execute("sqrt(16)", defaultContext); // → 4
-execute("max(3, 7, 2)", defaultContext); // → 7
+execute("ABS(-42)", defaultContext); // → 42
+execute("SQRT(16)", defaultContext); // → 4
+execute("MAX(3, 7, 2)", defaultContext); // → 7
 
 // Current timestamp
-execute("now()", defaultContext); // → 1704067200000
+execute("NOW()", defaultContext); // → 1704067200000
 
 // Date arithmetic
-execute("now() + hours(2)", defaultContext); // → timestamp 2 hours from now
-execute("tomorrow = now() + days(1)", defaultContext); // → tomorrow's timestamp
+execute("NOW() + FROM_HOURS(2)", defaultContext); // → timestamp 2 hours from now
+execute("tomorrow = NOW() + FROM_DAYS(1)", defaultContext); // → tomorrow's timestamp
 
 // Extract date components
 const ctx = { ...defaultContext, variables: { ts: Date.now() } };
-execute("year(ts)", ctx); // → 2024
-execute("month(ts)", ctx); // → 11
-execute("day(ts)", ctx); // → 6
+execute("GET_YEAR(ts)", ctx); // → 2024
+execute("GET_MONTH(ts)", ctx); // → 11
+execute("GET_DAY(ts)", ctx); // → 6
+
+// Calculate time differences
+const ts1 = Date.now();
+const ts2 = ts1 + 1000 * 60 * 60 * 5; // 5 hours later
+const context = { ...defaultContext, variables: { ts1, ts2 } };
+execute("DIFFERENCE_IN_HOURS(ts1, ts2)", context); // → 5
 ```
 
 ### Custom Functions and Variables
@@ -150,7 +156,7 @@ Execute an expression and return the result.
 
 ```typescript
 execute("2 + 2"); // → 4
-execute("abs(-5)", { functions: { abs: Math.abs } }); // → 5
+execute("ABS(-5)", { functions: { ABS: Math.abs } }); // → 5
 ```
 
 #### `parseSource(source: string): ASTNode`
@@ -197,11 +203,15 @@ interface ExecutionContext {
 
 The `defaultContext` includes these built-in functions:
 
-**Math:** `abs`, `ceil`, `floor`, `round`, `sqrt`, `min`, `max`, `sin`, `cos`, `tan`, `log`, `log10`, `exp`
+**Math:** `ABS`, `CEIL`, `FLOOR`, `ROUND`, `SQRT`, `MIN`, `MAX`, `SIN`, `COS`, `TAN`, `LOG`, `LOG10`, `EXP`
 
-**Time:** `now`, `timestamp`, `milliseconds`, `seconds`, `minutes`, `hours`, `days`, `weeks`
+**Timestamps:** `NOW`, `TIMESTAMP`
 
-**Date components:** `year`, `month`, `day`, `hour`, `minute`, `second`, `weekday`
+**Time converters (to milliseconds):** `FROM_MILLISECONDS`, `FROM_SECONDS`, `FROM_MINUTES`, `FROM_HOURS`, `FROM_DAYS`, `FROM_WEEKS`
+
+**Date component extractors:** `GET_YEAR`, `GET_MONTH`, `GET_DAY`, `GET_HOUR`, `GET_MINUTE`, `GET_SECOND`, `GET_WEEKDAY`
+
+**Time differences (always positive):** `DIFFERENCE_IN_MILLISECONDS`, `DIFFERENCE_IN_SECONDS`, `DIFFERENCE_IN_MINUTES`, `DIFFERENCE_IN_HOURS`, `DIFFERENCE_IN_DAYS`, `DIFFERENCE_IN_WEEKS`
 
 ## Use Cases
 

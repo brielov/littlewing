@@ -1,0 +1,133 @@
+import { describe, expect, test } from 'bun:test'
+import { execute } from '../src'
+
+describe('Executor', () => {
+	test('execute number literal', () => {
+		const result = execute('42')
+		expect(result).toBe(42)
+	})
+
+	test('execute simple arithmetic', () => {
+		const result = execute('2 + 3')
+		expect(result).toBe(5)
+	})
+
+	test('execute decimal shorthand', () => {
+		expect(execute('.2')).toBe(0.2)
+		expect(execute('.5')).toBe(0.5)
+		expect(execute('.999')).toBe(0.999)
+	})
+
+	test('execute decimal shorthand in expressions', () => {
+		expect(execute('.2 + .3')).toBeCloseTo(0.5)
+		expect(execute('.5 * 2')).toBe(1)
+		expect(execute('1 - .25')).toBe(0.75)
+		expect(execute('.1 + .2')).toBeCloseTo(0.3)
+	})
+
+	test('execute decimal shorthand with variables', () => {
+		expect(execute('x = .5; x * 2')).toBe(1)
+		expect(execute('y = .25; y + .75')).toBe(1)
+	})
+
+	test('execute decimal shorthand with scientific notation', () => {
+		expect(execute('.5e2')).toBe(50)
+		expect(execute('.3e-1')).toBeCloseTo(0.03)
+		expect(execute('.1e+3')).toBe(100)
+	})
+
+	test('execute operator precedence', () => {
+		const result = execute('2 + 3 * 4')
+		expect(result).toBe(14)
+	})
+
+	test('execute exponentiation precedence', () => {
+		// Exponentiation has higher precedence than multiplication
+		expect(execute('2 * 3 ^ 2')).toBe(18) // 2 * 9, not 6 ^ 2
+		expect(execute('2 ^ 3 * 4')).toBe(32) // 8 * 4, not 2 ^ 12
+		expect(execute('(2 + 3) ^ 2')).toBe(25) // 5 ^ 2
+	})
+
+	test('execute parentheses', () => {
+		const result = execute('(2 + 3) * 4')
+		expect(result).toBe(20)
+	})
+
+	test('execute unary minus', () => {
+		const result = execute('-5')
+		expect(result).toBe(-5)
+	})
+
+	test('execute all operators', () => {
+		expect(execute('10 - 3')).toBe(7)
+		expect(execute('3 * 4')).toBe(12)
+		expect(execute('10 / 2')).toBe(5)
+		expect(execute('10 % 3')).toBe(1)
+		expect(execute('2 ^ 3')).toBe(8)
+		expect(execute('5 ^ 2')).toBe(25)
+	})
+
+	test('execute variable assignment', () => {
+		const result = execute('x = 5')
+		expect(result).toBe(5)
+	})
+
+	test('execute variable reference', () => {
+		const result = execute('x = 5; x')
+		expect(result).toBe(5)
+	})
+
+	test('execute complex expression with variables', () => {
+		const result = execute('x = 2; y = 3; z = x + y')
+		expect(result).toBe(5)
+	})
+
+	test('execute function call without arguments', () => {
+		const result = execute('NOW()', {
+			functions: { NOW: () => 12345 },
+		})
+		expect(result).toBe(12345)
+	})
+
+	test('execute function call with arguments', () => {
+		const result = execute('ABS(-5)', {
+			functions: { ABS: Math.abs },
+		})
+		expect(result).toBe(5)
+	})
+
+	test('execute with global variables', () => {
+		const result = execute('i + 10', {
+			variables: { i: 5 },
+		})
+		expect(result).toBe(15)
+	})
+
+	test('execute arithmetic with global variable', () => {
+		const result = execute('x = i - 10', {
+			variables: { i: 25 },
+		})
+		expect(result).toBe(15)
+	})
+
+	test('error on undefined variable', () => {
+		expect(() => execute('x + 1')).toThrow('Undefined variable: x')
+	})
+
+	test('error on undefined function', () => {
+		expect(() => execute('foo()')).toThrow('Undefined function: foo')
+	})
+
+	test('error on division by zero', () => {
+		expect(() => execute('1 / 0')).toThrow('Division by zero')
+	})
+
+	test('error on modulo by zero', () => {
+		expect(() => execute('10 % 0')).toThrow('Modulo by zero')
+	})
+
+	test('floating point arithmetic', () => {
+		expect(execute('0.1 + 0.2')).toBeCloseTo(0.3)
+		expect(execute('3.14 * 2')).toBeCloseTo(6.28)
+	})
+})

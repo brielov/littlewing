@@ -27,6 +27,11 @@ export { Parser, parseSource } from './parser'
 export type { ExecutionContext, RuntimeValue } from './types'
 export {
 	type ASTNode,
+	type Assignment,
+	type BinaryOp,
+	type ConditionalExpression,
+	type FunctionCall,
+	type Identifier,
 	isAssignment,
 	isBinaryOp,
 	isConditionalExpression,
@@ -35,6 +40,10 @@ export {
 	isNumberLiteral,
 	isProgram,
 	isUnaryOp,
+	type NumberLiteral,
+	type Operator,
+	type Program,
 	type Token,
 	TokenType,
+	type UnaryOp,
 } from './types'
