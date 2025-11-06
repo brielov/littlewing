@@ -210,13 +210,13 @@ The `defaultContext` includes these built-in functions:
 
 **Math:** `ABS`, `CEIL`, `FLOOR`, `ROUND`, `SQRT`, `MIN`, `MAX`, `SIN`, `COS`, `TAN`, `LOG`, `LOG10`, `EXP`
 
-**Timestamps:** `NOW`, `TIMESTAMP`
+**Timestamps:** `NOW`, `DATE`
 
-**Time converters (to milliseconds):** `FROM_MILLISECONDS`, `FROM_SECONDS`, `FROM_MINUTES`, `FROM_HOURS`, `FROM_DAYS`, `FROM_WEEKS`, `FROM_MONTHS`, `FROM_YEARS`
+**Time converters (to milliseconds):** `FROM_SECONDS`, `FROM_MINUTES`, `FROM_HOURS`, `FROM_DAYS`, `FROM_WEEKS`, `FROM_MONTHS`, `FROM_YEARS`
 
 **Date component extractors:** `GET_YEAR`, `GET_MONTH`, `GET_DAY`, `GET_HOUR`, `GET_MINUTE`, `GET_SECOND`, `GET_WEEKDAY`, `GET_MILLISECOND`, `GET_DAY_OF_YEAR`, `GET_QUARTER`
 
-**Time differences (always positive):** `DIFFERENCE_IN_MILLISECONDS`, `DIFFERENCE_IN_SECONDS`, `DIFFERENCE_IN_MINUTES`, `DIFFERENCE_IN_HOURS`, `DIFFERENCE_IN_DAYS`, `DIFFERENCE_IN_WEEKS`
+**Time differences (always positive):** `DIFFERENCE_IN_SECONDS`, `DIFFERENCE_IN_MINUTES`, `DIFFERENCE_IN_HOURS`, `DIFFERENCE_IN_DAYS`, `DIFFERENCE_IN_WEEKS`
 
 **Start/End of period:** `START_OF_DAY`, `END_OF_DAY`, `START_OF_WEEK`, `START_OF_MONTH`, `END_OF_MONTH`, `START_OF_YEAR`, `END_OF_YEAR`, `START_OF_QUARTER`
 

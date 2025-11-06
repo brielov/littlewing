@@ -51,8 +51,8 @@ describe('Default Context', () => {
 		expect(result).toBeLessThanOrEqual(after)
 	})
 
-	test('TIMESTAMP() creates timestamp', () => {
-		const result = execute('TIMESTAMP(2024, 1, 1)', defaultContext)
+	test('DATE() creates timestamp with defaults', () => {
+		const result = execute('DATE(2024)', defaultContext)
 		expect(typeof result).toBe('number')
 		const date = new Date(result)
 		expect(date.getFullYear()).toBe(2024)
@@ -60,18 +60,16 @@ describe('Default Context', () => {
 		expect(date.getDate()).toBe(1)
 	})
 
-	test('TIMESTAMP() with time components', () => {
-		const result = execute('TIMESTAMP(2024, 1, 1, 12, 30, 0)', defaultContext)
+	test('DATE() with all components', () => {
+		const result = execute('DATE(2024, 6, 15, 12, 30, 45)', defaultContext)
 		expect(typeof result).toBe('number')
 		const date = new Date(result)
 		expect(date.getFullYear()).toBe(2024)
+		expect(date.getMonth()).toBe(5) // June is 5 (0-based)
+		expect(date.getDate()).toBe(15)
 		expect(date.getHours()).toBe(12)
 		expect(date.getMinutes()).toBe(30)
-	})
-
-	test('FROM_MILLISECONDS()', () => {
-		const result = execute('FROM_MILLISECONDS(1500)', defaultContext)
-		expect(result).toBe(1500)
+		expect(date.getSeconds()).toBe(45)
 	})
 
 	test('FROM_SECONDS()', () => {

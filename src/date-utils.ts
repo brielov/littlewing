@@ -4,6 +4,175 @@
  */
 
 // ============================================================================
+// CORE TIMESTAMP FUNCTIONS
+// ============================================================================
+
+/**
+ * Get current timestamp (milliseconds since Unix epoch)
+ */
+export const NOW = (): number => Date.now()
+
+/**
+ * Create timestamp from date components
+ * Year is required, all other parameters default to minimum values
+ * Month is 1-based (1 = January, 12 = December)
+ */
+export const DATE = (
+	year: number,
+	month = 1,
+	day = 1,
+	hour = 0,
+	minute = 0,
+	second = 0,
+): number => new Date(year, month - 1, day, hour, minute, second).getTime()
+
+// ============================================================================
+// TIME CONVERTERS (to milliseconds)
+// ============================================================================
+
+/**
+ * Convert seconds to milliseconds
+ */
+export const FROM_SECONDS = (s: number): number => s * 1000
+
+/**
+ * Convert minutes to milliseconds
+ */
+export const FROM_MINUTES = (m: number): number => m * 60 * 1000
+
+/**
+ * Convert hours to milliseconds
+ */
+export const FROM_HOURS = (h: number): number => h * 60 * 60 * 1000
+
+/**
+ * Convert days to milliseconds
+ */
+export const FROM_DAYS = (d: number): number => d * 24 * 60 * 60 * 1000
+
+/**
+ * Convert weeks to milliseconds
+ */
+export const FROM_WEEKS = (w: number): number => w * 7 * 24 * 60 * 60 * 1000
+
+/**
+ * Convert months to milliseconds (approximate: 30 days per month)
+ */
+export const FROM_MONTHS = (months: number): number =>
+	months * 30 * 24 * 60 * 60 * 1000
+
+/**
+ * Convert years to milliseconds (approximate: 365 days per year)
+ */
+export const FROM_YEARS = (years: number): number =>
+	years * 365 * 24 * 60 * 60 * 1000
+
+// ============================================================================
+// COMPONENT EXTRACTORS (from timestamps)
+// ============================================================================
+
+/**
+ * Get the year from a timestamp
+ */
+export const GET_YEAR = (timestamp: number): number =>
+	new Date(timestamp).getFullYear()
+
+/**
+ * Get the month from a timestamp (1-based: 1 = January, 12 = December)
+ */
+export const GET_MONTH = (timestamp: number): number =>
+	new Date(timestamp).getMonth() + 1
+
+/**
+ * Get the day of month from a timestamp (1-31)
+ */
+export const GET_DAY = (timestamp: number): number =>
+	new Date(timestamp).getDate()
+
+/**
+ * Get the hour from a timestamp (0-23)
+ */
+export const GET_HOUR = (timestamp: number): number =>
+	new Date(timestamp).getHours()
+
+/**
+ * Get the minute from a timestamp (0-59)
+ */
+export const GET_MINUTE = (timestamp: number): number =>
+	new Date(timestamp).getMinutes()
+
+/**
+ * Get the second from a timestamp (0-59)
+ */
+export const GET_SECOND = (timestamp: number): number =>
+	new Date(timestamp).getSeconds()
+
+/**
+ * Get the millisecond component from a timestamp (0-999)
+ */
+export const GET_MILLISECOND = (timestamp: number): number =>
+	new Date(timestamp).getMilliseconds()
+
+/**
+ * Get the day of week from a timestamp (0 = Sunday, 6 = Saturday)
+ */
+export const GET_WEEKDAY = (timestamp: number): number =>
+	new Date(timestamp).getDay()
+
+/**
+ * Get the day of year (1-366) from a timestamp
+ */
+export const GET_DAY_OF_YEAR = (timestamp: number): number => {
+	const date = new Date(timestamp)
+	const start = new Date(date.getFullYear(), 0, 0)
+	const diff = date.getTime() - start.getTime()
+	const oneDay = 1000 * 60 * 60 * 24
+	return Math.floor(diff / oneDay)
+}
+
+/**
+ * Get the quarter (1-4) from a timestamp
+ */
+export const GET_QUARTER = (timestamp: number): number => {
+	const month = new Date(timestamp).getMonth()
+	return Math.floor(month / 3) + 1
+}
+
+// ============================================================================
+// TIME DIFFERENCES (always positive)
+// ============================================================================
+
+/**
+ * Get the absolute difference between two timestamps in seconds
+ */
+export const DIFFERENCE_IN_SECONDS = (ts1: number, ts2: number): number =>
+	Math.abs(ts1 - ts2) / 1000
+
+/**
+ * Get the absolute difference between two timestamps in minutes
+ */
+export const DIFFERENCE_IN_MINUTES = (ts1: number, ts2: number): number =>
+	Math.abs(ts1 - ts2) / (60 * 1000)
+
+/**
+ * Get the absolute difference between two timestamps in hours
+ */
+export const DIFFERENCE_IN_HOURS = (ts1: number, ts2: number): number =>
+	Math.abs(ts1 - ts2) / (60 * 60 * 1000)
+
+/**
+ * Get the absolute difference between two timestamps in days
+ */
+export const DIFFERENCE_IN_DAYS = (ts1: number, ts2: number): number =>
+	Math.abs(ts1 - ts2) / (24 * 60 * 60 * 1000)
+
+/**
+ * Get the absolute difference between two timestamps in weeks
+ */
+export const DIFFERENCE_IN_WEEKS = (ts1: number, ts2: number): number =>
+	Math.abs(ts1 - ts2) / (7 * 24 * 60 * 60 * 1000)
+
+// ============================================================================
 // START/END OF PERIOD FUNCTIONS
 // ============================================================================
 
@@ -160,54 +329,6 @@ export const IS_LEAP_YEAR = (timestamp: number): number => {
 	return (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0 ? 1 : 0
 }
 
-// ============================================================================
-// ADDITIONAL TIME CONVERTERS
-// ============================================================================
-
-/**
- * Convert months to milliseconds (approximate: 30 days per month)
- */
-export const FROM_MONTHS = (months: number): number => {
-	return months * 30 * 24 * 60 * 60 * 1000
-}
-
-/**
- * Convert years to milliseconds (approximate: 365 days per year)
- */
-export const FROM_YEARS = (years: number): number => {
-	return years * 365 * 24 * 60 * 60 * 1000
-}
-
-// ============================================================================
-// ADDITIONAL COMPONENT EXTRACTORS
-// ============================================================================
-
-/**
- * Get the millisecond component from a timestamp (0-999)
- */
-export const GET_MILLISECOND = (timestamp: number): number => {
-	return new Date(timestamp).getMilliseconds()
-}
-
-/**
- * Get the day of year (1-366) from a timestamp
- */
-export const GET_DAY_OF_YEAR = (timestamp: number): number => {
-	const date = new Date(timestamp)
-	const start = new Date(date.getFullYear(), 0, 0)
-	const diff = date.getTime() - start.getTime()
-	const oneDay = 1000 * 60 * 60 * 24
-	return Math.floor(diff / oneDay)
-}
-
-/**
- * Get the quarter (1-4) from a timestamp
- */
-export const GET_QUARTER = (timestamp: number): number => {
-	const month = new Date(timestamp).getMonth()
-	return Math.floor(month / 3) + 1
-}
-
 /**
  * Get the start of quarter for a given timestamp
  */
@@ -226,13 +347,10 @@ export const START_OF_QUARTER = (timestamp: number): number => {
 /**
  * Convert millisecond timestamp to Unix seconds
  */
-export const TO_UNIX_SECONDS = (timestamp: number): number => {
-	return Math.floor(timestamp / 1000)
-}
+export const TO_UNIX_SECONDS = (timestamp: number): number =>
+	Math.floor(timestamp / 1000)
 
 /**
  * Convert Unix seconds to millisecond timestamp
  */
-export const FROM_UNIX_SECONDS = (seconds: number): number => {
-	return seconds * 1000
-}
+export const FROM_UNIX_SECONDS = (seconds: number): number => seconds * 1000
