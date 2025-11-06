@@ -2,13 +2,16 @@ import { type Token, TokenType } from './types'
 
 /**
  * Lexer - converts source code into tokens
+ * Implements a single-pass O(n) tokenization algorithm
  */
 export class Lexer {
 	private source: string
 	private position: number = 0
+	private length: number
 
 	constructor(source: string) {
 		this.source = source
+		this.length = source.length
 	}
 
 	/**
@@ -34,11 +37,15 @@ export class Lexer {
 	nextToken(): Token {
 		this.skipWhitespaceAndComments()
 
-		if (this.position >= this.source.length) {
+		if (this.position >= this.length) {
 			return { type: TokenType.EOF, value: '', position: this.position }
 		}
 
-		const char = this.getCharAt(this.position)
+		const char = this.source[this.position]
+		if (char === undefined) {
+			return { type: TokenType.EOF, value: '', position: this.position }
+		}
+
 		const start = this.position
 
 		// Numbers (including decimal shorthand like .2)
@@ -47,8 +54,11 @@ export class Lexer {
 		}
 
 		// Decimal shorthand (.2 means 0.2)
-		if (char === '.' && this.isDigit(this.peek())) {
-			return this.readNumber()
+		if (char === '.') {
+			const nextChar = this.source[this.position + 1]
+			if (nextChar !== undefined && this.isDigit(nextChar)) {
+				return this.readNumber()
+			}
 		}
 
 		// Identifiers and keywords
@@ -84,7 +94,7 @@ export class Lexer {
 				return { type: TokenType.RPAREN, value: ')', position: start }
 			case '=':
 				// Check for == (equality comparison)
-				if (this.peek() === '=') {
+				if (this.source[this.position + 1] === '=') {
 					this.position += 2
 					return { type: TokenType.DOUBLE_EQUALS, value: '==', position: start }
 				}
@@ -93,14 +103,14 @@ export class Lexer {
 				return { type: TokenType.EQUALS, value: '=', position: start }
 			case '!':
 				// Check for != (not equals)
-				if (this.peek() === '=') {
+				if (this.source[this.position + 1] === '=') {
 					this.position += 2
 					return { type: TokenType.NOT_EQUALS, value: '!=', position: start }
 				}
 				throw new Error(`Unexpected character '${char}' at position ${start}`)
 			case '<':
 				// Check for <= (less than or equal)
-				if (this.peek() === '=') {
+				if (this.source[this.position + 1] === '=') {
 					this.position += 2
 					return { type: TokenType.LESS_EQUAL, value: '<=', position: start }
 				}
@@ -109,7 +119,7 @@ export class Lexer {
 				return { type: TokenType.LESS_THAN, value: '<', position: start }
 			case '>':
 				// Check for >= (greater than or equal)
-				if (this.peek() === '=') {
+				if (this.source[this.position + 1] === '=') {
 					this.position += 2
 					return { type: TokenType.GREATER_EQUAL, value: '>=', position: start }
 				}
@@ -117,7 +127,6 @@ export class Lexer {
 				this.position++
 				return { type: TokenType.GREATER_THAN, value: '>', position: start }
 			case '?':
-				// Single ? is ternary
 				this.position++
 				return { type: TokenType.QUESTION, value: '?', position: start }
 			case ':':
@@ -132,14 +141,14 @@ export class Lexer {
 				return this.nextToken()
 			case '&':
 				// Check for && (logical AND)
-				if (this.peek() === '&') {
+				if (this.source[this.position + 1] === '&') {
 					this.position += 2
 					return { type: TokenType.LOGICAL_AND, value: '&&', position: start }
 				}
 				throw new Error(`Unexpected character '${char}' at position ${start}`)
 			case '|':
 				// Check for || (logical OR)
-				if (this.peek() === '|') {
+				if (this.source[this.position + 1] === '|') {
 					this.position += 2
 					return { type: TokenType.LOGICAL_OR, value: '||', position: start }
 				}
@@ -153,8 +162,8 @@ export class Lexer {
 	 * Skip whitespace and comments
 	 */
 	private skipWhitespaceAndComments(): void {
-		while (this.position < this.source.length) {
-			const char = this.getCharAt(this.position)
+		while (this.position < this.length) {
+			const char = this.source[this.position]
 
 			// Skip whitespace
 			if (this.isWhitespace(char)) {
@@ -163,11 +172,12 @@ export class Lexer {
 			}
 
 			// Skip comments
-			if (char === '/' && this.peek() === '/') {
+			if (char === '/' && this.source[this.position + 1] === '/') {
 				// Skip until end of line
+				this.position += 2
 				while (
-					this.position < this.source.length &&
-					this.getCharAt(this.position) !== '\n'
+					this.position < this.length &&
+					this.source[this.position] !== '\n'
 				) {
 					this.position++
 				}
@@ -188,15 +198,15 @@ export class Lexer {
 		let hasExponent = false
 
 		// Handle leading decimal point (.2 means 0.2)
-		if (this.getCharAt(this.position) === '.') {
+		if (this.source[this.position] === '.') {
 			hasDecimal = true
 			this.position++
 			// The digit after the decimal point is guaranteed by nextToken()
 		}
 
 		// Read digits and optional decimal point
-		while (this.position < this.source.length) {
-			const char = this.getCharAt(this.position)
+		while (this.position < this.length) {
+			const char = this.source[this.position]
 
 			if (this.isDigit(char)) {
 				this.position++
@@ -209,13 +219,14 @@ export class Lexer {
 				this.position++
 
 				// Optional + or - sign after e/E
-				const nextChar = this.getCharAt(this.position)
+				const nextChar = this.source[this.position]
 				if (nextChar === '+' || nextChar === '-') {
 					this.position++
 				}
 
 				// Must have at least one digit after e/E
-				if (!this.isDigit(this.getCharAt(this.position))) {
+				const digitChar = this.source[this.position]
+				if (digitChar === undefined || !this.isDigit(digitChar)) {
 					throw new Error(
 						`Invalid number: expected digit after exponent at position ${this.position}`,
 					)
@@ -223,8 +234,8 @@ export class Lexer {
 
 				// Read exponent digits
 				while (
-					this.position < this.source.length &&
-					this.isDigit(this.getCharAt(this.position))
+					this.position < this.length &&
+					this.isDigit(this.source[this.position])
 				) {
 					this.position++
 				}
@@ -245,8 +256,8 @@ export class Lexer {
 	private readIdentifier(): Token {
 		const start = this.position
 
-		while (this.position < this.source.length) {
-			const char = this.getCharAt(this.position)
+		while (this.position < this.length) {
+			const char = this.source[this.position]
 			if (this.isLetter(char) || this.isDigit(char) || char === '_') {
 				this.position++
 			} else {
@@ -260,37 +271,29 @@ export class Lexer {
 	}
 
 	/**
-	 * Get character at position
+	 * Check if character is a digit (0-9)
 	 */
-	private getCharAt(pos: number): string {
-		return pos < this.source.length ? this.source[pos] || '' : ''
+	private isDigit(char: string | undefined): char is string {
+		return char !== undefined && char >= '0' && char <= '9'
 	}
 
 	/**
-	 * Peek at the next character without consuming it
+	 * Check if character is a letter (a-z, A-Z)
 	 */
-	private peek(): string {
-		return this.getCharAt(this.position + 1)
-	}
-
-	/**
-	 * Check if character is a digit
-	 */
-	private isDigit(char: string): boolean {
-		return char >= '0' && char <= '9'
-	}
-
-	/**
-	 * Check if character is a letter
-	 */
-	private isLetter(char: string): boolean {
-		return (char >= 'a' && char <= 'z') || (char >= 'A' && char <= 'Z')
+	private isLetter(char: string | undefined): char is string {
+		return (
+			char !== undefined &&
+			((char >= 'a' && char <= 'z') || (char >= 'A' && char <= 'Z'))
+		)
 	}
 
 	/**
 	 * Check if character is whitespace
 	 */
-	private isWhitespace(char: string): boolean {
-		return char === ' ' || char === '\t' || char === '\n' || char === '\r'
+	private isWhitespace(char: string | undefined): char is string {
+		return (
+			char !== undefined &&
+			(char === ' ' || char === '\t' || char === '\n' || char === '\r')
+		)
 	}
 }

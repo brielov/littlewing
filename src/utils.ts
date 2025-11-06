@@ -2,7 +2,8 @@ import { type Operator, TokenType } from './types'
 
 /**
  * Evaluate a binary operation on two numbers
- * Shared implementation used by both executor and optimizer
+ * Shared implementation used by both executor and optimizer to ensure consistent semantics
+ * All operations run in O(1) time
  */
 export function evaluateBinaryOperation(
 	operator: Operator,

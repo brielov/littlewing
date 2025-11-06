@@ -26,6 +26,7 @@ import { evaluateBinaryOperation } from './utils'
 
 /**
  * Executor - evaluates an AST with given context
+ * Uses a tree-walk interpreter with O(n) execution time where n is the number of AST nodes
  */
 export class Executor {
 	private context: ExecutionContext
@@ -34,6 +35,7 @@ export class Executor {
 
 	constructor(context: ExecutionContext = {}) {
 		this.context = context
+		// Use Map for O(1) variable lookups (faster than object property access)
 		this.variables = new Map(Object.entries(context.variables || {}))
 		// Track which variables came from external context
 		this.externalVariables = new Set(Object.keys(context.variables || {}))

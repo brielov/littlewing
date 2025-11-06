@@ -647,11 +647,19 @@ test('Optimization: partial folding in assignments', () => {
 
 test('Optimization: multiple statements with folding', () => {
 	const node = optimize(parseSource('x = 5; y = 2 * 3'))
-	// With aggressive optimization, unused variables are eliminated
-	// Since neither x nor y are used, this optimizes to just the last assignment value
-	expect(isNumberLiteral(node)).toBe(true)
-	if (isNumberLiteral(node)) {
-		expect(node.value).toBe(6)
+	// With local optimization, variables are NOT propagated or eliminated
+	// (they might be overridden by context). Only RHS expressions are folded.
+	expect(isProgram(node)).toBe(true)
+	if (isProgram(node)) {
+		expect(node.statements.length).toBe(2)
+		// Second assignment's RHS should be folded to 6
+		const stmt2 = node.statements[1]
+		if (stmt2 && isAssignment(stmt2)) {
+			expect(isNumberLiteral(stmt2.value)).toBe(true)
+			if (isNumberLiteral(stmt2.value)) {
+				expect(stmt2.value.value).toBe(6)
+			}
+		}
 	}
 })
 
@@ -777,23 +785,43 @@ test('Optimization: program with multiple complex statements', () => {
 	const node = optimize(parseSource(source))
 	expect(isProgram(node)).toBe(true)
 	if (isProgram(node)) {
-		// With aggressive optimization:
-		// - 'a' is propagated (a = 5)
-		// - 'b' is eliminated (never used)
-		// - max(5, 20) remains but cannot be folded (function call)
-		expect(node.statements.length).toBe(1)
+		// With local optimization:
+		// - 'a' assignment RHS is folded to 5, but variable is NOT propagated
+		// - 'b' assignment RHS is folded to -20, variable is NOT eliminated
+		// - Function call arguments are folded where possible
+		expect(node.statements.length).toBe(3)
 
-		// Should be just the function call with optimized arguments
-		const stmt = node.statements[0]
-		if (stmt && isFunctionCall(stmt)) {
-			expect(stmt.name).toBe('max')
-			// First arg should be folded to 5 (propagated from a)
-			const arg1 = stmt.arguments[0]
-			if (arg1 && isNumberLiteral(arg1)) {
-				expect(arg1.value).toBe(5)
+		// First assignment: a = 5 (folded)
+		const stmt1 = node.statements[0]
+		if (stmt1 && isAssignment(stmt1)) {
+			expect(stmt1.name).toBe('a')
+			expect(isNumberLiteral(stmt1.value)).toBe(true)
+			if (isNumberLiteral(stmt1.value)) {
+				expect(stmt1.value.value).toBe(5)
+			}
+		}
+
+		// Second assignment: b = -20 (folded)
+		const stmt2 = node.statements[1]
+		if (stmt2 && isAssignment(stmt2)) {
+			expect(stmt2.name).toBe('b')
+			expect(isNumberLiteral(stmt2.value)).toBe(true)
+			if (isNumberLiteral(stmt2.value)) {
+				expect(stmt2.value.value).toBe(-20)
+			}
+		}
+
+		// Third statement: function call with second arg folded to 20
+		const stmt3 = node.statements[2]
+		if (stmt3 && isFunctionCall(stmt3)) {
+			expect(stmt3.name).toBe('max')
+			// First arg is identifier 'a' (not propagated)
+			const arg1 = stmt3.arguments[0]
+			if (arg1) {
+				expect(isIdentifier(arg1)).toBe(true)
 			}
 			// Second arg should be folded to 20
-			const arg2 = stmt.arguments[1]
+			const arg2 = stmt3.arguments[1]
 			if (arg2 && isNumberLiteral(arg2)) {
 				expect(arg2.value).toBe(20)
 			}
@@ -802,60 +830,46 @@ test('Optimization: program with multiple complex statements', () => {
 })
 
 // ============================================================================
-// ADVANCED OPTIMIZATION TESTS (Constant Propagation & Dead Code Elimination)
+// LOCAL OPTIMIZATION TESTS (Safe, Context-Aware)
 // ============================================================================
 
-test('Optimization: constant propagation - single variable', () => {
+test('Optimization: variables not propagated (might be overridden by context)', () => {
 	const source = 'x = 5; x + 10'
 	const node = optimize(parseSource(source))
-	// Should be fully optimized to a single literal: 15
-	expect(isNumberLiteral(node)).toBe(true)
-	if (isNumberLiteral(node)) {
-		expect(node.value).toBe(15)
+	// Variables are NOT propagated because they might be overridden by context
+	expect(isProgram(node)).toBe(true)
+	if (isProgram(node)) {
+		expect(node.statements.length).toBe(2)
+		// Assignment remains
+		const stmt0 = node.statements[0]
+		expect(stmt0).toBeDefined()
+		if (stmt0) {
+			expect(isAssignment(stmt0)).toBe(true)
+		}
+		// Expression remains with identifier
+		const stmt1 = node.statements[1]
+		expect(stmt1).toBeDefined()
+		if (stmt1) {
+			expect(isBinaryOp(stmt1)).toBe(true)
+		}
 	}
 })
 
-test('Optimization: constant propagation - multiple variables', () => {
-	const source = 'x = 10; y = 20; x + y'
-	const node = optimize(parseSource(source))
-	// Should be fully optimized to a single literal: 30
-	expect(isNumberLiteral(node)).toBe(true)
-	if (isNumberLiteral(node)) {
-		expect(node.value).toBe(30)
-	}
+test('Optimization: execution with context override shows why propagation is unsafe', () => {
+	const source = 'x = 5; x + 10'
+
+	// Without context: x = 5, result = 15
+	const result1 = execute(source)
+	expect(result1).toBe(15)
+
+	// With context override: x = 100 (from context), result = 110
+	const result2 = execute(source, { variables: { x: 100 } })
+	expect(result2).toBe(110)
+
+	// If we had propagated x=5, both would give 15 (incorrect!)
 })
 
-test('Optimization: constant propagation - chained assignments', () => {
-	const source = 'a = 5; b = a + 10; c = b * 2; c'
-	const node = optimize(parseSource(source))
-	// Should be fully optimized to a single literal: (5 + 10) * 2 = 30
-	expect(isNumberLiteral(node)).toBe(true)
-	if (isNumberLiteral(node)) {
-		expect(node.value).toBe(30)
-	}
-})
-
-test('Optimization: dead code elimination - unused assignment', () => {
-	const source = 'x = 5; y = 10; y'
-	const node = optimize(parseSource(source))
-	// x is never used, should be eliminated, result should be 10
-	expect(isNumberLiteral(node)).toBe(true)
-	if (isNumberLiteral(node)) {
-		expect(node.value).toBe(10)
-	}
-})
-
-test('Optimization: dead code elimination - multiple unused', () => {
-	const source = 'a = 1; b = 2; c = 3; d = 4; c + d'
-	const node = optimize(parseSource(source))
-	// a and b are never used, should be eliminated and fully folded to 7
-	expect(isNumberLiteral(node)).toBe(true)
-	if (isNumberLiteral(node)) {
-		expect(node.value).toBe(7)
-	}
-})
-
-test('Optimization: compound interest example', () => {
+test('Optimization: compound interest example (execution semantics preserved)', () => {
 	const source = `
 		principal = 1000;
 		rate = 0.05;
@@ -866,14 +880,18 @@ test('Optimization: compound interest example', () => {
 		result = principal * (base ^ exponent);
 		result
 	`
-	const node = optimize(parseSource(source))
 
-	// Should be fully optimized to a single number literal
-	expect(isNumberLiteral(node)).toBe(true)
-	if (isNumberLiteral(node)) {
-		// 1000 * (1 + 0.05/12)^(12*10)
-		expect(node.value).toBeCloseTo(1647.01, 2)
-	}
+	// Optimization preserves structure (no propagation)
+	const optimized = optimize(parseSource(source))
+	expect(isProgram(optimized)).toBe(true)
+
+	// But execution still works correctly
+	const result = execute(source)
+	expect(result).toBeCloseTo(1647.01, 2)
+
+	// And context overrides work as expected
+	const resultWithOverride = execute(source, { variables: { principal: 2000 } })
+	expect(resultWithOverride).toBeCloseTo(3294.02, 2)
 })
 
 test('Optimization: preserves external variables', () => {
@@ -887,12 +905,14 @@ test('Optimization: preserves external variables', () => {
 
 		// First statement should still be an assignment
 		const stmt1 = node.statements[0]
+		expect(stmt1).toBeDefined()
 		if (stmt1) {
 			expect(isAssignment(stmt1)).toBe(true)
 		}
 
 		// Second statement references x, which cannot be inlined
 		const stmt2 = node.statements[1]
+		expect(stmt2).toBeDefined()
 		if (stmt2) {
 			expect(isBinaryOp(stmt2)).toBe(true)
 		}
@@ -948,14 +968,18 @@ test('Optimization: variable reassignment prevents propagation', () => {
 	}
 })
 
-test('Optimization: complex arithmetic fully optimized', () => {
+test('Optimization: complex arithmetic preserves variables', () => {
 	const source = 'a = 2; b = 3; c = 4; result = a * b + c ^ 2; result'
 	const node = optimize(parseSource(source))
 
-	// Should be fully optimized to a single literal: 2 * 3 + 4^2 = 22
-	expect(isNumberLiteral(node)).toBe(true)
-	if (isNumberLiteral(node)) {
-		expect(node.value).toBe(22)
+	// Variables are not propagated (might be overridden by context)
+	expect(isProgram(node)).toBe(true)
+	if (isProgram(node)) {
+		// 5 statements: a=2, b=3, c=4, result=..., result
+		expect(node.statements.length).toBe(5)
+		// But we can verify execution still works
+		const result = new Executor().execute(node)
+		expect(result).toBe(22) // 2 * 3 + 4^2 = 22
 	}
 })
 
@@ -972,16 +996,26 @@ test('Optimization: execution result unchanged after optimization', () => {
 	expect(result1).toBe(60)
 })
 
-test('Optimization: preserves division by zero error', () => {
+test('Optimization: division by zero caught at execution time', () => {
 	const source = 'x = 10; y = 0; x / y'
 
-	expect(() => optimize(parseSource(source))).toThrow('Division by zero')
+	// Optimizer doesn't propagate variables, so no error during optimization
+	const optimized = optimize(parseSource(source))
+	expect(isProgram(optimized)).toBe(true)
+
+	// Error happens during execution
+	expect(() => execute(source)).toThrow('Division by zero')
 })
 
-test('Optimization: preserves modulo by zero error', () => {
+test('Optimization: modulo by zero caught at execution time', () => {
 	const source = 'x = 10; y = 0; x % y'
 
-	expect(() => optimize(parseSource(source))).toThrow('Modulo by zero')
+	// Optimizer doesn't propagate variables, so no error during optimization
+	const optimized = optimize(parseSource(source))
+	expect(isProgram(optimized)).toBe(true)
+
+	// Error happens during execution
+	expect(() => execute(source)).toThrow('Modulo by zero')
 })
 
 // ============================================================================
@@ -1578,7 +1612,7 @@ test('AST: comparison operator builders', () => {
 })
 
 test('Optimizer: constant folding for comparison operators', () => {
-	expect(execute('x = 5 > 3; x')).toBe(1)
+	// Constant comparisons are folded
 	const ast1 = parseSource('5 == 5')
 	const optimized1 = optimize(ast1)
 	expect(isNumberLiteral(optimized1)).toBe(true)
@@ -1593,12 +1627,13 @@ test('Optimizer: constant folding for comparison operators', () => {
 		expect(optimized2.value).toBe(0)
 	}
 
+	// But variables are NOT propagated
 	const ast3 = parseSource('x = 10; y = 5; z = x > y; z')
 	const optimized3 = optimize(ast3)
-	expect(isNumberLiteral(optimized3)).toBe(true)
-	if (isNumberLiteral(optimized3)) {
-		expect(optimized3.value).toBe(1)
-	}
+	expect(isProgram(optimized3)).toBe(true)
+	// Execution still works correctly
+	const result = execute('x = 10; y = 5; z = x > y; z')
+	expect(result).toBe(1)
 })
 
 test('CodeGen: comparison operators', () => {
@@ -1733,10 +1768,11 @@ test('Optimizer: complex ternary optimization', () => {
 	const source = 'x = 10; y = 5; result = x > y ? 100 : 50; result'
 	const ast1 = parseSource(source)
 	const optimized = optimize(ast1)
-	expect(isNumberLiteral(optimized)).toBe(true)
-	if (isNumberLiteral(optimized)) {
-		expect(optimized.value).toBe(100)
-	}
+	// Variables are not propagated, structure is preserved
+	expect(isProgram(optimized)).toBe(true)
+	// But execution still works correctly
+	const result = execute(source)
+	expect(result).toBe(100)
 })
 
 test('Optimizer: nested ternary optimization', () => {

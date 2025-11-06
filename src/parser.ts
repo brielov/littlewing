@@ -4,7 +4,7 @@ import { type ASTNode, type Operator, type Token, TokenType } from './types'
 import { getTokenPrecedence } from './utils'
 
 /**
- * Set of binary operator token types for fast lookup
+ * Set of binary operator token types for O(1) lookup
  */
 const BINARY_OPERATOR_TOKENS = new Set([
 	TokenType.PLUS,
@@ -25,6 +25,7 @@ const BINARY_OPERATOR_TOKENS = new Set([
 
 /**
  * Parser using Pratt parsing (top-down operator precedence)
+ * Implements an efficient O(n) parsing algorithm
  */
 export class Parser {
 	private tokens: Token[]
@@ -36,7 +37,7 @@ export class Parser {
 
 	/**
 	 * Parse tokens into an AST
-	 * Supports multiple statements separated by semicolons
+	 * Supports multiple statements separated by semicolons or newlines
 	 */
 	parse(): ASTNode {
 		const statements: ASTNode[] = []
@@ -52,21 +53,19 @@ export class Parser {
 		// If single statement, return it directly
 		// If multiple, wrap in Program node
 		if (statements.length === 1) {
-			const stmt = statements[0]
-			if (stmt === undefined) {
-				throw new Error('Unexpected undefined statement')
+			const singleStatement = statements[0]
+			if (singleStatement === undefined) {
+				throw new Error('Unexpected empty statements array')
 			}
-			return stmt
+			return singleStatement
 		}
 
-		return {
-			type: 'Program',
-			statements,
-		}
+		return ast.program(statements)
 	}
 
 	/**
 	 * Parse an expression with Pratt parsing (precedence climbing)
+	 * This is the core of the parser - handles infix operators with proper precedence
 	 */
 	private parseExpression(minPrecedence: number): ASTNode {
 		let left = this.parsePrefix()
@@ -102,9 +101,11 @@ export class Parser {
 				const alternate = this.parseExpression(precedence)
 				left = ast.conditional(left, consequent, alternate)
 			} else if (this.isBinaryOperator(token.type)) {
-				// Binary operation
+				// Binary operation (left-associative for most operators)
 				const operator = token.value as Operator
 				this.advance() // consume operator
+				// Use precedence + 1 for left-associativity
+				// Exception: ^ is right-associative but handled by precedence rules
 				const right = this.parseExpression(precedence + 1)
 				left = ast.binaryOp(left, operator, right)
 			} else {
@@ -174,12 +175,15 @@ export class Parser {
 	private parseFunctionArguments(): ASTNode[] {
 		const args: ASTNode[] = []
 
+		// Empty argument list
 		if (this.peek().type === TokenType.RPAREN) {
 			return args
 		}
 
+		// Parse first argument
 		args.push(this.parseExpression(0))
 
+		// Parse remaining arguments
 		while (this.peek().type === TokenType.COMMA) {
 			this.advance() // consume comma
 			args.push(this.parseExpression(0))
@@ -192,21 +196,21 @@ export class Parser {
 	 * Get unary operator precedence
 	 * Returns 6 which is higher than add/sub (6) but lower than exponentiation (8)
 	 * This means: -2^2 parses as -(2^2) = -4, not (-2)^2 = 4
-	 * This matches the behavior of Python, Ruby, and most languages
+	 * Matches the behavior of Python, Ruby, and most languages
 	 */
 	private getUnaryPrecedence(): number {
 		return 6
 	}
 
 	/**
-	 * Check if token is a binary operator
+	 * Check if token is a binary operator (O(1) Set lookup)
 	 */
 	private isBinaryOperator(type: TokenType): boolean {
 		return BINARY_OPERATOR_TOKENS.has(type)
 	}
 
 	/**
-	 * Get current token
+	 * Get current token without advancing
 	 */
 	private peek(): Token {
 		if (this.current >= this.tokens.length) {
@@ -229,6 +233,7 @@ export class Parser {
 
 /**
  * Parse source code string into AST
+ * Convenience function that creates lexer and parser
  *
  * @param source - The source code to parse
  * @returns Parsed AST

@@ -232,135 +232,107 @@ Run a single test file: `bun test test/index.test.ts`
 
 ## Optimization
 
-The optimizer (`src/optimizer.ts`) implements a **production-grade, O(n) single-pass optimization algorithm** based on classical compiler optimization theory.
+The optimizer (`src/optimizer.ts`) implements a **safe, local constant-folding optimizer** designed to work correctly with the language's context variable semantics.
+
+### Design Philosophy
+
+**Key constraint:** Variables in scripts can be overridden by `ExecutionContext.variables` at runtime. This means the optimizer **cannot assume any variable has a constant value**, even if it appears to be assigned a literal in the script.
+
+Example:
+
+```typescript
+// Script: x = 5; x + 10
+execute(script); // Returns 15 (x = 5 from script)
+execute(script, { variables: { x: 100 } }); // Returns 110 (x = 100 from context overrides script)
+```
+
+If the optimizer propagated `x = 5`, the second execution would incorrectly return `15` instead of `110`.
 
 ### Algorithm Overview
 
-The optimizer achieves maximum AST compaction through three phases:
+The optimizer performs **local, expression-level optimizations** only:
 
-1. **Program Analysis** (O(n)) - Builds a complete data-flow graph
-   - Dependency tracking between variables
-   - Constant identification (variables assigned once with literal values)
-   - Taint analysis (variables dependent on runtime values like function calls)
-   - Topological sorting for optimal evaluation order
-   - Liveness analysis via backward reachability
+1. **Constant Folding** - Evaluates pure arithmetic at compile-time
+   - Binary operations: `2 + 3` → `5`, `10 * 5` → `50`
+   - Unary operations: `-(5)` → `-5`, `-(2 + 3)` → `-5`
+   - Comparisons: `5 > 3` → `1`, `10 < 5` → `0`
+   - Logical operators: `1 && 1` → `1`, `0 || 1` → `1`
 
-2. **Constant Propagation** (O(n)) - Evaluates constants in topological order
-   - Transitive constant evaluation (if a = 5 and b = a + 10, then b = 15)
-   - Single forward pass through dependencies
-   - Replaces all variable references with computed constant values
-   - Preserves tainted expressions (external variables, function calls)
+2. **Function Argument Pre-evaluation** - Simplifies expressions passed to functions
+   - `max(2 + 3, 4 * 5)` → `max(5, 20)`
+   - `abs(-(2 + 3) * 4)` → `abs(-20)`
+   - The function call itself is not evaluated (runtime-dependent)
 
-3. **Dead Code Elimination** (O(n)) - Removes unnecessary code
-   - Eliminates assignments to unused variables
-   - Removes fully-propagated assignments (values already inlined)
-   - Unwraps single-statement programs to direct values
-   - Early evaluation of entire programs when possible
+3. **Conditional Folding** - Evaluates ternary with constant condition
+   - `1 ? 100 : 50` → `100`
+   - `0 ? 100 : 50` → `50`
+   - `5 > 3 ? 100 : 50` → `100` (condition is constant, foldable)
+
+### What is NOT Optimized (By Design)
+
+- ❌ **Variable propagation** - Variables might be overridden by context
+- ❌ **Dead code elimination** - Assignments might be used by context
+- ❌ **Cross-statement analysis** - Each statement must remain independent
+- ❌ **Function evaluation** - Functions have runtime behavior (`now()`, etc.)
 
 ### Usage
 
 ```typescript
 import { optimize, parseSource } from "littlewing";
 
-// Automatic optimization
-const ast = parseSource("x = 5; y = x + 10; y * 2");
-const optimized = optimize(ast);
-// Result: NumberLiteral(30)
+// Constant folding works
+const ast1 = parseSource("2 + 3 * 4");
+const optimized1 = optimize(ast1);
+// Result: NumberLiteral(14)
 
-// Complex example
-const source = `
-  principal = 1000;
-  rate = 0.05;
-  years = 10;
-  n = 12;
-  base = 1 + (rate / n);
-  exponent = n * years;
-  result = principal * (base ^ exponent);
-  result
-`;
-const optimized = optimize(parseSource(source));
-// Result: NumberLiteral(1647.0095406619717)
+// Variables are NOT propagated (context-safe)
+const ast2 = parseSource("x = 5; x + 10");
+const optimized2 = optimize(ast2);
+// Result: Program([Assignment('x', 5), BinaryOp(Identifier('x'), '+', 10)])
+
+// Function arguments are pre-evaluated
+const ast3 = parseSource("max(2 + 3, 4 * 5)");
+const optimized3 = optimize(ast3);
+// Result: FunctionCall('max', [NumberLiteral(5), NumberLiteral(20)])
 ```
 
-### Optimization Capabilities
+### Context Override Safety
 
-**What gets optimized:**
+The optimizer is designed to preserve correct behavior with context overrides:
 
-- ✅ All arithmetic with constant operands
-- ✅ Variables assigned once with computable values
-- ✅ Transitive dependencies (a = 5; b = a + 10 → b = 15)
-- ✅ Chained computations across multiple statements
-- ✅ Unused variables (dead code elimination)
-- ✅ Fully propagated variables (even if referenced, once inlined)
+```typescript
+const source =
+	"principal = 1000; rate = 0.05; result = principal * rate; result";
 
-**What stays (correctly):**
+// Without context: uses script values
+execute(source); // 50
 
-- ❌ External variables (passed via ExecutionContext)
-- ❌ Function calls (runtime behavior - `now()`, `max()`, etc.)
-- ❌ Variables reassigned multiple times
-- ❌ Tainted expressions (depend on runtime values)
+// With context: context overrides work correctly
+execute(source, { variables: { principal: 2000 } }); // 100
+execute(source, { variables: { rate: 0.1 } }); // 100
+
+// If we had propagated constants, overrides would fail!
+```
 
 ### Performance Characteristics
 
-- **Time Complexity:** O(n) guaranteed - single pass through AST
-- **Space Complexity:** O(n) for dependency graph
-- **Typical Performance:** <1ms for 8-statement programs, ~3ms for 100-statement programs
-- **No Iteration:** Unlike iterative fixed-point algorithms, uses topological evaluation
-
-### Theoretical Foundation
-
-Based on seminal compiler optimization research:
-
-- **Cytron et al.** (1991) - "Efficiently Computing Static Single Assignment Form"
-- **Wegman & Zadeck** (1991) - "Constant Propagation with Conditional Branches"
-- **Appel** (1997) - "Modern Compiler Implementation"
-
-### Implementation Details
-
-**Key data structures:**
-
-```typescript
-interface ProgramAnalysis {
-	constants: Map<string, number>; // Variables with known constant values
-	tainted: Set<string>; // Variables dependent on runtime values
-	dependencies: Map<string, Set<string>>; // Dependency graph
-	liveVariables: Set<string>; // Variables that are referenced
-	evaluationOrder: string[]; // Topological sort for evaluation
-}
-```
-
-**Algorithm guarantees:**
-
-- Formally sound - preserves program semantics
-- Complete - finds all optimization opportunities
-- Optimal - O(n) complexity, can't do better
-- Robust - handles cycles, external dependencies, edge cases
-
-### Trade-offs
-
-**Pros:**
-
-- Maximum compaction (8 statements → 1 literal in typical cases)
-- Optimal complexity (O(n) vs O(n×k) for iterative algorithms)
-- Production-ready correctness
-- Comprehensive edge case handling
-
-**Cons:**
-
-- Slightly more complex implementation (~600 LOC vs ~300 for simpler approach)
-- Optimized AST structure differs from source (expected for aggressive optimization)
+- **Time Complexity:** O(n) where n is the number of AST nodes
+- **Space Complexity:** O(d) where d is the max depth (recursion stack)
+- **Typical Performance:** <0.5ms for most programs
+- **Correctness:** 100% semantically equivalent to unoptimized execution
 
 ### Development Notes
 
 When adding new operators:
 
-1. Update `evaluateBinaryOp` in optimizer to handle the new operator
-2. Add tests for constant folding of the new operator
-3. Ensure operator preserves error semantics (e.g., division by zero)
+1. Add constant folding in `optimize()` function
+2. Use shared `evaluateBinaryOperation()` from `utils.ts` for consistency
+3. Add tests for constant folding of the new operator
+4. Ensure operator preserves error semantics (e.g., division by zero)
 
 When modifying the optimizer:
 
+- **Never propagate variables** - they can be overridden by context
 - Maintain O(n) complexity guarantee
 - Preserve formal correctness (no semantic changes)
 - Update tests to cover new behavior
-- Document any new optimization strategies
