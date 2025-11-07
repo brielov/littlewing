@@ -2,6 +2,9 @@
  * Littlewing - Minimal arithmetic expression language
  */
 
+// Analyzer
+export { extractInputVariables } from './analyzer'
+
 // AST builders
 export * as ast from './ast'
 
