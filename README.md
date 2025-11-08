@@ -209,23 +209,21 @@ interface ExecutionContext {
 
 The `defaultContext` includes these built-in functions:
 
-**Math:** `ABS`, `CEIL`, `FLOOR`, `ROUND`, `SQRT`, `MIN`, `MAX`, `SIN`, `COS`, `TAN`, `LOG`, `LOG10`, `EXP`
+**Math:** `ABS`, `CEIL`, `FLOOR`, `ROUND`, `SQRT`, `MIN`, `MAX`, `CLAMP`, `SIN`, `COS`, `TAN`, `LOG`, `LOG10`, `EXP`
 
 **Timestamps:** `NOW`, `DATE`
 
-**Time converters (to milliseconds):** `FROM_SECONDS`, `FROM_MINUTES`, `FROM_HOURS`, `FROM_DAYS`, `FROM_WEEKS`, `FROM_MONTHS`, `FROM_YEARS`
+**Time converters (to milliseconds):** `FROM_DAYS`, `FROM_WEEKS`, `FROM_MONTHS`, `FROM_YEARS`
 
 **Date component extractors:** `GET_YEAR`, `GET_MONTH`, `GET_DAY`, `GET_HOUR`, `GET_MINUTE`, `GET_SECOND`, `GET_WEEKDAY`, `GET_MILLISECOND`, `GET_DAY_OF_YEAR`, `GET_QUARTER`
 
-**Time differences (always positive):** `DIFFERENCE_IN_SECONDS`, `DIFFERENCE_IN_MINUTES`, `DIFFERENCE_IN_HOURS`, `DIFFERENCE_IN_DAYS`, `DIFFERENCE_IN_WEEKS`
+**Time differences (always positive):** `DIFFERENCE_IN_SECONDS`, `DIFFERENCE_IN_MINUTES`, `DIFFERENCE_IN_HOURS`, `DIFFERENCE_IN_DAYS`, `DIFFERENCE_IN_WEEKS`, `DIFFERENCE_IN_MONTHS`, `DIFFERENCE_IN_YEARS`
 
 **Start/End of period:** `START_OF_DAY`, `END_OF_DAY`, `START_OF_WEEK`, `START_OF_MONTH`, `END_OF_MONTH`, `START_OF_YEAR`, `END_OF_YEAR`, `START_OF_QUARTER`
 
 **Date arithmetic:** `ADD_DAYS`, `ADD_MONTHS`, `ADD_YEARS`
 
-**Date comparisons:** `IS_BEFORE`, `IS_AFTER`, `IS_SAME_DAY`, `IS_WEEKEND`, `IS_LEAP_YEAR`
-
-**Unix time:** `TO_UNIX_SECONDS`, `FROM_UNIX_SECONDS`
+**Date comparisons:** `IS_SAME_DAY`, `IS_WEEKEND`, `IS_LEAP_YEAR` (use `<`, `>`, `<=`, `>=` operators for before/after comparisons)
 
 ## Use Cases
 

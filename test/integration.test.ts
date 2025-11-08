@@ -44,13 +44,12 @@ total = base + interest
 		const now = 1704067200000
 		const code = `
 start = NOW();
-duration = FROM_MINUTES(5);
+duration = 5 * 60 * 1000;
 end = start + duration
 		`
 		const result = execute(code, {
 			functions: {
 				NOW: () => now,
-				FROM_MINUTES: (m: number) => m * 60 * 1000,
 			},
 		})
 		expect(result).toBe(now + 5 * 60 * 1000)

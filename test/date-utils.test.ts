@@ -14,42 +14,40 @@ describe('Date Utils', () => {
 
 		test('DATE() creates timestamp with defaults', () => {
 			const result = execute('DATE(2024)', defaultContext)
-			expect(typeof result).toBe('number')
-			const date = new Date(result)
-			expect(date.getFullYear()).toBe(2024)
-			expect(date.getMonth()).toBe(0) // January is 0
-			expect(date.getDate()).toBe(1)
+			const expected = Date.UTC(2024, 0, 1, 0, 0, 0, 0)
+			expect(result).toBe(expected)
 		})
 
 		test('DATE() with all components', () => {
 			const result = execute('DATE(2024, 6, 15, 12, 30, 45)', defaultContext)
-			expect(typeof result).toBe('number')
+			const expected = Date.UTC(2024, 5, 15, 12, 30, 45)
+			expect(result).toBe(expected)
+		})
+
+		test('DATE() creates same timestamp regardless of timezone', () => {
+			const result = execute('DATE(2024, 6, 15, 12, 0, 0)', defaultContext)
+			const expected = Date.UTC(2024, 5, 15, 12, 0, 0)
+			expect(result).toBe(expected)
+			expect(result).toBe(1718452800000)
+		})
+
+		test('DATE() at midnight is predictable', () => {
+			const result = execute('DATE(2024, 1, 1)', defaultContext)
+			const expected = Date.UTC(2024, 0, 1, 0, 0, 0, 0)
+			expect(result).toBe(expected)
+			expect(result).toBe(1704067200000)
+		})
+
+		test('DATE() handles leap year Feb 29', () => {
+			const result = execute('DATE(2024, 2, 29)', defaultContext)
 			const date = new Date(result)
-			expect(date.getFullYear()).toBe(2024)
-			expect(date.getMonth()).toBe(5) // June is 5 (0-based)
-			expect(date.getDate()).toBe(15)
-			expect(date.getHours()).toBe(12)
-			expect(date.getMinutes()).toBe(30)
-			expect(date.getSeconds()).toBe(45)
+			expect(date.getUTCFullYear()).toBe(2024)
+			expect(date.getUTCMonth()).toBe(1)
+			expect(date.getUTCDate()).toBe(29)
 		})
 	})
 
 	describe('TIME CONVERTERS', () => {
-		test('FROM_SECONDS()', () => {
-			const result = execute('FROM_SECONDS(5)', defaultContext)
-			expect(result).toBe(5000)
-		})
-
-		test('FROM_MINUTES()', () => {
-			const result = execute('FROM_MINUTES(2)', defaultContext)
-			expect(result).toBe(2 * 60 * 1000)
-		})
-
-		test('FROM_HOURS()', () => {
-			const result = execute('FROM_HOURS(1)', defaultContext)
-			expect(result).toBe(60 * 60 * 1000)
-		})
-
 		test('FROM_DAYS()', () => {
 			const result = execute('FROM_DAYS(1)', defaultContext)
 			expect(result).toBe(24 * 60 * 60 * 1000)
@@ -62,24 +60,18 @@ describe('Date Utils', () => {
 
 		test('FROM_MONTHS', () => {
 			const result = execute('FROM_MONTHS(1)', defaultContext)
-			expect(result).toBe(30 * 24 * 60 * 60 * 1000) // 30 days in ms
+			expect(result).toBe(30 * 24 * 60 * 60 * 1000)
 		})
 
 		test('FROM_YEARS', () => {
 			const result = execute('FROM_YEARS(1)', defaultContext)
-			expect(result).toBe(365 * 24 * 60 * 60 * 1000) // 365 days in ms
-		})
-
-		test('NOW() + FROM_MINUTES()', () => {
-			const result = execute('NOW() + FROM_MINUTES(5)', defaultContext)
-			expect(typeof result).toBe('number')
-			expect(result).toBeGreaterThan(Date.now())
+			expect(result).toBe(365 * 24 * 60 * 60 * 1000)
 		})
 	})
 
 	describe('COMPONENT EXTRACTORS', () => {
 		test('GET_YEAR() extracts year from timestamp', () => {
-			const timestamp = new Date('2024-06-15').getTime()
+			const timestamp = Date.UTC(2024, 5, 15)
 			const result = execute('GET_YEAR(t)', {
 				...defaultContext,
 				variables: { t: timestamp },
@@ -88,16 +80,16 @@ describe('Date Utils', () => {
 		})
 
 		test('GET_MONTH() extracts month from timestamp', () => {
-			const timestamp = new Date('2024-06-15').getTime()
+			const timestamp = Date.UTC(2024, 5, 15)
 			const result = execute('GET_MONTH(t)', {
 				...defaultContext,
 				variables: { t: timestamp },
 			})
-			expect(result).toBe(6) // 1-based: June = 6
+			expect(result).toBe(6)
 		})
 
 		test('GET_DAY() extracts day from timestamp', () => {
-			const timestamp = new Date('2024-06-15').getTime()
+			const timestamp = Date.UTC(2024, 5, 15)
 			const result = execute('GET_DAY(t)', {
 				...defaultContext,
 				variables: { t: timestamp },
@@ -105,8 +97,17 @@ describe('Date Utils', () => {
 			expect(result).toBe(15)
 		})
 
+		test('GET_DAY returns UTC day, not local day', () => {
+			const ts = Date.UTC(2024, 5, 15, 23, 0, 0)
+			const result = execute('GET_DAY(ts)', {
+				...defaultContext,
+				variables: { ts },
+			})
+			expect(result).toBe(15)
+		})
+
 		test('GET_HOUR() extracts hour from timestamp', () => {
-			const timestamp = new Date('2024-06-15T14:30:00').getTime()
+			const timestamp = Date.UTC(2024, 5, 15, 14, 30, 0)
 			const result = execute('GET_HOUR(t)', {
 				...defaultContext,
 				variables: { t: timestamp },
@@ -114,8 +115,17 @@ describe('Date Utils', () => {
 			expect(result).toBe(14)
 		})
 
+		test('GET_HOUR returns UTC hour, not local hour', () => {
+			const ts = Date.UTC(2024, 5, 15, 12, 0, 0)
+			const result = execute('GET_HOUR(ts)', {
+				...defaultContext,
+				variables: { ts },
+			})
+			expect(result).toBe(12)
+		})
+
 		test('GET_MINUTE() extracts minute from timestamp', () => {
-			const timestamp = new Date('2024-06-15T14:30:00').getTime()
+			const timestamp = Date.UTC(2024, 5, 15, 14, 30, 0)
 			const result = execute('GET_MINUTE(t)', {
 				...defaultContext,
 				variables: { t: timestamp },
@@ -124,7 +134,7 @@ describe('Date Utils', () => {
 		})
 
 		test('GET_SECOND() extracts second from timestamp', () => {
-			const timestamp = new Date('2024-06-15T14:30:45').getTime()
+			const timestamp = Date.UTC(2024, 5, 15, 14, 30, 45)
 			const result = execute('GET_SECOND(t)', {
 				...defaultContext,
 				variables: { t: timestamp },
@@ -133,7 +143,7 @@ describe('Date Utils', () => {
 		})
 
 		test('GET_WEEKDAY() extracts day of week', () => {
-			const timestamp = new Date('2024-01-01').getTime() // Monday
+			const timestamp = Date.UTC(2024, 0, 1)
 			const result = execute('GET_WEEKDAY(t)', {
 				...defaultContext,
 				variables: { t: timestamp },
@@ -142,8 +152,17 @@ describe('Date Utils', () => {
 			expect(result).toBeLessThanOrEqual(6)
 		})
 
+		test('GET_WEEKDAY returns UTC day of week', () => {
+			const ts = Date.UTC(2024, 5, 15, 12, 0, 0)
+			const result = execute('GET_WEEKDAY(ts)', {
+				...defaultContext,
+				variables: { ts },
+			})
+			expect(result).toBe(6)
+		})
+
 		test('GET_MILLISECOND', () => {
-			const timestamp = new Date('2024-06-15T14:30:45.123Z').getTime()
+			const timestamp = Date.UTC(2024, 5, 15, 14, 30, 45, 123)
 			const result = execute('GET_MILLISECOND(ts)', {
 				...defaultContext,
 				variables: { ts: timestamp },
@@ -151,28 +170,44 @@ describe('Date Utils', () => {
 			expect(result).toBe(123)
 		})
 
-		test('GET_DAY_OF_YEAR', () => {
-			// Jan 1 = day 1
-			const jan1 = new Date('2024-01-01T10:00:00Z').getTime()
-			expect(
-				execute('GET_DAY_OF_YEAR(ts)', {
-					...defaultContext,
-					variables: { ts: jan1 },
-				}),
-			).toBe(1)
+		test('GET_DAY_OF_YEAR - Jan 1 is day 1', () => {
+			const jan1 = Date.UTC(2024, 0, 1)
+			const result = execute('GET_DAY_OF_YEAR(ts)', {
+				...defaultContext,
+				variables: { ts: jan1 },
+			})
+			expect(result).toBe(1)
+		})
 
-			// Dec 31 in leap year = day 366
-			const dec31 = new Date('2024-12-31T10:00:00Z').getTime()
-			expect(
-				execute('GET_DAY_OF_YEAR(ts)', {
-					...defaultContext,
-					variables: { ts: dec31 },
-				}),
-			).toBe(366)
+		test('GET_DAY_OF_YEAR - Dec 31 in leap year is day 366', () => {
+			const dec31 = Date.UTC(2024, 11, 31)
+			const result = execute('GET_DAY_OF_YEAR(ts)', {
+				...defaultContext,
+				variables: { ts: dec31 },
+			})
+			expect(result).toBe(366)
+		})
+
+		test('GET_DAY_OF_YEAR - Dec 31 in non-leap year is day 365', () => {
+			const ts = Date.UTC(2023, 11, 31)
+			const result = execute('GET_DAY_OF_YEAR(ts)', {
+				...defaultContext,
+				variables: { ts },
+			})
+			expect(result).toBe(365)
+		})
+
+		test('GET_DAY_OF_YEAR - Feb 29 in leap year is day 60', () => {
+			const ts = Date.UTC(2024, 1, 29)
+			const result = execute('GET_DAY_OF_YEAR(ts)', {
+				...defaultContext,
+				variables: { ts },
+			})
+			expect(result).toBe(60)
 		})
 
 		test('GET_QUARTER', () => {
-			const q1 = new Date('2024-02-15T10:00:00Z').getTime()
+			const q1 = Date.UTC(2024, 1, 15)
 			expect(
 				execute('GET_QUARTER(ts)', {
 					...defaultContext,
@@ -180,7 +215,7 @@ describe('Date Utils', () => {
 				}),
 			).toBe(1)
 
-			const q2 = new Date('2024-05-15T10:00:00Z').getTime()
+			const q2 = Date.UTC(2024, 4, 15)
 			expect(
 				execute('GET_QUARTER(ts)', {
 					...defaultContext,
@@ -188,7 +223,7 @@ describe('Date Utils', () => {
 				}),
 			).toBe(2)
 
-			const q3 = new Date('2024-08-15T10:00:00Z').getTime()
+			const q3 = Date.UTC(2024, 7, 15)
 			expect(
 				execute('GET_QUARTER(ts)', {
 					...defaultContext,
@@ -196,7 +231,7 @@ describe('Date Utils', () => {
 				}),
 			).toBe(3)
 
-			const q4 = new Date('2024-11-15T10:00:00Z').getTime()
+			const q4 = Date.UTC(2024, 10, 15)
 			expect(
 				execute('GET_QUARTER(ts)', {
 					...defaultContext,
@@ -208,61 +243,125 @@ describe('Date Utils', () => {
 
 	describe('START/END OF PERIOD', () => {
 		test('START_OF_DAY', () => {
-			// 2024-06-15 14:30:45.123 → 2024-06-15 00:00:00.000
-			const timestamp = new Date('2024-06-15T14:30:45.123Z').getTime()
+			const timestamp = Date.UTC(2024, 5, 15, 14, 30, 45, 123)
 			const result = execute('START_OF_DAY(ts)', {
 				...defaultContext,
 				variables: { ts: timestamp },
 			})
+			const expected = Date.UTC(2024, 5, 15, 0, 0, 0, 0)
+			expect(result).toBe(expected)
+		})
+
+		test('START_OF_DAY uses UTC not local time', () => {
+			const ts = Date.UTC(2024, 5, 15, 23, 30, 0)
+			const result = execute('START_OF_DAY(ts)', {
+				...defaultContext,
+				variables: { ts },
+			})
+			const expected = Date.UTC(2024, 5, 15, 0, 0, 0, 0)
+			expect(result).toBe(expected)
 			const resultDate = new Date(result)
-			expect(resultDate.getUTCHours()).toBe(0)
-			expect(resultDate.getUTCMinutes()).toBe(0)
-			expect(resultDate.getUTCSeconds()).toBe(0)
-			expect(resultDate.getUTCMilliseconds()).toBe(0)
+			expect(resultDate.getUTCDate()).toBe(15)
+		})
+
+		test('START_OF_DAY at year boundary', () => {
+			const ts = Date.UTC(2024, 0, 1, 12, 0, 0)
+			const result = execute('START_OF_DAY(ts)', {
+				...defaultContext,
+				variables: { ts },
+			})
+			const expected = Date.UTC(2024, 0, 1, 0, 0, 0, 0)
+			expect(result).toBe(expected)
 		})
 
 		test('END_OF_DAY', () => {
-			// 2024-06-15 14:30:45.123 → 2024-06-15 23:59:59.999
-			const timestamp = new Date('2024-06-15T14:30:45.123Z').getTime()
+			const timestamp = Date.UTC(2024, 5, 15, 14, 30, 45, 123)
 			const result = execute('END_OF_DAY(ts)', {
 				...defaultContext,
 				variables: { ts: timestamp },
 			})
-			const resultDate = new Date(result)
-			expect(resultDate.getUTCHours()).toBe(23)
-			expect(resultDate.getUTCMinutes()).toBe(59)
-			expect(resultDate.getUTCSeconds()).toBe(59)
-			expect(resultDate.getUTCMilliseconds()).toBe(999)
+			const expected = Date.UTC(2024, 5, 15, 23, 59, 59, 999)
+			expect(result).toBe(expected)
+		})
+
+		test('END_OF_DAY uses UTC not local time', () => {
+			const ts = Date.UTC(2024, 5, 15, 1, 0, 0)
+			const result = execute('END_OF_DAY(ts)', {
+				...defaultContext,
+				variables: { ts },
+			})
+			const expected = Date.UTC(2024, 5, 15, 23, 59, 59, 999)
+			expect(result).toBe(expected)
+		})
+
+		test('END_OF_DAY at year boundary', () => {
+			const ts = Date.UTC(2024, 11, 31, 12, 0, 0)
+			const result = execute('END_OF_DAY(ts)', {
+				...defaultContext,
+				variables: { ts },
+			})
+			const expected = Date.UTC(2024, 11, 31, 23, 59, 59, 999)
+			expect(result).toBe(expected)
 		})
 
 		test('START_OF_WEEK', () => {
-			// 2024-06-15 (Saturday) → 2024-06-09 (Sunday)
-			const timestamp = new Date('2024-06-15T14:30:00Z').getTime()
+			const timestamp = Date.UTC(2024, 5, 15, 14, 30, 0)
 			const result = execute('START_OF_WEEK(ts)', {
 				...defaultContext,
 				variables: { ts: timestamp },
 			})
 			const resultDate = new Date(result)
-			expect(resultDate.getUTCDay()).toBe(0) // Sunday
+			expect(resultDate.getUTCDay()).toBe(0)
 			expect(resultDate.getUTCHours()).toBe(0)
 			expect(resultDate.getUTCMinutes()).toBe(0)
 		})
 
+		test('START_OF_WEEK on Sunday returns same day at midnight', () => {
+			const sunday = Date.UTC(2024, 5, 16, 14, 30, 0)
+			const result = execute('START_OF_WEEK(ts)', {
+				...defaultContext,
+				variables: { ts: sunday },
+			})
+			const expected = Date.UTC(2024, 5, 16, 0, 0, 0, 0)
+			expect(result).toBe(expected)
+		})
+
+		test('START_OF_WEEK on Saturday goes back to previous Sunday', () => {
+			const saturday = Date.UTC(2024, 5, 15, 14, 30, 0)
+			const result = execute('START_OF_WEEK(ts)', {
+				...defaultContext,
+				variables: { ts: saturday },
+			})
+			const resultDate = new Date(result)
+			expect(resultDate.getUTCDay()).toBe(0)
+			expect(resultDate.getUTCDate()).toBe(9)
+			expect(resultDate.getUTCHours()).toBe(0)
+		})
+
+		test('START_OF_WEEK crosses month boundary', () => {
+			const ts = Date.UTC(2024, 6, 2, 10, 0, 0)
+			const result = execute('START_OF_WEEK(ts)', {
+				...defaultContext,
+				variables: { ts },
+			})
+			const resultDate = new Date(result)
+			expect(resultDate.getUTCDay()).toBe(0)
+			expect(resultDate.getUTCMonth()).toBe(5)
+			expect(resultDate.getUTCDate()).toBe(30)
+		})
+
 		test('START_OF_MONTH', () => {
-			// 2024-06-15 → 2024-06-01
-			const timestamp = new Date('2024-06-15T14:30:00Z').getTime()
+			const timestamp = Date.UTC(2024, 5, 15, 14, 30, 0)
 			const result = execute('START_OF_MONTH(ts)', {
 				...defaultContext,
 				variables: { ts: timestamp },
 			})
-			const resultDate = new Date(result)
-			expect(resultDate.getUTCDate()).toBe(1)
-			expect(resultDate.getUTCHours()).toBe(0)
+			const expected = Date.UTC(2024, 5, 1, 0, 0, 0, 0)
+			expect(result).toBe(expected)
 		})
 
 		test('END_OF_MONTH', () => {
-			// 2024-06-15 → 2024-06-30 (June has 30 days)
-			const timestamp = new Date('2024-06-15T14:30:00Z').getTime()
+			const timestamp = Date.UTC(2024, 5, 15, 14, 30, 0)
 			const result = execute('END_OF_MONTH(ts)', {
 				...defaultContext,
 				variables: { ts: timestamp },
@@ -271,53 +370,82 @@ describe('Date Utils', () => {
 			expect(resultDate.getUTCDate()).toBe(30)
 			expect(resultDate.getUTCHours()).toBe(23)
 			expect(resultDate.getUTCMinutes()).toBe(59)
+			expect(resultDate.getUTCSeconds()).toBe(59)
+			expect(resultDate.getUTCMilliseconds()).toBe(999)
 		})
 
-		test('END_OF_MONTH handles leap year', () => {
-			// 2024-02-15 → 2024-02-29 (2024 is leap year)
-			const timestamp = new Date('2024-02-15T14:30:00Z').getTime()
+		test('END_OF_MONTH for February in leap year', () => {
+			const feb15 = Date.UTC(2024, 1, 15, 10, 0, 0)
 			const result = execute('END_OF_MONTH(ts)', {
 				...defaultContext,
-				variables: { ts: timestamp },
+				variables: { ts: feb15 },
 			})
 			const resultDate = new Date(result)
 			expect(resultDate.getUTCDate()).toBe(29)
+			expect(resultDate.getUTCHours()).toBe(23)
+			expect(resultDate.getUTCMinutes()).toBe(59)
+			expect(resultDate.getUTCSeconds()).toBe(59)
+			expect(resultDate.getUTCMilliseconds()).toBe(999)
+		})
+
+		test('END_OF_MONTH for February in non-leap year', () => {
+			const feb15 = Date.UTC(2023, 1, 15, 10, 0, 0)
+			const result = execute('END_OF_MONTH(ts)', {
+				...defaultContext,
+				variables: { ts: feb15 },
+			})
+			const resultDate = new Date(result)
+			expect(resultDate.getUTCDate()).toBe(28)
+		})
+
+		test('END_OF_MONTH for month with 31 days', () => {
+			const jan15 = Date.UTC(2024, 0, 15, 10, 0, 0)
+			const result = execute('END_OF_MONTH(ts)', {
+				...defaultContext,
+				variables: { ts: jan15 },
+			})
+			const resultDate = new Date(result)
+			expect(resultDate.getUTCDate()).toBe(31)
+		})
+
+		test('END_OF_MONTH for month with 30 days', () => {
+			const jun15 = Date.UTC(2024, 5, 15, 10, 0, 0)
+			const result = execute('END_OF_MONTH(ts)', {
+				...defaultContext,
+				variables: { ts: jun15 },
+			})
+			const resultDate = new Date(result)
+			expect(resultDate.getUTCDate()).toBe(30)
 		})
 
 		test('START_OF_YEAR', () => {
-			// 2024-06-15 → 2024-01-01
-			const timestamp = new Date('2024-06-15T14:30:00Z').getTime()
+			const timestamp = Date.UTC(2024, 5, 15, 14, 30, 0)
 			const result = execute('START_OF_YEAR(ts)', {
 				...defaultContext,
 				variables: { ts: timestamp },
 			})
-			const resultDate = new Date(result)
-			expect(resultDate.getUTCFullYear()).toBe(2024)
-			expect(resultDate.getUTCMonth()).toBe(0) // January
-			expect(resultDate.getUTCDate()).toBe(1)
+			const expected = Date.UTC(2024, 0, 1, 0, 0, 0, 0)
+			expect(result).toBe(expected)
 		})
 
 		test('END_OF_YEAR', () => {
-			// 2024-06-15 → 2024-12-31
-			const timestamp = new Date('2024-06-15T14:30:00Z').getTime()
+			const timestamp = Date.UTC(2024, 5, 15, 14, 30, 0)
 			const result = execute('END_OF_YEAR(ts)', {
 				...defaultContext,
 				variables: { ts: timestamp },
 			})
-			const resultDate = new Date(result)
-			expect(resultDate.getUTCMonth()).toBe(11) // December
-			expect(resultDate.getUTCDate()).toBe(31)
+			const expected = Date.UTC(2024, 11, 31, 23, 59, 59, 999)
+			expect(result).toBe(expected)
 		})
 
 		test('START_OF_QUARTER', () => {
-			// Q2 starts April 1
-			const mayTimestamp = new Date('2024-05-15T10:00:00Z').getTime()
+			const mayTimestamp = Date.UTC(2024, 4, 15, 10, 0, 0)
 			const result = execute('START_OF_QUARTER(ts)', {
 				...defaultContext,
 				variables: { ts: mayTimestamp },
 			})
 			const resultDate = new Date(result)
-			expect(resultDate.getUTCMonth()).toBe(3) // April (0-indexed)
+			expect(resultDate.getUTCMonth()).toBe(3)
 			expect(resultDate.getUTCDate()).toBe(1)
 			expect(resultDate.getUTCHours()).toBe(0)
 		})
@@ -325,7 +453,7 @@ describe('Date Utils', () => {
 
 	describe('DATE ARITHMETIC', () => {
 		test('ADD_DAYS positive', () => {
-			const timestamp = new Date('2024-06-15T14:30:00Z').getTime()
+			const timestamp = Date.UTC(2024, 5, 15, 14, 30, 0)
 			const result = execute('ADD_DAYS(ts, 7)', {
 				...defaultContext,
 				variables: { ts: timestamp },
@@ -335,7 +463,7 @@ describe('Date Utils', () => {
 		})
 
 		test('ADD_DAYS negative', () => {
-			const timestamp = new Date('2024-06-15T14:30:00Z').getTime()
+			const timestamp = Date.UTC(2024, 5, 15, 14, 30, 0)
 			const result = execute('ADD_DAYS(ts, -5)', {
 				...defaultContext,
 				variables: { ts: timestamp },
@@ -344,54 +472,100 @@ describe('Date Utils', () => {
 			expect(resultDate.getUTCDate()).toBe(10)
 		})
 
+		test('ADD_DAYS maintains UTC consistency', () => {
+			const ts = Date.UTC(2024, 5, 15, 14, 30, 0)
+			const result = execute('ADD_DAYS(ts, 7)', {
+				...defaultContext,
+				variables: { ts },
+			})
+			const resultDate = new Date(result)
+			expect(resultDate.getUTCDate()).toBe(22)
+			expect(resultDate.getUTCHours()).toBe(14)
+			expect(resultDate.getUTCMinutes()).toBe(30)
+		})
+
 		test('ADD_MONTHS positive', () => {
-			const timestamp = new Date('2024-06-15T14:30:00Z').getTime()
+			const timestamp = Date.UTC(2024, 5, 15, 14, 30, 0)
 			const result = execute('ADD_MONTHS(ts, 2)', {
 				...defaultContext,
 				variables: { ts: timestamp },
 			})
 			const resultDate = new Date(result)
-			expect(resultDate.getUTCMonth()).toBe(7) // August (0-indexed)
+			expect(resultDate.getUTCMonth()).toBe(7)
 			expect(resultDate.getUTCDate()).toBe(15)
 		})
 
 		test('ADD_MONTHS negative', () => {
-			const timestamp = new Date('2024-06-15T14:30:00Z').getTime()
+			const timestamp = Date.UTC(2024, 5, 15, 14, 30, 0)
 			const result = execute('ADD_MONTHS(ts, -3)', {
 				...defaultContext,
 				variables: { ts: timestamp },
 			})
 			const resultDate = new Date(result)
-			expect(resultDate.getUTCMonth()).toBe(2) // March
+			expect(resultDate.getUTCMonth()).toBe(2)
 		})
 
 		test('ADD_MONTHS handles month-end overflow', () => {
-			// Jan 31 + 1 month → March 2 (JavaScript Date overflow behavior)
-			// This is expected: Feb only has 29 days in 2024, so 31 → 29+2 = March 2
-			const timestamp = new Date('2024-01-31T14:30:00Z').getTime()
+			const timestamp = Date.UTC(2024, 0, 31, 14, 30, 0)
 			const result = execute('ADD_MONTHS(ts, 1)', {
 				...defaultContext,
 				variables: { ts: timestamp },
 			})
 			const resultDate = new Date(result)
-			expect(resultDate.getUTCMonth()).toBe(2) // March (overflow from Feb)
-			expect(resultDate.getUTCDate()).toBe(2) // March 2nd
+			expect(resultDate.getUTCMonth()).toBe(2)
+			expect(resultDate.getUTCDate()).toBe(2)
+		})
+
+		test('ADD_MONTHS with month-end overflow (Jan 31 + 1 month)', () => {
+			const jan31 = Date.UTC(2024, 0, 31, 10, 0, 0)
+			const result = execute('ADD_MONTHS(ts, 1)', {
+				...defaultContext,
+				variables: { ts: jan31 },
+			})
+			const resultDate = new Date(result)
+			expect(resultDate.getUTCMonth()).toBe(2)
+			expect(resultDate.getUTCDate()).toBe(2)
+		})
+
+		test('ADD_MONTHS negative crosses year boundary', () => {
+			const feb2024 = Date.UTC(2024, 1, 15, 10, 0, 0)
+			const result = execute('ADD_MONTHS(ts, -3)', {
+				...defaultContext,
+				variables: { ts: feb2024 },
+			})
+			const resultDate = new Date(result)
+			expect(resultDate.getUTCFullYear()).toBe(2023)
+			expect(resultDate.getUTCMonth()).toBe(10)
+			expect(resultDate.getUTCDate()).toBe(15)
+		})
+
+		test('ADD_MONTHS preserves time components', () => {
+			const ts = Date.UTC(2024, 0, 15, 14, 30, 45, 123)
+			const result = execute('ADD_MONTHS(ts, 2)', {
+				...defaultContext,
+				variables: { ts },
+			})
+			const resultDate = new Date(result)
+			expect(resultDate.getUTCHours()).toBe(14)
+			expect(resultDate.getUTCMinutes()).toBe(30)
+			expect(resultDate.getUTCSeconds()).toBe(45)
+			expect(resultDate.getUTCMilliseconds()).toBe(123)
 		})
 
 		test('ADD_YEARS positive', () => {
-			const timestamp = new Date('2024-06-15T14:30:00Z').getTime()
+			const timestamp = Date.UTC(2024, 5, 15, 14, 30, 0)
 			const result = execute('ADD_YEARS(ts, 5)', {
 				...defaultContext,
 				variables: { ts: timestamp },
 			})
 			const resultDate = new Date(result)
 			expect(resultDate.getUTCFullYear()).toBe(2029)
-			expect(resultDate.getUTCMonth()).toBe(5) // June
+			expect(resultDate.getUTCMonth()).toBe(5)
 			expect(resultDate.getUTCDate()).toBe(15)
 		})
 
 		test('ADD_YEARS negative', () => {
-			const timestamp = new Date('2024-06-15T14:30:00Z').getTime()
+			const timestamp = Date.UTC(2024, 5, 15, 14, 30, 0)
 			const result = execute('ADD_YEARS(ts, -2)', {
 				...defaultContext,
 				variables: { ts: timestamp },
@@ -399,12 +573,36 @@ describe('Date Utils', () => {
 			const resultDate = new Date(result)
 			expect(resultDate.getUTCFullYear()).toBe(2022)
 		})
+
+		test('ADD_YEARS from Feb 29 to non-leap year', () => {
+			const feb29_2024 = Date.UTC(2024, 1, 29, 10, 0, 0)
+			const result = execute('ADD_YEARS(ts, 1)', {
+				...defaultContext,
+				variables: { ts: feb29_2024 },
+			})
+			const resultDate = new Date(result)
+			expect(resultDate.getUTCFullYear()).toBe(2025)
+			expect(resultDate.getUTCMonth()).toBe(2)
+			expect(resultDate.getUTCDate()).toBe(1)
+		})
+
+		test('ADD_YEARS negative preserves date', () => {
+			const ts = Date.UTC(2024, 5, 15, 10, 0, 0)
+			const result = execute('ADD_YEARS(ts, -10)', {
+				...defaultContext,
+				variables: { ts },
+			})
+			const resultDate = new Date(result)
+			expect(resultDate.getUTCFullYear()).toBe(2014)
+			expect(resultDate.getUTCMonth()).toBe(5)
+			expect(resultDate.getUTCDate()).toBe(15)
+		})
 	})
 
 	describe('TIME DIFFERENCES', () => {
 		test('DIFFERENCE_IN_SECONDS', () => {
-			const ts1 = new Date('2024-06-15T10:00:00Z').getTime()
-			const ts2 = new Date('2024-06-15T10:00:30Z').getTime()
+			const ts1 = Date.UTC(2024, 5, 15, 10, 0, 0)
+			const ts2 = Date.UTC(2024, 5, 15, 10, 0, 30)
 			const result = execute('DIFFERENCE_IN_SECONDS(ts1, ts2)', {
 				...defaultContext,
 				variables: { ts1, ts2 },
@@ -412,9 +610,19 @@ describe('Date Utils', () => {
 			expect(result).toBe(30)
 		})
 
+		test('DIFFERENCE_IN_SECONDS floors fractional seconds', () => {
+			const ts1 = Date.UTC(2024, 5, 15, 10, 0, 0, 0)
+			const ts2 = Date.UTC(2024, 5, 15, 10, 0, 10, 750)
+			const result = execute('DIFFERENCE_IN_SECONDS(ts1, ts2)', {
+				...defaultContext,
+				variables: { ts1, ts2 },
+			})
+			expect(result).toBe(10)
+		})
+
 		test('DIFFERENCE_IN_MINUTES', () => {
-			const ts1 = new Date('2024-06-15T10:00:00Z').getTime()
-			const ts2 = new Date('2024-06-15T10:15:00Z').getTime()
+			const ts1 = Date.UTC(2024, 5, 15, 10, 0, 0)
+			const ts2 = Date.UTC(2024, 5, 15, 10, 15, 0)
 			const result = execute('DIFFERENCE_IN_MINUTES(ts1, ts2)', {
 				...defaultContext,
 				variables: { ts1, ts2 },
@@ -422,9 +630,19 @@ describe('Date Utils', () => {
 			expect(result).toBe(15)
 		})
 
+		test('DIFFERENCE_IN_MINUTES floors fractional minutes', () => {
+			const ts1 = Date.UTC(2024, 5, 15, 10, 0, 0)
+			const ts2 = Date.UTC(2024, 5, 15, 10, 5, 45)
+			const result = execute('DIFFERENCE_IN_MINUTES(ts1, ts2)', {
+				...defaultContext,
+				variables: { ts1, ts2 },
+			})
+			expect(result).toBe(5)
+		})
+
 		test('DIFFERENCE_IN_HOURS', () => {
-			const ts1 = new Date('2024-06-15T10:00:00Z').getTime()
-			const ts2 = new Date('2024-06-15T14:00:00Z').getTime()
+			const ts1 = Date.UTC(2024, 5, 15, 10, 0, 0)
+			const ts2 = Date.UTC(2024, 5, 15, 14, 0, 0)
 			const result = execute('DIFFERENCE_IN_HOURS(ts1, ts2)', {
 				...defaultContext,
 				variables: { ts1, ts2 },
@@ -432,9 +650,49 @@ describe('Date Utils', () => {
 			expect(result).toBe(4)
 		})
 
+		test('DIFFERENCE_IN_HOURS floors fractional hours', () => {
+			const ts1 = Date.UTC(2024, 5, 15, 10, 0, 0)
+			const ts2 = Date.UTC(2024, 5, 15, 13, 45, 30)
+			const result = execute('DIFFERENCE_IN_HOURS(ts1, ts2)', {
+				...defaultContext,
+				variables: { ts1, ts2 },
+			})
+			expect(result).toBe(3)
+		})
+
 		test('DIFFERENCE_IN_DAYS', () => {
-			const ts1 = new Date('2024-06-15T10:00:00Z').getTime()
-			const ts2 = new Date('2024-06-20T10:00:00Z').getTime()
+			const ts1 = Date.UTC(2024, 5, 15, 10, 0, 0)
+			const ts2 = Date.UTC(2024, 5, 20, 10, 0, 0)
+			const result = execute('DIFFERENCE_IN_DAYS(ts1, ts2)', {
+				...defaultContext,
+				variables: { ts1, ts2 },
+			})
+			expect(result).toBe(5)
+		})
+
+		test('DIFFERENCE_IN_DAYS floors fractional days', () => {
+			const ts1 = Date.UTC(2024, 5, 15, 10, 0, 0)
+			const ts2 = Date.UTC(2024, 5, 20, 14, 30, 45)
+			const result = execute('DIFFERENCE_IN_DAYS(ts1, ts2)', {
+				...defaultContext,
+				variables: { ts1, ts2 },
+			})
+			expect(result).toBe(5)
+		})
+
+		test('DIFFERENCE_IN_DAYS is timezone-independent', () => {
+			const ts1 = Date.UTC(2024, 5, 10, 12, 0, 0)
+			const ts2 = Date.UTC(2024, 5, 15, 12, 0, 0)
+			const result = execute('DIFFERENCE_IN_DAYS(ts1, ts2)', {
+				...defaultContext,
+				variables: { ts1, ts2 },
+			})
+			expect(result).toBe(5)
+		})
+
+		test('DIFFERENCE_IN_DAYS partial days are floored consistently', () => {
+			const ts1 = Date.UTC(2024, 5, 10, 10, 0, 0)
+			const ts2 = Date.UTC(2024, 5, 15, 16, 30, 0)
 			const result = execute('DIFFERENCE_IN_DAYS(ts1, ts2)', {
 				...defaultContext,
 				variables: { ts1, ts2 },
@@ -443,8 +701,8 @@ describe('Date Utils', () => {
 		})
 
 		test('DIFFERENCE_IN_WEEKS', () => {
-			const ts1 = new Date('2024-06-01T10:00:00Z').getTime()
-			const ts2 = new Date('2024-06-22T10:00:00Z').getTime()
+			const ts1 = Date.UTC(2024, 5, 1, 10, 0, 0)
+			const ts2 = Date.UTC(2024, 5, 22, 10, 0, 0)
 			const result = execute('DIFFERENCE_IN_WEEKS(ts1, ts2)', {
 				...defaultContext,
 				variables: { ts1, ts2 },
@@ -452,61 +710,141 @@ describe('Date Utils', () => {
 			expect(result).toBe(3)
 		})
 
+		test('DIFFERENCE_IN_WEEKS floors fractional weeks', () => {
+			const ts1 = Date.UTC(2024, 5, 1, 10, 0, 0)
+			const ts2 = Date.UTC(2024, 5, 23, 14, 0, 0)
+			const result = execute('DIFFERENCE_IN_WEEKS(ts1, ts2)', {
+				...defaultContext,
+				variables: { ts1, ts2 },
+			})
+			expect(result).toBe(3)
+		})
+
+		test('DIFFERENCE_IN_MONTHS - exact month boundaries', () => {
+			const ts1 = Date.UTC(2024, 0, 15)
+			const ts2 = Date.UTC(2024, 3, 15)
+			const result = execute('DIFFERENCE_IN_MONTHS(ts1, ts2)', {
+				...defaultContext,
+				variables: { ts1, ts2 },
+			})
+			expect(result).toBe(3)
+		})
+
+		test('DIFFERENCE_IN_MONTHS - day not reached yet', () => {
+			const ts1 = Date.UTC(2024, 0, 15)
+			const ts2 = Date.UTC(2024, 1, 14)
+			const result = execute('DIFFERENCE_IN_MONTHS(ts1, ts2)', {
+				...defaultContext,
+				variables: { ts1, ts2 },
+			})
+			expect(result).toBe(0)
+		})
+
+		test('DIFFERENCE_IN_MONTHS - end of month edge case', () => {
+			const ts1 = Date.UTC(2024, 0, 31)
+			const ts2 = Date.UTC(2024, 1, 28)
+			const result = execute('DIFFERENCE_IN_MONTHS(ts1, ts2)', {
+				...defaultContext,
+				variables: { ts1, ts2 },
+			})
+			expect(result).toBe(0)
+		})
+
+		test('DIFFERENCE_IN_MONTHS - crosses year boundary', () => {
+			const ts1 = Date.UTC(2023, 10, 15)
+			const ts2 = Date.UTC(2024, 1, 15)
+			const result = execute('DIFFERENCE_IN_MONTHS(ts1, ts2)', {
+				...defaultContext,
+				variables: { ts1, ts2 },
+			})
+			expect(result).toBe(3)
+		})
+
+		test('DIFFERENCE_IN_MONTHS - returns absolute value', () => {
+			const ts1 = Date.UTC(2024, 3, 15)
+			const ts2 = Date.UTC(2024, 0, 15)
+			const result = execute('DIFFERENCE_IN_MONTHS(ts1, ts2)', {
+				...defaultContext,
+				variables: { ts1, ts2 },
+			})
+			expect(result).toBe(3)
+		})
+
+		test('DIFFERENCE_IN_YEARS - exact year boundaries', () => {
+			const ts1 = Date.UTC(2020, 5, 15)
+			const ts2 = Date.UTC(2024, 5, 15)
+			const result = execute('DIFFERENCE_IN_YEARS(ts1, ts2)', {
+				...defaultContext,
+				variables: { ts1, ts2 },
+			})
+			expect(result).toBe(4)
+		})
+
+		test('DIFFERENCE_IN_YEARS - day not reached yet', () => {
+			const ts1 = Date.UTC(2020, 5, 15)
+			const ts2 = Date.UTC(2024, 5, 14)
+			const result = execute('DIFFERENCE_IN_YEARS(ts1, ts2)', {
+				...defaultContext,
+				variables: { ts1, ts2 },
+			})
+			expect(result).toBe(3)
+		})
+
+		test('DIFFERENCE_IN_YEARS - leap year edge case', () => {
+			const ts1 = Date.UTC(2020, 1, 29)
+			const ts2 = Date.UTC(2021, 1, 28)
+			const result = execute('DIFFERENCE_IN_YEARS(ts1, ts2)', {
+				...defaultContext,
+				variables: { ts1, ts2 },
+			})
+			expect(result).toBe(0)
+		})
+
+		test('DIFFERENCE_IN_YEARS - leap year to next leap year', () => {
+			const ts1 = Date.UTC(2020, 1, 29)
+			const ts2 = Date.UTC(2024, 1, 29)
+			const result = execute('DIFFERENCE_IN_YEARS(ts1, ts2)', {
+				...defaultContext,
+				variables: { ts1, ts2 },
+			})
+			expect(result).toBe(4)
+		})
+
 		test('DIFFERENCE functions return absolute values', () => {
-			const ts1 = new Date('2024-06-15T14:00:00Z').getTime()
-			const ts2 = new Date('2024-06-15T10:00:00Z').getTime()
+			const ts1 = Date.UTC(2024, 5, 15, 14, 0, 0)
+			const ts2 = Date.UTC(2024, 5, 15, 10, 0, 0)
 			const result = execute('DIFFERENCE_IN_HOURS(ts1, ts2)', {
 				...defaultContext,
 				variables: { ts1, ts2 },
 			})
-			expect(result).toBe(4) // Should be 4, not -4
+			expect(result).toBe(4)
 		})
 	})
 
 	describe('DATE COMPARISON', () => {
-		test('IS_BEFORE returns 1 when ts1 < ts2', () => {
-			const ts1 = new Date('2024-06-15T10:00:00Z').getTime()
-			const ts2 = new Date('2024-06-15T14:00:00Z').getTime()
-			const result = execute('IS_BEFORE(ts1, ts2)', {
+		test('Timestamp comparison using < operator', () => {
+			const ts1 = Date.UTC(2024, 5, 15, 10, 0, 0)
+			const ts2 = Date.UTC(2024, 5, 15, 14, 0, 0)
+			const result = execute('ts1 < ts2 ? 1 : 0', {
 				...defaultContext,
 				variables: { ts1, ts2 },
 			})
 			expect(result).toBe(1)
 		})
 
-		test('IS_BEFORE returns 0 when ts1 >= ts2', () => {
-			const ts1 = new Date('2024-06-15T14:00:00Z').getTime()
-			const ts2 = new Date('2024-06-15T10:00:00Z').getTime()
-			const result = execute('IS_BEFORE(ts1, ts2)', {
-				...defaultContext,
-				variables: { ts1, ts2 },
-			})
-			expect(result).toBe(0)
-		})
-
-		test('IS_AFTER returns 1 when ts1 > ts2', () => {
-			const ts1 = new Date('2024-06-15T14:00:00Z').getTime()
-			const ts2 = new Date('2024-06-15T10:00:00Z').getTime()
-			const result = execute('IS_AFTER(ts1, ts2)', {
+		test('Timestamp comparison using > operator', () => {
+			const ts1 = Date.UTC(2024, 5, 15, 14, 0, 0)
+			const ts2 = Date.UTC(2024, 5, 15, 10, 0, 0)
+			const result = execute('ts1 > ts2 ? 1 : 0', {
 				...defaultContext,
 				variables: { ts1, ts2 },
 			})
 			expect(result).toBe(1)
-		})
-
-		test('IS_AFTER returns 0 when ts1 <= ts2', () => {
-			const ts1 = new Date('2024-06-15T10:00:00Z').getTime()
-			const ts2 = new Date('2024-06-15T14:00:00Z').getTime()
-			const result = execute('IS_AFTER(ts1, ts2)', {
-				...defaultContext,
-				variables: { ts1, ts2 },
-			})
-			expect(result).toBe(0)
 		})
 
 		test('IS_SAME_DAY returns 1 for same calendar day', () => {
-			const ts1 = new Date('2024-06-15T10:00:00Z').getTime()
-			const ts2 = new Date('2024-06-15T23:00:00Z').getTime()
+			const ts1 = Date.UTC(2024, 5, 15, 10, 0, 0)
+			const ts2 = Date.UTC(2024, 5, 15, 23, 0, 0)
 			const result = execute('IS_SAME_DAY(ts1, ts2)', {
 				...defaultContext,
 				variables: { ts1, ts2 },
@@ -515,8 +853,28 @@ describe('Date Utils', () => {
 		})
 
 		test('IS_SAME_DAY returns 0 for different days', () => {
-			const ts1 = new Date('2024-06-15T23:00:00Z').getTime()
-			const ts2 = new Date('2024-06-16T01:00:00Z').getTime()
+			const ts1 = Date.UTC(2024, 5, 15, 23, 0, 0)
+			const ts2 = Date.UTC(2024, 5, 16, 1, 0, 0)
+			const result = execute('IS_SAME_DAY(ts1, ts2)', {
+				...defaultContext,
+				variables: { ts1, ts2 },
+			})
+			expect(result).toBe(0)
+		})
+
+		test('IS_SAME_DAY uses UTC, not local time', () => {
+			const ts1 = Date.UTC(2024, 5, 15, 1, 0, 0)
+			const ts2 = Date.UTC(2024, 5, 15, 23, 0, 0)
+			const result = execute('IS_SAME_DAY(ts1, ts2)', {
+				...defaultContext,
+				variables: { ts1, ts2 },
+			})
+			expect(result).toBe(1)
+		})
+
+		test('IS_SAME_DAY returns 0 for adjacent days at midnight', () => {
+			const ts1 = Date.UTC(2024, 5, 15, 23, 59, 59, 999)
+			const ts2 = Date.UTC(2024, 5, 16, 0, 0, 0, 0)
 			const result = execute('IS_SAME_DAY(ts1, ts2)', {
 				...defaultContext,
 				variables: { ts1, ts2 },
@@ -525,7 +883,7 @@ describe('Date Utils', () => {
 		})
 
 		test('IS_WEEKEND returns 1 for Saturday', () => {
-			const saturday = new Date('2024-06-15T10:00:00Z').getTime() // June 15, 2024 is Saturday
+			const saturday = Date.UTC(2024, 5, 15, 10, 0, 0)
 			const result = execute('IS_WEEKEND(ts)', {
 				...defaultContext,
 				variables: { ts: saturday },
@@ -534,7 +892,7 @@ describe('Date Utils', () => {
 		})
 
 		test('IS_WEEKEND returns 1 for Sunday', () => {
-			const sunday = new Date('2024-06-16T10:00:00Z').getTime() // June 16, 2024 is Sunday
+			const sunday = Date.UTC(2024, 5, 16, 10, 0, 0)
 			const result = execute('IS_WEEKEND(ts)', {
 				...defaultContext,
 				variables: { ts: sunday },
@@ -543,7 +901,7 @@ describe('Date Utils', () => {
 		})
 
 		test('IS_WEEKEND returns 0 for weekday', () => {
-			const monday = new Date('2024-06-17T10:00:00Z').getTime() // June 17, 2024 is Monday
+			const monday = Date.UTC(2024, 5, 17, 10, 0, 0)
 			const result = execute('IS_WEEKEND(ts)', {
 				...defaultContext,
 				variables: { ts: monday },
@@ -551,8 +909,35 @@ describe('Date Utils', () => {
 			expect(result).toBe(0)
 		})
 
+		test('IS_WEEKEND uses UTC day of week', () => {
+			const saturday = Date.UTC(2024, 5, 15, 12, 0, 0)
+			const result = execute('IS_WEEKEND(ts)', {
+				...defaultContext,
+				variables: { ts: saturday },
+			})
+			expect(result).toBe(1)
+		})
+
+		test('IS_WEEKEND at day boundary', () => {
+			const friday = Date.UTC(2024, 5, 14, 23, 59, 59, 999)
+			expect(
+				execute('IS_WEEKEND(ts)', {
+					...defaultContext,
+					variables: { ts: friday },
+				}),
+			).toBe(0)
+
+			const saturday = Date.UTC(2024, 5, 15, 0, 0, 0, 0)
+			expect(
+				execute('IS_WEEKEND(ts)', {
+					...defaultContext,
+					variables: { ts: saturday },
+				}),
+			).toBe(1)
+		})
+
 		test('IS_LEAP_YEAR returns 1 for leap year', () => {
-			const ts2024 = new Date('2024-06-15T10:00:00Z').getTime()
+			const ts2024 = Date.UTC(2024, 5, 15, 10, 0, 0)
 			const result = execute('IS_LEAP_YEAR(ts)', {
 				...defaultContext,
 				variables: { ts: ts2024 },
@@ -561,7 +946,7 @@ describe('Date Utils', () => {
 		})
 
 		test('IS_LEAP_YEAR returns 0 for non-leap year', () => {
-			const ts2023 = new Date('2023-06-15T10:00:00Z').getTime()
+			const ts2023 = Date.UTC(2023, 5, 15, 10, 0, 0)
 			const result = execute('IS_LEAP_YEAR(ts)', {
 				...defaultContext,
 				variables: { ts: ts2023 },
@@ -570,8 +955,7 @@ describe('Date Utils', () => {
 		})
 
 		test('IS_LEAP_YEAR handles century years', () => {
-			// 2000 was leap year (divisible by 400)
-			const ts2000 = new Date('2000-06-15T10:00:00Z').getTime()
+			const ts2000 = Date.UTC(2000, 5, 15, 10, 0, 0)
 			expect(
 				execute('IS_LEAP_YEAR(ts)', {
 					...defaultContext,
@@ -579,8 +963,7 @@ describe('Date Utils', () => {
 				}),
 			).toBe(1)
 
-			// 1900 was not leap year (divisible by 100 but not 400)
-			const ts1900 = new Date('1900-06-15T10:00:00Z').getTime()
+			const ts1900 = Date.UTC(1900, 5, 15, 10, 0, 0)
 			expect(
 				execute('IS_LEAP_YEAR(ts)', {
 					...defaultContext,
@@ -590,39 +973,72 @@ describe('Date Utils', () => {
 		})
 	})
 
-	describe('UNIX TIME CONVERSIONS', () => {
-		test('TO_UNIX_SECONDS', () => {
-			const timestamp = 1718460000000 // milliseconds
-			const result = execute('TO_UNIX_SECONDS(ts)', {
-				...defaultContext,
-				variables: { ts: timestamp },
+	describe('TIMESTAMP ARITHMETIC', () => {
+		test('add milliseconds to timestamp', () => {
+			const timestamp = 1704067200000
+			const result = execute('t + 1000', {
+				variables: { t: timestamp },
 			})
-			expect(result).toBe(1718460000) // seconds
+			expect(result).toBe(timestamp + 1000)
 		})
 
-		test('FROM_UNIX_SECONDS', () => {
-			const unixSeconds = 1718460000
-			const result = execute('FROM_UNIX_SECONDS(s)', {
-				...defaultContext,
-				variables: { s: unixSeconds },
+		test('subtract milliseconds from timestamp', () => {
+			const timestamp = 1704067200000
+			const result = execute('t - 1000', {
+				variables: { t: timestamp },
 			})
-			expect(result).toBe(1718460000000) // milliseconds
+			expect(result).toBe(timestamp - 1000)
 		})
 
-		test('TO_UNIX_SECONDS and FROM_UNIX_SECONDS round-trip', () => {
-			const timestamp = Date.now()
-			const result = execute('FROM_UNIX_SECONDS(TO_UNIX_SECONDS(ts))', {
-				...defaultContext,
-				variables: { ts: timestamp },
+		test('difference between two timestamps', () => {
+			const t1 = 1704067200000
+			const t2 = 1704153600000
+			const result = execute('t2 - t1', {
+				variables: { t1, t2 },
 			})
-			// Should be within 1 second due to floor in TO_UNIX_SECONDS
-			expect(Math.abs(result - timestamp)).toBeLessThan(1000)
+			expect(result).toBe(t2 - t1)
+		})
+
+		test('NOW() returns timestamp', () => {
+			const now = 1704067200000
+			const result = execute('NOW()', {
+				functions: { NOW: () => now },
+			})
+			expect(result).toBe(now)
+		})
+
+		test('timestamp + time duration', () => {
+			const now = 1704067200000
+			const result = execute('NOW() + 5 * 60 * 1000', {
+				functions: {
+					NOW: () => now,
+				},
+			})
+			expect(result).toBe(now + 5 * 60 * 1000)
+		})
+
+		test('complex date arithmetic', () => {
+			const now = 1704067200000
+			const result = execute('NOW() + 2 * 60 * 60 * 1000 + 30 * 60 * 1000', {
+				functions: {
+					NOW: () => now,
+				},
+			})
+			expect(result).toBe(now + 2 * 60 * 60 * 1000 + 30 * 60 * 1000)
+		})
+
+		test('calculate deadline', () => {
+			const start = 1704067200000
+			const duration = 7 * 24 * 60 * 60 * 1000
+			const result = execute('start + duration', {
+				variables: { start, duration },
+			})
+			expect(result).toBe(start + duration)
 		})
 	})
 
 	describe('INTEGRATION TESTS', () => {
 		test('Calculate business days until deadline', () => {
-			// Get start of next week + 5 days (Friday)
 			const today = Date.now()
 			const result = execute('ADD_DAYS(START_OF_WEEK(NOW()), 12)', {
 				...defaultContext,
@@ -631,8 +1047,7 @@ describe('Date Utils', () => {
 		})
 
 		test('Check if timestamp is in working hours', () => {
-			const workdayMorning = new Date('2024-06-17T09:00:00Z').getTime() // Monday 9 AM
-			// GET_HOUR(ts) >= 9 && GET_HOUR(ts) < 17 && !IS_WEEKEND(ts)
+			const workdayMorning = Date.UTC(2024, 5, 17, 9, 0, 0)
 			const result = execute(
 				'GET_HOUR(ts) >= 9 && GET_HOUR(ts) < 17 && IS_WEEKEND(ts) == 0 ? 1 : 0',
 				{
@@ -643,11 +1058,10 @@ describe('Date Utils', () => {
 			expect(result).toBe(1)
 		})
 
-		test('Calculate age in years', () => {
-			const birthdate = new Date('1990-06-15T00:00:00Z').getTime()
-			const today = new Date('2024-06-15T00:00:00Z').getTime()
-			// Simple age: (today - birthdate) / FROM_YEARS(1)
-			const result = execute('FLOOR((today - birth) / FROM_YEARS(1))', {
+		test('Calculate age in years using DIFFERENCE_IN_YEARS', () => {
+			const birthdate = Date.UTC(1990, 5, 15)
+			const today = Date.UTC(2024, 5, 15)
+			const result = execute('DIFFERENCE_IN_YEARS(birth, today)', {
 				...defaultContext,
 				variables: { birth: birthdate, today },
 			})
@@ -655,15 +1069,35 @@ describe('Date Utils', () => {
 		})
 
 		test('Get last day of previous month', () => {
-			const june15 = new Date('2024-06-15T10:00:00Z').getTime()
-			// ADD_DAYS(START_OF_MONTH(ts), -1)
+			const june15 = Date.UTC(2024, 5, 15, 10, 0, 0)
 			const result = execute('ADD_DAYS(START_OF_MONTH(ts), -1)', {
 				...defaultContext,
 				variables: { ts: june15 },
 			})
 			const resultDate = new Date(result)
-			expect(resultDate.getUTCMonth()).toBe(4) // May
+			expect(resultDate.getUTCMonth()).toBe(4)
 			expect(resultDate.getUTCDate()).toBe(31)
+		})
+
+		test('Days until Christmas calculation', () => {
+			const today = Date.UTC(2024, 10, 8, 14, 45, 30)
+			const christmas = Date.UTC(2025, 11, 25, 0, 0, 0)
+			const result = execute('DIFFERENCE_IN_DAYS(today, christmas)', {
+				...defaultContext,
+				variables: { today, christmas },
+			})
+			expect(result).toBe(411)
+			expect(Number.isInteger(result)).toBe(true)
+		})
+
+		test('Date range calculation is consistent', () => {
+			const start = Date.UTC(2024, 0, 1, 0, 0, 0)
+			const end = Date.UTC(2024, 11, 31, 23, 59, 59)
+			const days = execute('DIFFERENCE_IN_DAYS(start, end)', {
+				...defaultContext,
+				variables: { start, end },
+			})
+			expect(days).toBe(365)
 		})
 	})
 })

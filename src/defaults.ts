@@ -48,6 +48,14 @@ export const defaultContext: ExecutionContext = {
 		LOG10: Math.log10,
 		EXP: Math.exp,
 
+		/**
+		 * Constrain a value between a minimum and maximum
+		 * @example CLAMP(value, 0, 100) - Clamps value between 0 and 100
+		 */
+		CLAMP: (value: number, min: number, max: number): number => {
+			return value < min ? min : value > max ? max : value
+		},
+
 		// All date/time utilities (from date-utils module)
 		...dateUtils,
 	},

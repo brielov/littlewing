@@ -189,21 +189,22 @@ years = 3;
 
 All math functions use UPPERCASE names to avoid collisions with user variables:
 
-| Function   | Description       | Example                |
-| ---------- | ----------------- | ---------------------- |
-| `ABS(x)`   | Absolute value    | `ABS(-5)` → `5`        |
-| `CEIL(x)`  | Round up          | `CEIL(4.3)` → `5`      |
-| `FLOOR(x)` | Round down        | `FLOOR(4.7)` → `4`     |
-| `ROUND(x)` | Round to nearest  | `ROUND(4.5)` → `5`     |
-| `SQRT(x)`  | Square root       | `SQRT(16)` → `4`       |
-| `SIN(x)`   | Sine (radians)    | `SIN(3.14159/2)` → `1` |
-| `COS(x)`   | Cosine (radians)  | `COS(0)` → `1`         |
-| `TAN(x)`   | Tangent (radians) | `TAN(0)` → `0`         |
-| `LOG(x)`   | Natural logarithm | `LOG(2.71828)` → `1`   |
-| `LOG10(x)` | Base-10 logarithm | `LOG10(100)` → `2`     |
-| `EXP(x)`   | e^x               | `EXP(1)` → `2.71828`   |
-| `MIN(...)` | Minimum value     | `MIN(3, 1, 5)` → `1`   |
-| `MAX(...)` | Maximum value     | `MAX(3, 1, 5)` → `5`   |
+| Function           | Description        | Example                      |
+| ------------------ | ------------------ | ---------------------------- |
+| `ABS(x)`           | Absolute value     | `ABS(-5)` → `5`              |
+| `CEIL(x)`          | Round up           | `CEIL(4.3)` → `5`            |
+| `FLOOR(x)`         | Round down         | `FLOOR(4.7)` → `4`           |
+| `ROUND(x)`         | Round to nearest   | `ROUND(4.5)` → `5`           |
+| `SQRT(x)`          | Square root        | `SQRT(16)` → `4`             |
+| `SIN(x)`           | Sine (radians)     | `SIN(3.14159/2)` → `1`       |
+| `COS(x)`           | Cosine (radians)   | `COS(0)` → `1`               |
+| `TAN(x)`           | Tangent (radians)  | `TAN(0)` → `0`               |
+| `LOG(x)`           | Natural logarithm  | `LOG(2.71828)` → `1`         |
+| `LOG10(x)`         | Base-10 logarithm  | `LOG10(100)` → `2`           |
+| `EXP(x)`           | e^x                | `EXP(1)` → `2.71828`         |
+| `MIN(...)`         | Minimum value      | `MIN(3, 1, 5)` → `1`         |
+| `MAX(...)`         | Maximum value      | `MAX(3, 1, 5)` → `5`         |
+| `CLAMP(val, a, b)` | Constrain to range | `CLAMP(150, 0, 100)` → `100` |
 
 ### Date & Time Functions
 
@@ -236,15 +237,14 @@ newYear = DATE(2025, 1, 1, 0, 0, 0);
 
 Convert human-readable units to milliseconds:
 
-| Function          | Description   | Example                         |
-| ----------------- | ------------- | ------------------------------- |
-| `FROM_SECONDS(x)` | Seconds to ms | `FROM_SECONDS(60)` → `60000`    |
-| `FROM_MINUTES(x)` | Minutes to ms | `FROM_MINUTES(5)` → `300000`    |
-| `FROM_HOURS(x)`   | Hours to ms   | `FROM_HOURS(2)` → `7200000`     |
-| `FROM_DAYS(x)`    | Days to ms    | `FROM_DAYS(7)` → `604800000`    |
-| `FROM_WEEKS(x)`   | Weeks to ms   | `FROM_WEEKS(2)` → `1209600000`  |
-| `FROM_MONTHS(x)`  | Months to ms  | `FROM_MONTHS(1)` → `2592000000` |
-| `FROM_YEARS(x)`   | Years to ms   | `FROM_YEARS(1)` → `31536000000` |
+| Function         | Description  | Example                         |
+| ---------------- | ------------ | ------------------------------- |
+| `FROM_DAYS(x)`   | Days to ms   | `FROM_DAYS(7)` → `604800000`    |
+| `FROM_WEEKS(x)`  | Weeks to ms  | `FROM_WEEKS(2)` → `1209600000`  |
+| `FROM_MONTHS(x)` | Months to ms | `FROM_MONTHS(1)` → `2592000000` |
+| `FROM_YEARS(x)`  | Years to ms  | `FROM_YEARS(1)` → `31536000000` |
+
+**Note:** `FROM_MONTHS` and `FROM_YEARS` use approximate durations (30 days/month, 365 days/year). For exact calendar calculations, use `ADD_MONTHS`, `ADD_YEARS`, `DIFFERENCE_IN_MONTHS`, or `DIFFERENCE_IN_YEARS`.
 
 #### Component Extractors
 
@@ -267,13 +267,15 @@ Extract components from a timestamp:
 
 Calculate absolute differences between timestamps:
 
-| Function                          | Description           | Example                                  |
-| --------------------------------- | --------------------- | ---------------------------------------- |
-| `DIFFERENCE_IN_SECONDS(ts1, ts2)` | Difference in seconds | `DIFFERENCE_IN_SECONDS(ts1, ts2)` → `30` |
-| `DIFFERENCE_IN_MINUTES(ts1, ts2)` | Difference in minutes | `DIFFERENCE_IN_MINUTES(ts1, ts2)` → `15` |
-| `DIFFERENCE_IN_HOURS(ts1, ts2)`   | Difference in hours   | `DIFFERENCE_IN_HOURS(ts1, ts2)` → `4`    |
-| `DIFFERENCE_IN_DAYS(ts1, ts2)`    | Difference in days    | `DIFFERENCE_IN_DAYS(ts1, ts2)` → `7`     |
-| `DIFFERENCE_IN_WEEKS(ts1, ts2)`   | Difference in weeks   | `DIFFERENCE_IN_WEEKS(ts1, ts2)` → `2`    |
+| Function                          | Description             | Example                                  |
+| --------------------------------- | ----------------------- | ---------------------------------------- |
+| `DIFFERENCE_IN_SECONDS(ts1, ts2)` | Difference in seconds   | `DIFFERENCE_IN_SECONDS(ts1, ts2)` → `30` |
+| `DIFFERENCE_IN_MINUTES(ts1, ts2)` | Difference in minutes   | `DIFFERENCE_IN_MINUTES(ts1, ts2)` → `15` |
+| `DIFFERENCE_IN_HOURS(ts1, ts2)`   | Difference in hours     | `DIFFERENCE_IN_HOURS(ts1, ts2)` → `4`    |
+| `DIFFERENCE_IN_DAYS(ts1, ts2)`    | Difference in days      | `DIFFERENCE_IN_DAYS(ts1, ts2)` → `7`     |
+| `DIFFERENCE_IN_WEEKS(ts1, ts2)`   | Difference in weeks     | `DIFFERENCE_IN_WEEKS(ts1, ts2)` → `2`    |
+| `DIFFERENCE_IN_MONTHS(ts1, ts2)`  | Calendar months between | `DIFFERENCE_IN_MONTHS(ts1, ts2)` → `3`   |
+| `DIFFERENCE_IN_YEARS(ts1, ts2)`   | Calendar years between  | `DIFFERENCE_IN_YEARS(ts1, ts2)` → `5`    |
 
 #### Start/End of Period
 
@@ -304,20 +306,13 @@ Add time to dates:
 
 Compare dates (return 1 for true, 0 for false):
 
-| Function                | Description                 |
-| ----------------------- | --------------------------- |
-| `IS_BEFORE(ts1, ts2)`   | Check if ts1 is before ts2  |
-| `IS_AFTER(ts1, ts2)`    | Check if ts1 is after ts2   |
-| `IS_SAME_DAY(ts1, ts2)` | Check if same calendar day  |
-| `IS_WEEKEND(ts)`        | Check if Saturday or Sunday |
-| `IS_LEAP_YEAR(ts)`      | Check if leap year          |
-
-#### Unix Time Conversions
-
-| Function               | Description           | Example                                  |
-| ---------------------- | --------------------- | ---------------------------------------- |
-| `TO_UNIX_SECONDS(ts)`  | Convert ms to seconds | `TO_UNIX_SECONDS(ts)` → `1234567890`     |
-| `FROM_UNIX_SECONDS(s)` | Convert seconds to ms | `FROM_UNIX_SECONDS(s)` → `1234567890000` |
+| Function                | Description                                 |
+| ----------------------- | ------------------------------------------- |
+| `IS_SAME_DAY(ts1, ts2)` | Check if same calendar day                  |
+| `IS_WEEKEND(ts)`        | Check if Saturday or Sunday                 |
+| `IS_LEAP_YEAR(ts)`      | Check if leap year                          |
+| `ts1 < ts2`             | Check if ts1 is before ts2 (use < operator) |
+| `ts1 > ts2`             | Check if ts1 is after ts2 (use > operator)  |
 
 ### Date Arithmetic Examples
 
@@ -325,7 +320,7 @@ Compare dates (return 1 for true, 0 for false):
 // Add time to current timestamp
 tomorrow = NOW() + FROM_DAYS(1);
 nextWeek = NOW() + FROM_WEEKS(1);
-in2Hours = NOW() + FROM_HOURS(2) + FROM_MINUTES(30);
+in2Hours = NOW() + 2 * 3600000 + 30 * 60000; // 2 hours + 30 minutes
 
 // Calculate time differences using DIFFERENCE functions
 deadline = DATE(2024, 12, 31);
@@ -339,7 +334,7 @@ isWeekend = IS_WEEKEND(ts); // → 1 (true)
 // Age calculation
 birthdate = DATE(1990, 5, 15);
 today = DATE(2024, 6, 15);
-ageInYears = FLOOR(DIFFERENCE_IN_DAYS(birthdate, today) / 365.25);
+ageInYears = DIFFERENCE_IN_YEARS(birthdate, today); // Calendar-accurate
 
 // Business days calculation
 deadline = ADD_DAYS(START_OF_WEEK(NOW()), 12); // Friday of next week
