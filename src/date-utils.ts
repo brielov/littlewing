@@ -145,19 +145,19 @@ export const GET_QUARTER = (timestamp: number): number => {
  * Get the absolute difference between two timestamps in seconds (whole seconds)
  */
 export const DIFFERENCE_IN_SECONDS = (ts1: number, ts2: number): number =>
-	Math.floor(Math.abs(ts1 - ts2) / 1000)
+	Math.ceil(Math.abs(ts1 - ts2) / 1000)
 
 /**
  * Get the absolute difference between two timestamps in minutes (whole minutes)
  */
 export const DIFFERENCE_IN_MINUTES = (ts1: number, ts2: number): number =>
-	Math.floor(Math.abs(ts1 - ts2) / (60 * 1000))
+	Math.ceil(Math.abs(ts1 - ts2) / (60 * 1000))
 
 /**
  * Get the absolute difference between two timestamps in hours (whole hours)
  */
 export const DIFFERENCE_IN_HOURS = (ts1: number, ts2: number): number =>
-	Math.floor(Math.abs(ts1 - ts2) / (60 * 60 * 1000))
+	Math.ceil(Math.abs(ts1 - ts2) / (60 * 60 * 1000))
 
 /**
  * Get the difference in calendar days between two timestamps

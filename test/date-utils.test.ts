@@ -610,14 +610,14 @@ describe('Date Utils', () => {
 			expect(result).toBe(30)
 		})
 
-		test('DIFFERENCE_IN_SECONDS floors fractional seconds', () => {
+		test('DIFFERENCE_IN_SECONDS ceils fractional seconds', () => {
 			const ts1 = Date.UTC(2024, 5, 15, 10, 0, 0, 0)
 			const ts2 = Date.UTC(2024, 5, 15, 10, 0, 10, 750)
 			const result = execute('DIFFERENCE_IN_SECONDS(ts1, ts2)', {
 				...defaultContext,
 				variables: { ts1, ts2 },
 			})
-			expect(result).toBe(10)
+			expect(result).toBe(11)
 		})
 
 		test('DIFFERENCE_IN_MINUTES', () => {
@@ -630,14 +630,24 @@ describe('Date Utils', () => {
 			expect(result).toBe(15)
 		})
 
-		test('DIFFERENCE_IN_MINUTES floors fractional minutes', () => {
+		test('DIFFERENCE_IN_MINUTES ceils fractional minutes', () => {
 			const ts1 = Date.UTC(2024, 5, 15, 10, 0, 0)
 			const ts2 = Date.UTC(2024, 5, 15, 10, 5, 45)
 			const result = execute('DIFFERENCE_IN_MINUTES(ts1, ts2)', {
 				...defaultContext,
 				variables: { ts1, ts2 },
 			})
-			expect(result).toBe(5)
+			expect(result).toBe(6)
+		})
+
+		test('DIFFERENCE_IN_MINUTES - 23:05 until midnight is 55 minutes', () => {
+			const ts1 = new Date(2025, 10, 7, 23, 5, 0).getTime()
+			const ts2 = new Date(2025, 10, 8, 0, 0, 0).getTime()
+			const result = execute('DIFFERENCE_IN_MINUTES(ts1, ts2)', {
+				...defaultContext,
+				variables: { ts1, ts2 },
+			})
+			expect(result).toBe(55)
 		})
 
 		test('DIFFERENCE_IN_HOURS', () => {
@@ -650,14 +660,24 @@ describe('Date Utils', () => {
 			expect(result).toBe(4)
 		})
 
-		test('DIFFERENCE_IN_HOURS floors fractional hours', () => {
+		test('DIFFERENCE_IN_HOURS ceils fractional hours', () => {
 			const ts1 = Date.UTC(2024, 5, 15, 10, 0, 0)
 			const ts2 = Date.UTC(2024, 5, 15, 13, 45, 30)
 			const result = execute('DIFFERENCE_IN_HOURS(ts1, ts2)', {
 				...defaultContext,
 				variables: { ts1, ts2 },
 			})
-			expect(result).toBe(3)
+			expect(result).toBe(4)
+		})
+
+		test('DIFFERENCE_IN_HOURS - 23:00 until midnight is 1 hour', () => {
+			const ts1 = new Date(2025, 10, 7, 23, 0, 0).getTime()
+			const ts2 = new Date(2025, 10, 8, 0, 0, 0).getTime()
+			const result = execute('DIFFERENCE_IN_HOURS(ts1, ts2)', {
+				...defaultContext,
+				variables: { ts1, ts2 },
+			})
+			expect(result).toBe(1)
 		})
 
 		test('DIFFERENCE_IN_DAYS', () => {
