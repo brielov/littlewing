@@ -1080,19 +1080,22 @@ describe('Date Utils', () => {
 		})
 
 		test('Days until Christmas calculation', () => {
-			const today = Date.UTC(2024, 10, 8, 14, 45, 30)
-			const christmas = Date.UTC(2025, 11, 25, 0, 0, 0)
+			// Use local time instead of UTC for calendar day calculations
+			const today = new Date(2024, 10, 8, 14, 45, 30).getTime()
+			const christmas = new Date(2025, 11, 25, 0, 0, 0).getTime()
 			const result = execute('DIFFERENCE_IN_DAYS(today, christmas)', {
 				...defaultContext,
 				variables: { today, christmas },
 			})
-			expect(result).toBe(411)
+			// With calendar day logic, Nov 8 2024 to Dec 25 2025 = 412 days
+			expect(result).toBe(412)
 			expect(Number.isInteger(result)).toBe(true)
 		})
 
 		test('Date range calculation is consistent', () => {
-			const start = Date.UTC(2024, 0, 1, 0, 0, 0)
-			const end = Date.UTC(2024, 11, 31, 23, 59, 59)
+			// Use local time for calendar day calculations
+			const start = new Date(2024, 0, 1, 0, 0, 0).getTime()
+			const end = new Date(2024, 11, 31, 23, 59, 59).getTime()
 			const days = execute('DIFFERENCE_IN_DAYS(start, end)', {
 				...defaultContext,
 				variables: { start, end },

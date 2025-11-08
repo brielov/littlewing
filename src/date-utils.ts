@@ -2,9 +2,10 @@
  * Date utility functions for working with timestamps
  * All functions work with milliseconds since Unix epoch (numbers only)
  *
- * IMPORTANT: All functions use UTC timezone for consistency and predictability
- * across different server environments. This ensures the same inputs always
- * produce the same outputs regardless of the machine's local timezone.
+ * IMPORTANT: All functions use local timezone to match the user's context.
+ * In a browser, this reflects the user's timezone. On a server, this reflects
+ * the server's configured timezone. This ensures date calculations align with
+ * the user's calendar expectations.
  */
 
 // ============================================================================
@@ -17,10 +18,10 @@
 export const NOW = (): number => Date.now()
 
 /**
- * Create timestamp from date components (UTC timezone)
+ * Create timestamp from date components (local timezone)
  * Year is required, all other parameters default to minimum values
  * Month is 1-based (1 = January, 12 = December)
- * All parameters are interpreted in UTC timezone for consistency
+ * All parameters are interpreted in local timezone
  */
 export const DATE = (
 	year: number,
@@ -29,7 +30,7 @@ export const DATE = (
 	hour = 0,
 	minute = 0,
 	second = 0,
-): number => Date.UTC(year, month - 1, day, hour, minute, second)
+): number => new Date(year, month - 1, day, hour, minute, second).getTime()
 
 // ============================================================================
 // TIME CONVERTERS (to milliseconds)
@@ -62,66 +63,66 @@ export const FROM_YEARS = (years: number): number =>
 	years * 365 * 24 * 60 * 60 * 1000
 
 // ============================================================================
-// COMPONENT EXTRACTORS (from timestamps, UTC timezone)
+// COMPONENT EXTRACTORS (from timestamps, local timezone)
 // ============================================================================
 
 /**
- * Get the year from a timestamp (UTC)
+ * Get the year from a timestamp (local timezone)
  */
 export const GET_YEAR = (timestamp: number): number =>
-	new Date(timestamp).getUTCFullYear()
+	new Date(timestamp).getFullYear()
 
 /**
- * Get the month from a timestamp (1-based: 1 = January, 12 = December, UTC)
+ * Get the month from a timestamp (1-based: 1 = January, 12 = December, local timezone)
  */
 export const GET_MONTH = (timestamp: number): number =>
-	new Date(timestamp).getUTCMonth() + 1
+	new Date(timestamp).getMonth() + 1
 
 /**
- * Get the day of month from a timestamp (1-31, UTC)
+ * Get the day of month from a timestamp (1-31, local timezone)
  */
 export const GET_DAY = (timestamp: number): number =>
-	new Date(timestamp).getUTCDate()
+	new Date(timestamp).getDate()
 
 /**
- * Get the hour from a timestamp (0-23, UTC)
+ * Get the hour from a timestamp (0-23, local timezone)
  */
 export const GET_HOUR = (timestamp: number): number =>
-	new Date(timestamp).getUTCHours()
+	new Date(timestamp).getHours()
 
 /**
- * Get the minute from a timestamp (0-59, UTC)
+ * Get the minute from a timestamp (0-59, local timezone)
  */
 export const GET_MINUTE = (timestamp: number): number =>
-	new Date(timestamp).getUTCMinutes()
+	new Date(timestamp).getMinutes()
 
 /**
- * Get the second from a timestamp (0-59, UTC)
+ * Get the second from a timestamp (0-59, local timezone)
  */
 export const GET_SECOND = (timestamp: number): number =>
-	new Date(timestamp).getUTCSeconds()
+	new Date(timestamp).getSeconds()
 
 /**
- * Get the millisecond component from a timestamp (0-999, UTC)
+ * Get the millisecond component from a timestamp (0-999, local timezone)
  */
 export const GET_MILLISECOND = (timestamp: number): number =>
-	new Date(timestamp).getUTCMilliseconds()
+	new Date(timestamp).getMilliseconds()
 
 /**
- * Get the day of week from a timestamp (0 = Sunday, 6 = Saturday, UTC)
+ * Get the day of week from a timestamp (0 = Sunday, 6 = Saturday, local timezone)
  */
 export const GET_WEEKDAY = (timestamp: number): number =>
-	new Date(timestamp).getUTCDay()
+	new Date(timestamp).getDay()
 
 /**
- * Get the day of year (1-366) from a timestamp (UTC)
+ * Get the day of year (1-366) from a timestamp (local timezone)
  * January 1st = 1, December 31st = 365 or 366 (leap year)
  */
 export const GET_DAY_OF_YEAR = (timestamp: number): number => {
 	const date = new Date(timestamp)
-	const year = date.getUTCFullYear()
-	// Start of year in UTC: January 1st at 00:00:00.000
-	const startOfYear = Date.UTC(year, 0, 1)
+	const year = date.getFullYear()
+	// Start of year in local timezone: January 1st at 00:00:00.000
+	const startOfYear = new Date(year, 0, 1).getTime()
 	const diff = timestamp - startOfYear
 	const oneDay = 86400000 // 24 * 60 * 60 * 1000
 	// Add 1 because Jan 1 is day 1, not day 0
@@ -129,10 +130,10 @@ export const GET_DAY_OF_YEAR = (timestamp: number): number => {
 }
 
 /**
- * Get the quarter (1-4) from a timestamp (UTC)
+ * Get the quarter (1-4) from a timestamp (local timezone)
  */
 export const GET_QUARTER = (timestamp: number): number => {
-	const month = new Date(timestamp).getUTCMonth()
+	const month = new Date(timestamp).getMonth()
 	return Math.floor(month / 3) + 1
 }
 
@@ -159,19 +160,29 @@ export const DIFFERENCE_IN_HOURS = (ts1: number, ts2: number): number =>
 	Math.floor(Math.abs(ts1 - ts2) / (60 * 60 * 1000))
 
 /**
- * Get the absolute difference between two timestamps in days (whole days)
+ * Get the difference in calendar days between two timestamps
+ * Counts the number of calendar day boundaries crossed, not 24-hour periods
+ * Example: Nov 7 at 11:59 PM to Nov 8 at 12:01 AM = 1 day (different calendar days)
  */
-export const DIFFERENCE_IN_DAYS = (ts1: number, ts2: number): number =>
-	Math.floor(Math.abs(ts1 - ts2) / (24 * 60 * 60 * 1000))
+export const DIFFERENCE_IN_DAYS = (ts1: number, ts2: number): number => {
+	// Normalize both timestamps to start of their respective days
+	const day1 = START_OF_DAY(ts1)
+	const day2 = START_OF_DAY(ts2)
+	// Now calculate the difference in whole days
+	return Math.floor(Math.abs(day1 - day2) / (24 * 60 * 60 * 1000))
+}
 
 /**
- * Get the absolute difference between two timestamps in weeks (whole weeks)
+ * Get the difference in calendar weeks between two timestamps
+ * Counts the number of week boundaries crossed (based on calendar days)
  */
-export const DIFFERENCE_IN_WEEKS = (ts1: number, ts2: number): number =>
-	Math.floor(Math.abs(ts1 - ts2) / (7 * 24 * 60 * 60 * 1000))
+export const DIFFERENCE_IN_WEEKS = (ts1: number, ts2: number): number => {
+	const days = DIFFERENCE_IN_DAYS(ts1, ts2)
+	return Math.floor(days / 7)
+}
 
 /**
- * Get the number of full calendar months between two timestamps (UTC)
+ * Get the number of full calendar months between two timestamps (local timezone)
  * Counts complete months where the same day-of-month has been reached
  *
  * Examples:
@@ -187,13 +198,13 @@ export const DIFFERENCE_IN_MONTHS = (ts1: number, ts2: number): number => {
 	const date1 = new Date(smaller)
 	const date2 = new Date(larger)
 
-	const yearDiff = date2.getUTCFullYear() - date1.getUTCFullYear()
-	const monthDiff = date2.getUTCMonth() - date1.getUTCMonth()
+	const yearDiff = date2.getFullYear() - date1.getFullYear()
+	const monthDiff = date2.getMonth() - date1.getMonth()
 
 	let months = yearDiff * 12 + monthDiff
 
 	// Adjust if we haven't reached the same day-of-month yet
-	if (date2.getUTCDate() < date1.getUTCDate()) {
+	if (date2.getDate() < date1.getDate()) {
 		months--
 	}
 
@@ -201,7 +212,7 @@ export const DIFFERENCE_IN_MONTHS = (ts1: number, ts2: number): number => {
 }
 
 /**
- * Get the number of full calendar years between two timestamps (UTC)
+ * Get the number of full calendar years between two timestamps (local timezone)
  * Counts complete years where the same month and day have been reached
  *
  * Examples:
@@ -215,195 +226,203 @@ export const DIFFERENCE_IN_YEARS = (ts1: number, ts2: number): number => {
 }
 
 // ============================================================================
-// START/END OF PERIOD FUNCTIONS (UTC timezone)
+// START/END OF PERIOD FUNCTIONS (local timezone)
 // ============================================================================
 
 /**
- * Get the start of day (00:00:00.000 UTC) for a given timestamp
+ * Get the start of day (00:00:00.000 local time) for a given timestamp
  */
 export const START_OF_DAY = (timestamp: number): number => {
 	const date = new Date(timestamp)
-	return Date.UTC(
-		date.getUTCFullYear(),
-		date.getUTCMonth(),
-		date.getUTCDate(),
+	return new Date(
+		date.getFullYear(),
+		date.getMonth(),
+		date.getDate(),
 		0,
 		0,
 		0,
 		0,
-	)
+	).getTime()
 }
 
 /**
- * Get the end of day (23:59:59.999 UTC) for a given timestamp
+ * Get the end of day (23:59:59.999 local time) for a given timestamp
  */
 export const END_OF_DAY = (timestamp: number): number => {
 	const date = new Date(timestamp)
-	return Date.UTC(
-		date.getUTCFullYear(),
-		date.getUTCMonth(),
-		date.getUTCDate(),
+	return new Date(
+		date.getFullYear(),
+		date.getMonth(),
+		date.getDate(),
 		23,
 		59,
 		59,
 		999,
-	)
+	).getTime()
 }
 
 /**
- * Get the start of week (Sunday at 00:00:00.000 UTC) for a given timestamp
+ * Get the start of week (Sunday at 00:00:00.000 local time) for a given timestamp
  */
 export const START_OF_WEEK = (timestamp: number): number => {
 	const date = new Date(timestamp)
-	const dayOfWeek = date.getUTCDay() // 0 = Sunday, 6 = Saturday
-	const currentDay = date.getUTCDate()
+	const dayOfWeek = date.getDay() // 0 = Sunday, 6 = Saturday
+	const currentDay = date.getDate()
 	const startDay = currentDay - dayOfWeek
-	return Date.UTC(
-		date.getUTCFullYear(),
-		date.getUTCMonth(),
+	return new Date(
+		date.getFullYear(),
+		date.getMonth(),
 		startDay,
 		0,
 		0,
 		0,
 		0,
-	)
+	).getTime()
 }
 
 /**
- * Get the start of month (1st day at 00:00:00.000 UTC) for a given timestamp
+ * Get the start of month (1st day at 00:00:00.000 local time) for a given timestamp
  */
 export const START_OF_MONTH = (timestamp: number): number => {
 	const date = new Date(timestamp)
-	return Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), 1, 0, 0, 0, 0)
+	return new Date(date.getFullYear(), date.getMonth(), 1, 0, 0, 0, 0).getTime()
 }
 
 /**
- * Get the end of month (last day at 23:59:59.999 UTC) for a given timestamp
+ * Get the end of month (last day at 23:59:59.999 local time) for a given timestamp
  */
 export const END_OF_MONTH = (timestamp: number): number => {
 	const date = new Date(timestamp)
 	// Setting day to 0 of next month gives last day of current month
-	return Date.UTC(
-		date.getUTCFullYear(),
-		date.getUTCMonth() + 1,
+	return new Date(
+		date.getFullYear(),
+		date.getMonth() + 1,
 		0,
 		23,
 		59,
 		59,
 		999,
-	)
+	).getTime()
 }
 
 /**
- * Get the start of year (Jan 1st at 00:00:00.000 UTC) for a given timestamp
+ * Get the start of year (Jan 1st at 00:00:00.000 local time) for a given timestamp
  */
 export const START_OF_YEAR = (timestamp: number): number => {
 	const date = new Date(timestamp)
-	return Date.UTC(date.getUTCFullYear(), 0, 1, 0, 0, 0, 0)
+	return new Date(date.getFullYear(), 0, 1, 0, 0, 0, 0).getTime()
 }
 
 /**
- * Get the end of year (Dec 31st at 23:59:59.999 UTC) for a given timestamp
+ * Get the end of year (Dec 31st at 23:59:59.999 local time) for a given timestamp
  */
 export const END_OF_YEAR = (timestamp: number): number => {
 	const date = new Date(timestamp)
-	return Date.UTC(date.getUTCFullYear(), 11, 31, 23, 59, 59, 999)
+	return new Date(date.getFullYear(), 11, 31, 23, 59, 59, 999).getTime()
 }
 
 // ============================================================================
-// DATE ARITHMETIC FUNCTIONS (UTC timezone)
+// DATE ARITHMETIC FUNCTIONS (local timezone)
 // ============================================================================
 
 /**
- * Add days to a timestamp (UTC)
+ * Add days to a timestamp (local timezone)
  */
 export const ADD_DAYS = (timestamp: number, days: number): number => {
 	const date = new Date(timestamp)
-	return Date.UTC(
-		date.getUTCFullYear(),
-		date.getUTCMonth(),
-		date.getUTCDate() + days,
-		date.getUTCHours(),
-		date.getUTCMinutes(),
-		date.getUTCSeconds(),
-		date.getUTCMilliseconds(),
-	)
+	return new Date(
+		date.getFullYear(),
+		date.getMonth(),
+		date.getDate() + days,
+		date.getHours(),
+		date.getMinutes(),
+		date.getSeconds(),
+		date.getMilliseconds(),
+	).getTime()
 }
 
 /**
- * Add months to a timestamp (handles variable month lengths correctly, UTC)
+ * Add months to a timestamp (handles variable month lengths correctly, local timezone)
  */
 export const ADD_MONTHS = (timestamp: number, months: number): number => {
 	const date = new Date(timestamp)
-	return Date.UTC(
-		date.getUTCFullYear(),
-		date.getUTCMonth() + months,
-		date.getUTCDate(),
-		date.getUTCHours(),
-		date.getUTCMinutes(),
-		date.getUTCSeconds(),
-		date.getUTCMilliseconds(),
-	)
+	return new Date(
+		date.getFullYear(),
+		date.getMonth() + months,
+		date.getDate(),
+		date.getHours(),
+		date.getMinutes(),
+		date.getSeconds(),
+		date.getMilliseconds(),
+	).getTime()
 }
 
 /**
- * Add years to a timestamp (UTC)
+ * Add years to a timestamp (local timezone)
  */
 export const ADD_YEARS = (timestamp: number, years: number): number => {
 	const date = new Date(timestamp)
-	return Date.UTC(
-		date.getUTCFullYear() + years,
-		date.getUTCMonth(),
-		date.getUTCDate(),
-		date.getUTCHours(),
-		date.getUTCMinutes(),
-		date.getUTCSeconds(),
-		date.getUTCMilliseconds(),
-	)
+	return new Date(
+		date.getFullYear() + years,
+		date.getMonth(),
+		date.getDate(),
+		date.getHours(),
+		date.getMinutes(),
+		date.getSeconds(),
+		date.getMilliseconds(),
+	).getTime()
 }
 
 // ============================================================================
-// DATE COMPARISON/VALIDATION FUNCTIONS (UTC timezone)
+// DATE COMPARISON/VALIDATION FUNCTIONS (local timezone)
 // ============================================================================
 
 /**
- * Check if two timestamps are on the same calendar day (UTC)
+ * Check if two timestamps are on the same calendar day (local timezone)
  * Returns 1 if true, 0 if false
  */
 export const IS_SAME_DAY = (ts1: number, ts2: number): number => {
 	const date1 = new Date(ts1)
 	const date2 = new Date(ts2)
-	return date1.getUTCFullYear() === date2.getUTCFullYear() &&
-		date1.getUTCMonth() === date2.getUTCMonth() &&
-		date1.getUTCDate() === date2.getUTCDate()
+	return date1.getFullYear() === date2.getFullYear() &&
+		date1.getMonth() === date2.getMonth() &&
+		date1.getDate() === date2.getDate()
 		? 1
 		: 0
 }
 
 /**
- * Check if timestamp falls on a weekend (Saturday or Sunday, UTC)
+ * Check if timestamp falls on a weekend (Saturday or Sunday, local timezone)
  * Returns 1 if true, 0 if false
  */
 export const IS_WEEKEND = (timestamp: number): number => {
-	const day = new Date(timestamp).getUTCDay()
+	const day = new Date(timestamp).getDay()
 	return day === 0 || day === 6 ? 1 : 0
 }
 
 /**
- * Check if timestamp is in a leap year (UTC)
+ * Check if timestamp is in a leap year (local timezone)
  * Returns 1 if true, 0 if false
  */
 export const IS_LEAP_YEAR = (timestamp: number): number => {
-	const year = new Date(timestamp).getUTCFullYear()
+	const year = new Date(timestamp).getFullYear()
 	return (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0 ? 1 : 0
 }
 
 /**
- * Get the start of quarter for a given timestamp (UTC)
+ * Get the start of quarter for a given timestamp (local timezone)
  */
 export const START_OF_QUARTER = (timestamp: number): number => {
 	const date = new Date(timestamp)
-	const month = date.getUTCMonth()
+	const month = date.getMonth()
 	const quarterStartMonth = Math.floor(month / 3) * 3
-	return Date.UTC(date.getUTCFullYear(), quarterStartMonth, 1, 0, 0, 0, 0)
+	return new Date(
+		date.getFullYear(),
+		quarterStartMonth,
+		1,
+		0,
+		0,
+		0,
+		0,
+	).getTime()
 }
