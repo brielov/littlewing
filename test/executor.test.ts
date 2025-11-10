@@ -48,6 +48,21 @@ describe('Executor', () => {
 		expect(execute('(2 + 3) ^ 2')).toBe(25) // 5 ^ 2
 	})
 
+	test('execute exponentiation associativity (right-associative)', () => {
+		// Exponentiation is right-associative: a ^ b ^ c = a ^ (b ^ c)
+		expect(execute('2 ^ 3 ^ 2')).toBe(512) // 2 ^ (3 ^ 2) = 2 ^ 9 = 512
+		expect(execute('2 ^ 2 ^ 3')).toBe(256) // 2 ^ (2 ^ 3) = 2 ^ 8 = 256
+		expect(execute('4 ^ 3 ^ 2')).toBe(262144) // 4 ^ (3 ^ 2) = 4 ^ 9 = 262144
+
+		// Verify it's NOT left-associative
+		// If it were left-associative: (2 ^ 3) ^ 2 = 8 ^ 2 = 64 (wrong!)
+		expect(execute('2 ^ 3 ^ 2')).not.toBe(64)
+
+		// With parentheses to force left-associativity
+		expect(execute('(2 ^ 3) ^ 2')).toBe(64) // (2 ^ 3) ^ 2 = 8 ^ 2 = 64
+		expect(execute('(2 ^ 2) ^ 3')).toBe(64) // (2 ^ 2) ^ 3 = 4 ^ 3 = 64
+	})
+
 	test('execute parentheses', () => {
 		const result = execute('(2 + 3) * 4')
 		expect(result).toBe(20)
@@ -56,6 +71,36 @@ describe('Executor', () => {
 	test('execute unary minus', () => {
 		const result = execute('-5')
 		expect(result).toBe(-5)
+	})
+
+	test('execute unary minus precedence', () => {
+		// Unary minus binds tighter than addition/subtraction
+		expect(execute('5 + -3')).toBe(2) // 5 + (-3) = 2
+		expect(execute('10 - -5')).toBe(15) // 10 - (-5) = 15
+		expect(execute('-2 + 3')).toBe(1) // (-2) + 3 = 1
+
+		// Unary minus binds tighter than multiplication/division
+		expect(execute('2 * -3')).toBe(-6) // 2 * (-3) = -6
+		expect(execute('-10 / 2')).toBe(-5) // (-10) / 2 = -5
+		expect(execute('-2 * -3')).toBe(6) // (-2) * (-3) = 6
+
+		// Unary minus binds LOOSER than exponentiation (Python/Ruby/JS style)
+		expect(execute('-2 ^ 2')).toBe(-4) // -(2 ^ 2) = -4, NOT (-2)^2 = 4
+		expect(execute('-2 ^ 3')).toBe(-8) // -(2 ^ 3) = -8
+		expect(execute('-3 ^ 2')).toBe(-9) // -(3 ^ 2) = -9
+
+		// With parentheses, behavior changes
+		expect(execute('(-2) ^ 2')).toBe(4) // (-2) ^ 2 = 4
+		expect(execute('(-2) ^ 3')).toBe(-8) // (-2) ^ 3 = -8
+		expect(execute('(-3) ^ 2')).toBe(9) // (-3) ^ 2 = 9
+
+		// Complex expression with unary minus
+		expect(execute('-2 ^ 2 + 3 * 4')).toBe(8) // -(2^2) + (3*4) = -4 + 12 = 8
+		expect(execute('10 - 3 * 2 ^ 2 + 1')).toBe(-1) // 10 - (3*(2^2)) + 1 = 10 - 12 + 1 = -1
+
+		// Double unary minus
+		expect(execute('--5')).toBe(5) // -(-5) = 5
+		expect(execute('---5')).toBe(-5) // -(-(-5)) = -5
 	})
 
 	test('execute all operators', () => {

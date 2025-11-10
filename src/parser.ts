@@ -103,12 +103,15 @@ export class Parser {
 				const alternate = this.parseExpression(precedence)
 				left = ast.conditional(left, consequent, alternate)
 			} else if (this.isBinaryOperator(token.type)) {
-				// Binary operation (left-associative for most operators)
+				// Binary operation
 				const operator = token.value as Operator
 				this.advance() // consume operator
-				// Use precedence + 1 for left-associativity
-				// Exception: ^ is right-associative but handled by precedence rules
-				const right = this.parseExpression(precedence + 1)
+				// Right-associative operators (^) use precedence
+				// Left-associative operators (+, -, *, /, %, ==, !=, <, >, <=, >=, &&, ||) use precedence + 1
+				const isRightAssociative = operator === '^'
+				const right = this.parseExpression(
+					isRightAssociative ? precedence : precedence + 1,
+				)
 				left = ast.binaryOp(left, operator, right)
 			} else {
 				break
@@ -196,12 +199,14 @@ export class Parser {
 
 	/**
 	 * Get unary operator precedence
-	 * Returns 6 which is higher than add/sub (6) but lower than exponentiation (8)
-	 * This means: -2^2 parses as -(2^2) = -4, not (-2)^2 = 4
-	 * Matches the behavior of Python, Ruby, and most languages
+	 * Returns 7 which is higher than add/sub (6) but lower than exponentiation (8)
+	 * This means:
+	 * - Binds tighter than addition: -2 + 3 parses as (-2) + 3 = 1
+	 * - Binds looser than exponentiation: -2^2 parses as -(2^2) = -4, not (-2)^2 = 4
+	 * Matches the behavior of Python, JavaScript, and most languages
 	 */
 	private getUnaryPrecedence(): number {
-		return 6
+		return 7
 	}
 
 	/**

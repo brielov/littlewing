@@ -44,6 +44,22 @@ describe('Parser', () => {
 		expect((binaryNode.right as BinaryOp).operator).toBe('*')
 	})
 
+	test('parse exponentiation right-associativity', () => {
+		// 2 ^ 3 ^ 4 should parse as 2 ^ (3 ^ 4), not (2 ^ 3) ^ 4
+		const node = parseSource('2 ^ 3 ^ 4')
+		expect(isBinaryOp(node)).toBe(true)
+		const binaryNode = node as BinaryOp
+		expect(binaryNode.operator).toBe('^')
+		expect(binaryNode.left.type).toBe('NumberLiteral')
+		expect((binaryNode.left as NumberLiteral).value).toBe(2)
+		// Right side should be another BinaryOp: 3 ^ 4
+		expect(isBinaryOp(binaryNode.right)).toBe(true)
+		const rightNode = binaryNode.right as BinaryOp
+		expect(rightNode.operator).toBe('^')
+		expect((rightNode.left as NumberLiteral).value).toBe(3)
+		expect((rightNode.right as NumberLiteral).value).toBe(4)
+	})
+
 	test('parse parentheses', () => {
 		const node = parseSource('(1 + 2) * 3')
 		// Should parse as (1 + 2) * 3
@@ -68,6 +84,35 @@ describe('Parser', () => {
 			isNumberLiteral(unaryNode.argument as import('../src').ASTNode),
 		).toBe(true)
 		expect((unaryNode.argument as NumberLiteral).value).toBe(42)
+	})
+
+	test('parse unary minus with exponentiation precedence', () => {
+		// -2 ^ 2 should parse as -(2 ^ 2), not (-2) ^ 2
+		const node = parseSource('-2 ^ 2')
+		expect(isUnaryOp(node)).toBe(true)
+		const unaryNode = node as import('../src').UnaryOp
+		expect(unaryNode.operator).toBe('-')
+		// Argument should be BinaryOp: 2 ^ 2
+		expect(isBinaryOp(unaryNode.argument)).toBe(true)
+		const binaryNode = unaryNode.argument as BinaryOp
+		expect(binaryNode.operator).toBe('^')
+		expect((binaryNode.left as NumberLiteral).value).toBe(2)
+		expect((binaryNode.right as NumberLiteral).value).toBe(2)
+	})
+
+	test('parse unary minus with addition precedence', () => {
+		// -2 + 3 should parse as (-2) + 3, not -(2 + 3)
+		const node = parseSource('-2 + 3')
+		expect(isBinaryOp(node)).toBe(true)
+		const binaryNode = node as BinaryOp
+		expect(binaryNode.operator).toBe('+')
+		// Left side should be UnaryOp: -2
+		expect(isUnaryOp(binaryNode.left)).toBe(true)
+		const leftUnary = binaryNode.left as import('../src').UnaryOp
+		expect(leftUnary.operator).toBe('-')
+		expect((leftUnary.argument as NumberLiteral).value).toBe(2)
+		// Right side should be NumberLiteral: 3
+		expect((binaryNode.right as NumberLiteral).value).toBe(3)
 	})
 
 	test('parse function call without arguments', () => {

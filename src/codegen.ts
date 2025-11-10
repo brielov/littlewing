@@ -71,7 +71,11 @@ export class CodeGenerator {
 		const right = this.generate(node.right)
 
 		// Add parentheses to left side if it's a lower precedence operation
-		const leftNeedsParens = this.needsParensLeft(node.left, node.operator)
+		// Special case: UnaryOp on left of ^ needs parentheses
+		// (-2) ^ 2 = 4, but -2 ^ 2 = -4
+		const leftNeedsParens =
+			this.needsParensLeft(node.left, node.operator) ||
+			(node.operator === '^' && isUnaryOp(node.left))
 		const leftCode = leftNeedsParens ? `(${left})` : left
 
 		// Add parentheses to right side if it's a lower precedence operation

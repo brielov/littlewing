@@ -195,6 +195,21 @@ describe('CodeGenerator', () => {
 		expect(code).toBe('(2 ^ 3) ^ 2')
 	})
 
+	test('precedence - unary minus on left of exponentiation needs parens', () => {
+		// (-2) ^ 2 = 4, but -2 ^ 2 = -4
+		// When UnaryOp is the base of exponentiation, we need parens
+		const node = ast.exponentiate(ast.unaryOp(ast.number(2)), ast.number(2))
+		const code = generate(node)
+		expect(code).toBe('(-2) ^ 2')
+	})
+
+	test('precedence - unary minus wraps exponentiation', () => {
+		// -2 ^ 2 should generate as -(2 ^ 2)
+		const node = ast.unaryOp(ast.exponentiate(ast.number(2), ast.number(2)))
+		const code = generate(node)
+		expect(code).toBe('-(2 ^ 2)')
+	})
+
 	test('round-trip simple expression', () => {
 		const source = '2 + 3'
 		const ast1 = parseSource(source)
