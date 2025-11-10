@@ -58,11 +58,14 @@ execute("10 == 10"); // → 1
 execute("2 != 2"); // → 0
 
 // Logical operators
-execute("1 && 1"); // → 1
-execute("0 || 1"); // → 1
+execute("!0"); // → 1 (NOT)
+execute("1 && 1"); // → 1 (AND)
+execute("0 || 1"); // → 1 (OR)
+execute("!(5 > 10)"); // → 1 (negates comparison)
 
 // Ternary conditionals
 execute("age >= 18 ? 100 : 0", { variables: { age: 21 } }); // → 100
+execute("!isBlocked ? 100 : 0", { variables: { isBlocked: 0 } }); // → 100
 ```
 
 ### With Built-in Functions

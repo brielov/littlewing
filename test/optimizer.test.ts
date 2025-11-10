@@ -490,4 +490,89 @@ describe('Optimizer', () => {
 		const unaryNode = optimized as { argument: unknown }
 		expect(isIdentifier(unaryNode.argument as ASTNode)).toBe(true)
 	})
+
+	test('constant folding for logical NOT', () => {
+		// !0 should fold to 1
+		const ast1 = parseSource('!0')
+		const optimized1 = optimize(ast1)
+		expect(isNumberLiteral(optimized1)).toBe(true)
+		expect((optimized1 as NumberLiteral).value).toBe(1)
+
+		// !5 should fold to 0
+		const ast2 = parseSource('!5')
+		const optimized2 = optimize(ast2)
+		expect(isNumberLiteral(optimized2)).toBe(true)
+		expect((optimized2 as NumberLiteral).value).toBe(0)
+
+		// !-10 should fold to 0
+		const ast3 = parseSource('!-10')
+		const optimized3 = optimize(ast3)
+		expect(isNumberLiteral(optimized3)).toBe(true)
+		expect((optimized3 as NumberLiteral).value).toBe(0)
+	})
+
+	test('constant folding for double NOT', () => {
+		// !!0 should fold to 0
+		const ast1 = parseSource('!!0')
+		const optimized1 = optimize(ast1)
+		expect(isNumberLiteral(optimized1)).toBe(true)
+		expect((optimized1 as NumberLiteral).value).toBe(0)
+
+		// !!5 should fold to 1
+		const ast2 = parseSource('!!5')
+		const optimized2 = optimize(ast2)
+		expect(isNumberLiteral(optimized2)).toBe(true)
+		expect((optimized2 as NumberLiteral).value).toBe(1)
+	})
+
+	test('NOT with variable cannot fold', () => {
+		const ast1 = parseSource('!x')
+		const optimized = optimize(ast1)
+		expect(isUnaryOp(optimized)).toBe(true)
+		const unaryNode = optimized as { operator: string; argument: unknown }
+		expect(unaryNode.operator).toBe('!')
+		expect(isIdentifier(unaryNode.argument as ASTNode)).toBe(true)
+	})
+
+	test('NOT with arithmetic folding', () => {
+		// !(2 + 3) should fold to !5 then to 0
+		const ast1 = parseSource('!(2 + 3)')
+		const optimized1 = optimize(ast1)
+		expect(isNumberLiteral(optimized1)).toBe(true)
+		expect((optimized1 as NumberLiteral).value).toBe(0)
+
+		// !(5 - 5) should fold to !0 then to 1
+		const ast2 = parseSource('!(5 - 5)')
+		const optimized2 = optimize(ast2)
+		expect(isNumberLiteral(optimized2)).toBe(true)
+		expect((optimized2 as NumberLiteral).value).toBe(1)
+	})
+
+	test('NOT in conditional expression', () => {
+		// !0 ? 100 : 50 should fold condition then whole expression to 100
+		const ast1 = parseSource('!0 ? 100 : 50')
+		const optimized1 = optimize(ast1)
+		expect(isNumberLiteral(optimized1)).toBe(true)
+		expect((optimized1 as NumberLiteral).value).toBe(100)
+
+		// !5 ? 100 : 50 should fold to 50
+		const ast2 = parseSource('!5 ? 100 : 50')
+		const optimized2 = optimize(ast2)
+		expect(isNumberLiteral(optimized2)).toBe(true)
+		expect((optimized2 as NumberLiteral).value).toBe(50)
+	})
+
+	test('mixed unary operators', () => {
+		// -!5 should fold to -(0) = -0
+		const ast1 = parseSource('-!5')
+		const optimized1 = optimize(ast1)
+		expect(isNumberLiteral(optimized1)).toBe(true)
+		expect((optimized1 as NumberLiteral).value).toBe(-0) // -0 is valid (signed zero)
+
+		// !-5 should fold to !(−5) = 0
+		const ast2 = parseSource('!-5')
+		const optimized2 = optimize(ast2)
+		expect(isNumberLiteral(optimized2)).toBe(true)
+		expect((optimized2 as NumberLiteral).value).toBe(0)
+	})
 })

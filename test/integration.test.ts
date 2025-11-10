@@ -73,4 +73,42 @@ amount = principal * (1 + rate) ^ years
 		})
 		expect(result).toBe(10)
 	})
+
+	test('NOT operator in real-world conditions', () => {
+		const checkEligibility = 'age >= 18 && !isBlocked'
+		const result1 = execute(checkEligibility, {
+			variables: { age: 25, isBlocked: 0 },
+		})
+		expect(result1).toBe(1) // eligible
+
+		const result2 = execute(checkEligibility, {
+			variables: { age: 25, isBlocked: 1 },
+		})
+		expect(result2).toBe(0) // not eligible (blocked)
+	})
+
+	test('NOT in discount calculation', () => {
+		const formula = 'price * (!isPremium ? 1 : 0.8)'
+		const result1 = execute(formula, {
+			variables: { price: 100, isPremium: 0 },
+		})
+		expect(result1).toBe(100) // no discount
+
+		const result2 = execute(formula, {
+			variables: { price: 100, isPremium: 1 },
+		})
+		expect(result2).toBe(80) // 20% discount
+	})
+
+	test('NOT with validation logic', () => {
+		const validation = 'score >= 60 && !(score > 100)'
+		const result1 = execute(validation, { variables: { score: 75 } })
+		expect(result1).toBe(1) // valid score
+
+		const result2 = execute(validation, { variables: { score: 150 } })
+		expect(result2).toBe(0) // invalid (over 100)
+
+		const result3 = execute(validation, { variables: { score: 50 } })
+		expect(result3).toBe(0) // invalid (below 60)
+	})
 })

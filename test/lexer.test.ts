@@ -151,9 +151,20 @@ describe('Lexer', () => {
 		expect(tokens[3]?.type).toBe(TokenType.DOUBLE_EQUALS)
 	})
 
-	test('!= requires both characters', () => {
+	test('tokenize ! operator', () => {
 		const lexer = new Lexer('!')
-		expect(() => lexer.tokenize()).toThrow('Unexpected character')
+		const tokens = lexer.tokenize()
+		expect(tokens[0]?.type).toBe(TokenType.EXCLAMATION)
+		expect(tokens[0]?.value).toBe('!')
+	})
+
+	test('distinguish ! from !=', () => {
+		const lexer = new Lexer('! !=')
+		const tokens = lexer.tokenize()
+		expect(tokens[0]?.type).toBe(TokenType.EXCLAMATION)
+		expect(tokens[0]?.value).toBe('!')
+		expect(tokens[1]?.type).toBe(TokenType.NOT_EQUALS)
+		expect(tokens[1]?.value).toBe('!=')
 	})
 
 	test('tokenize ternary operator', () => {

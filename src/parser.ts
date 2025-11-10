@@ -131,7 +131,14 @@ export class Parser {
 		if (token.type === TokenType.MINUS) {
 			this.advance()
 			const argument = this.parseExpression(this.getUnaryPrecedence())
-			return ast.unaryOp(argument)
+			return ast.unaryOp('-', argument)
+		}
+
+		// Logical NOT
+		if (token.type === TokenType.EXCLAMATION) {
+			this.advance()
+			const argument = this.parseExpression(this.getUnaryPrecedence())
+			return ast.unaryOp('!', argument)
 		}
 
 		// Parenthesized expression

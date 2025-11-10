@@ -198,14 +198,20 @@ describe('CodeGenerator', () => {
 	test('precedence - unary minus on left of exponentiation needs parens', () => {
 		// (-2) ^ 2 = 4, but -2 ^ 2 = -4
 		// When UnaryOp is the base of exponentiation, we need parens
-		const node = ast.exponentiate(ast.unaryOp(ast.number(2)), ast.number(2))
+		const node = ast.exponentiate(
+			ast.unaryOp('-', ast.number(2)),
+			ast.number(2),
+		)
 		const code = generate(node)
 		expect(code).toBe('(-2) ^ 2')
 	})
 
 	test('precedence - unary minus wraps exponentiation', () => {
 		// -2 ^ 2 should generate as -(2 ^ 2)
-		const node = ast.unaryOp(ast.exponentiate(ast.number(2), ast.number(2)))
+		const node = ast.unaryOp(
+			'-',
+			ast.exponentiate(ast.number(2), ast.number(2)),
+		)
 		const code = generate(node)
 		expect(code).toBe('-(2 ^ 2)')
 	})
@@ -390,5 +396,77 @@ describe('CodeGenerator', () => {
 		const invalidNode = { type: 'InvalidType' } as any
 		const generator = new CodeGenerator()
 		expect(() => generator.generate(invalidNode)).toThrow('Unknown node type')
+	})
+
+	test('logical NOT operator', () => {
+		const ast1 = ast.logicalNot(ast.number(5))
+		const code = generate(ast1)
+		expect(code).toBe('!5')
+	})
+
+	test('logical NOT with identifier', () => {
+		const ast1 = ast.logicalNot(ast.identifier('x'))
+		const code = generate(ast1)
+		expect(code).toBe('!x')
+	})
+
+	test('logical NOT with binary operation', () => {
+		const ast1 = ast.logicalNot(
+			ast.binaryOp(ast.identifier('x'), '+', ast.identifier('y')),
+		)
+		const code = generate(ast1)
+		expect(code).toBe('!(x + y)')
+	})
+
+	test('double NOT', () => {
+		const ast1 = ast.logicalNot(ast.logicalNot(ast.identifier('x')))
+		const code = generate(ast1)
+		expect(code).toBe('!!x')
+	})
+
+	test('NOT round-trip', () => {
+		const source = '!x'
+		const ast1 = parseSource(source)
+		const code = generate(ast1)
+		expect(code).toBe(source)
+	})
+
+	test('NOT with arithmetic', () => {
+		const source = '!x + 5'
+		const ast1 = parseSource(source)
+		const code = generate(ast1)
+		expect(execute(source, { variables: { x: 0 } })).toBe(
+			execute(code, { variables: { x: 0 } }),
+		)
+	})
+
+	test('NOT with comparison', () => {
+		const source = '!(x > 5)'
+		const ast1 = parseSource(source)
+		const code = generate(ast1)
+		expect(code).toBe(source)
+	})
+
+	test('NOT in conditional', () => {
+		const source = '!x ? 100 : 50'
+		const ast1 = parseSource(source)
+		const code = generate(ast1)
+		expect(execute(source, { variables: { x: 0 } })).toBe(
+			execute(code, { variables: { x: 0 } }),
+		)
+	})
+
+	test('mixed unary operators', () => {
+		const source = '-!x'
+		const ast1 = parseSource(source)
+		const code = generate(ast1)
+		expect(code).toBe(source)
+	})
+
+	test('NOT with logical operators', () => {
+		const source = '!x && !y'
+		const ast1 = parseSource(source)
+		const code = generate(ast1)
+		expect(code).toBe(source)
 	})
 })

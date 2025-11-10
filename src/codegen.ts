@@ -95,7 +95,7 @@ export class CodeGenerator {
 		const needsParens = isBinaryOp(node.argument) || isAssignment(node.argument)
 		const argCode = needsParens ? `(${arg})` : arg
 
-		return `-${argCode}`
+		return `${node.operator}${argCode}`
 	}
 
 	/**

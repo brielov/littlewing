@@ -105,6 +105,10 @@ export class Executor {
 			return -arg
 		}
 
+		if (node.operator === '!') {
+			return arg === 0 ? 1 : 0
+		}
+
 		throw new Error(`Unknown unary operator: ${node.operator}`)
 	}
 

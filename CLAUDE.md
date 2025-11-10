@@ -202,15 +202,30 @@ Run a single test file: `bun test test/index.test.ts`
 
 ### Common Development Tasks
 
-**Adding a new operator:**
+**Adding a new binary operator:**
 
 1. Add token type to `TokenType` enum in `src/types.ts`
 2. Handle tokenization in `src/lexer.ts` (nextToken method)
 3. Add precedence in `src/parser.ts` (getPrecedence method)
 4. Implement operation in `src/executor.ts` (executeBinaryOp method)
-5. Add AST builder function in `src/ast.ts`
-6. Add code generation in `src/codegen.ts` (getPrecedence method)
-7. Add comprehensive tests in `test/index.test.ts`
+5. Add to `evaluateBinaryOperation()` in `src/utils.ts` for optimizer consistency
+6. Add AST builder function in `src/ast.ts`
+7. Add code generation in `src/codegen.ts` (getPrecedence method)
+8. Add comprehensive tests in all relevant test files
+
+**Adding a new unary operator:**
+
+1. Add token type to `TokenType` enum in `src/types.ts` (e.g., `EXCLAMATION`)
+2. Update `UnaryOp` interface operator type in `src/types.ts` (e.g., `'-' | '!'`)
+3. Handle tokenization in `src/lexer.ts` (nextToken method)
+4. Add parsing in `src/parser.ts` (parsePrefix method)
+5. Implement operation in `src/executor.ts` (executeUnaryOp method)
+6. Add constant folding in `src/optimizer.ts` (optimize function, UnaryOp case)
+7. Update code generation in `src/codegen.ts` (generateUnaryOp method)
+8. Update `unaryOp()` function signature in `src/ast.ts`
+9. Add convenience builder function in `src/ast.ts` (e.g., `logicalNot()`)
+10. Add comprehensive tests for lexer, parser, executor, optimizer, and codegen
+11. Update documentation (LANGUAGE.md, README.md, CLAUDE.md)
 
 **Adding a new function to defaultContext:**
 

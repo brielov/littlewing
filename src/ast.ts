@@ -62,12 +62,12 @@ export function binaryOp(
 }
 
 /**
- * Create a unary operation node (unary minus)
+ * Create a unary operation node (unary minus or logical NOT)
  */
-export function unaryOp(argument: ASTNode): UnaryOp {
+export function unaryOp(operator: '-' | '!', argument: ASTNode): UnaryOp {
 	return {
 		type: 'UnaryOp',
-		operator: '-',
+		operator,
 		argument,
 	}
 }
@@ -160,7 +160,14 @@ export function exponentiate(left: ASTNode, right: ASTNode): BinaryOp {
  * Create a negation operation
  */
 export function negate(argument: ASTNode): UnaryOp {
-	return unaryOp(argument)
+	return unaryOp('-', argument)
+}
+
+/**
+ * Create a logical NOT operation
+ */
+export function logicalNot(argument: ASTNode): UnaryOp {
+	return unaryOp('!', argument)
 }
 
 /**

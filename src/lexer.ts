@@ -107,7 +107,9 @@ export class Lexer {
 					this.position += 2
 					return { type: TokenType.NOT_EQUALS, value: '!=', position: start }
 				}
-				throw new Error(`Unexpected character '${char}' at position ${start}`)
+				// Single ! is logical NOT
+				this.position++
+				return { type: TokenType.EXCLAMATION, value: '!', position: start }
 			case '<':
 				// Check for <= (less than or equal)
 				if (this.source[this.position + 1] === '=') {

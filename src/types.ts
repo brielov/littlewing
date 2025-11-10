@@ -47,6 +47,7 @@ export enum TokenType {
 	SLASH = 'SLASH',
 	PERCENT = 'PERCENT',
 	CARET = 'CARET',
+	EXCLAMATION = 'EXCLAMATION',
 
 	// Comparison operators
 	DOUBLE_EQUALS = 'DOUBLE_EQUALS',
@@ -129,11 +130,11 @@ export interface BinaryOp {
 }
 
 /**
- * Unary operation (-x, -5, etc.)
+ * Unary operation (-x, !x, etc.)
  */
 export interface UnaryOp {
 	type: 'UnaryOp'
-	operator: '-'
+	operator: '-' | '!'
 	argument: ASTNode
 }
 

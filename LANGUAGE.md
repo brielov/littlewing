@@ -92,6 +92,7 @@ Variable names:
 | `%`         | Modulo         | `10 % 3` | `1`    |
 | `^`         | Exponentiation | `2 ^ 3`  | `8`    |
 | `-` (unary) | Negation       | `-5`     | `-5`   |
+| `!` (unary) | Logical NOT    | `!0`     | `1`    |
 
 #### Comparison Operators
 
@@ -112,17 +113,28 @@ Work with truthiness (0 is false, non-zero is true):
 
 | Operator | Name | Example    | Result |
 | -------- | ---- | ---------- | ------ |
+| `!`      | NOT  | `!0`       | `1`    |
 | `&&`     | AND  | `1 && 1`   | `1`    |
 | `\|\|`   | OR   | `0 \|\| 1` | `1`    |
 
 ```javascript
+// Logical NOT
+!0; // → 1 (true)
+!5; // → 0 (false, because 5 is non-zero)
+!!x; // → normalizes x to 0 or 1
+
 // Logical operators with comparisons
 x = 10;
 result = x > 5 && x < 20; // → 1 (true)
+notResult = !(x > 5); // → 0 (false)
 
 // Short-circuit evaluation
 y = 0;
 safe = y != 0 && 100 / y > 5; // → 0 (avoids division by zero)
+
+// NOT in conditionals
+isBlocked = 1;
+canAccess = !isBlocked; // → 0 (false)
 ```
 
 #### Conditional (Ternary) Operator
@@ -147,7 +159,7 @@ discount = quantity > 100 ? price * 0.2 : price * 0.1;
 From highest to lowest (use parentheses to override):
 
 1. Parentheses: `(expression)`
-2. Unary minus: `-x`
+2. Unary operators: `-x`, `!x`
 3. Exponentiation: `x ^ y` (right-associative)
 4. Multiply/Divide/Modulo: `x * y`, `x / y`, `x % y`
 5. Add/Subtract: `x + y`, `x - y`
@@ -161,12 +173,15 @@ From highest to lowest (use parentheses to override):
 // Examples showing precedence
 2 + 3 * 4; // → 14 (not 20)
 2 ^ 3 ^ 2; // → 512 (right-associative: 2^(3^2))
+!5 + 1; // → 1 (unary operators bind tightly: (!5) + 1 = 0 + 1)
+!2 ^ 2; // → 0 (exponentiation has higher precedence: !(2^2) = !4 = 0)
+-!5; // → -0 (left-to-right: -((!5)) = -(0) = -0)
 x =
 	5 > 3
 		? 10
 		: (5 - // → x gets 10
 				2) ^
-			2; // → -4 (unary minus has higher precedence)
+			2;
 ```
 
 ### Multiple Statements

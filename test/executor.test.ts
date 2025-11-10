@@ -215,3 +215,75 @@ describe('execute() function accepts string or AST', () => {
 		expect(result).toBe(25)
 	})
 })
+
+describe('Logical NOT operator', () => {
+	test('execute NOT on zero', () => {
+		const result = execute('!0')
+		expect(result).toBe(1)
+	})
+
+	test('execute NOT on non-zero positive', () => {
+		const result = execute('!5')
+		expect(result).toBe(0)
+	})
+
+	test('execute NOT on non-zero negative', () => {
+		const result = execute('!-5')
+		expect(result).toBe(0)
+	})
+
+	test('execute double NOT', () => {
+		const result1 = execute('!!0')
+		expect(result1).toBe(0)
+		const result2 = execute('!!5')
+		expect(result2).toBe(1)
+	})
+
+	test('execute NOT in conditional', () => {
+		const result = execute('!0 ? 100 : 50')
+		expect(result).toBe(100)
+	})
+
+	test('execute NOT with comparison', () => {
+		const result = execute('!(5 > 10)')
+		expect(result).toBe(1)
+	})
+
+	test('execute NOT with logical AND', () => {
+		const result = execute('!0 && !0')
+		expect(result).toBe(1)
+	})
+
+	test('execute NOT with logical OR', () => {
+		const result = execute('!1 || !0')
+		expect(result).toBe(1)
+	})
+
+	test('execute NOT with arithmetic', () => {
+		// !0 + 5 should be (!0) + 5 = 1 + 5 = 6
+		const result = execute('!0 + 5')
+		expect(result).toBe(6)
+	})
+
+	test('execute NOT with variable', () => {
+		const result = execute('!x', { variables: { x: 0 } })
+		expect(result).toBe(1)
+	})
+
+	test('execute NOT in complex expression', () => {
+		const result = execute('x = 0; y = !x; y + 10')
+		expect(result).toBe(11)
+	})
+
+	test('execute mixed unary operators', () => {
+		// -!5 should be -((!5)) = -(0) = -0 (which equals 0)
+		const result = execute('-!5')
+		expect(result).toBe(-0) // -0 is valid (signed zero in JavaScript)
+	})
+
+	test('execute NOT with exponentiation precedence', () => {
+		// !2 ^ 2 should be !(2 ^ 2) = !4 = 0
+		const result = execute('!2 ^ 2')
+		expect(result).toBe(0)
+	})
+})

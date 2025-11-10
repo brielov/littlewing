@@ -70,10 +70,15 @@ export function optimize(node: ASTNode): ASTNode {
 		const argument = optimize(node.argument)
 
 		if (isNumberLiteral(argument)) {
-			return ast.number(-argument.value)
+			if (node.operator === '-') {
+				return ast.number(-argument.value)
+			}
+			if (node.operator === '!') {
+				return ast.number(argument.value === 0 ? 1 : 0)
+			}
 		}
 
-		return ast.unaryOp(argument)
+		return ast.unaryOp(node.operator, argument)
 	}
 
 	// Function calls: optimize arguments recursively
