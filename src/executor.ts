@@ -159,13 +159,15 @@ export class Executor {
 }
 
 /**
- * Execute source code with given context
+ * Execute source code or AST with given context
+ * @param input - Either a source code string or an AST node
+ * @param context - Optional execution context with variables and functions
  */
 export function execute(
-	source: string,
+	input: string | ASTNode,
 	context?: ExecutionContext,
 ): RuntimeValue {
-	const ast = parseSource(source)
+	const node = typeof input === 'string' ? parseSource(input) : input
 	const executor = new Executor(context)
-	return executor.execute(ast)
+	return executor.execute(node)
 }

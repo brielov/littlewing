@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import { execute } from '../src'
+import { ast, execute, parseSource } from '../src'
 
 describe('Executor', () => {
 	test('execute number literal', () => {
@@ -129,5 +129,44 @@ describe('Executor', () => {
 	test('floating point arithmetic', () => {
 		expect(execute('0.1 + 0.2')).toBeCloseTo(0.3)
 		expect(execute('3.14 * 2')).toBeCloseTo(6.28)
+	})
+})
+
+describe('execute() function accepts string or AST', () => {
+	test('execute() function accepts string', () => {
+		const result = execute('2 + 3')
+		expect(result).toBe(5)
+	})
+
+	test('execute() function accepts AST', () => {
+		const astNode = parseSource('2 + 3')
+		const result = execute(astNode)
+		expect(result).toBe(5)
+	})
+
+	test('execute() with string and context', () => {
+		const result = execute('x + 5', { variables: { x: 10 } })
+		expect(result).toBe(15)
+	})
+
+	test('execute() with AST and context', () => {
+		const astNode = ast.binaryOp(ast.identifier('x'), '+', ast.number(5))
+		const result = execute(astNode, { variables: { x: 10 } })
+		expect(result).toBe(15)
+	})
+
+	test('execute() handles complex expressions as string', () => {
+		const result = execute('x * 2 + 5', { variables: { x: 10 } })
+		expect(result).toBe(25)
+	})
+
+	test('execute() handles complex expressions as AST', () => {
+		const astNode = ast.binaryOp(
+			ast.binaryOp(ast.identifier('x'), '*', ast.number(2)),
+			'+',
+			ast.number(5),
+		)
+		const result = execute(astNode, { variables: { x: 10 } })
+		expect(result).toBe(25)
 	})
 })

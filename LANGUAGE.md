@@ -496,10 +496,29 @@ kelvin = celsius + 273.15; // → 298.15
 
 ### Performance Characteristics
 
-- Parse once, execute many times with different contexts
-- Suitable for high-frequency evaluation (1000s/second)
-- Constant memory usage (no memory leaks)
-- Predictable execution time based on expression size
+- **Parse once, execute many** - The `execute()` function accepts both strings and pre-parsed AST nodes, allowing you to parse once and execute many times with different contexts
+- **High-frequency evaluation** - Suitable for 1000s of evaluations per second
+- **Constant memory** - No memory leaks or unbounded growth
+- **Predictable execution time** - O(n) based on expression size
+
+#### Optimization Example
+
+```javascript
+import { execute, parseSource } from "littlewing";
+
+// For expressions executed multiple times, parse once and reuse the AST
+const formula = parseSource("price * quantity * (1 - discount)");
+
+// Execute many times with different values (no re-parsing overhead)
+execute(formula, { variables: { price: 10, quantity: 5, discount: 0.1 } }); // → 45
+execute(formula, { variables: { price: 20, quantity: 3, discount: 0.15 } }); // → 51
+execute(formula, { variables: { price: 15, quantity: 10, discount: 0.2 } }); // → 120
+
+// This pattern is ideal for:
+// - Applying formulas to datasets
+// - Real-time calculations with user input
+// - Batch processing with different contexts
+```
 
 ## Limitations
 

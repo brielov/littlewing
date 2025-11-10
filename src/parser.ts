@@ -26,13 +26,15 @@ const BINARY_OPERATOR_TOKENS = new Set([
 /**
  * Parser using Pratt parsing (top-down operator precedence)
  * Implements an efficient O(n) parsing algorithm
+ * Uses lazy lexing - calls lexer on-demand instead of receiving all tokens upfront
  */
 export class Parser {
-	private tokens: Token[]
-	private current: number = 0
+	private lexer: Lexer
+	private currentToken: Token
 
-	constructor(tokens: Token[]) {
-		this.tokens = tokens
+	constructor(lexer: Lexer) {
+		this.lexer = lexer
+		this.currentToken = lexer.nextToken()
 	}
 
 	/**
@@ -213,21 +215,14 @@ export class Parser {
 	 * Get current token without advancing
 	 */
 	private peek(): Token {
-		if (this.current >= this.tokens.length) {
-			return { type: TokenType.EOF, value: '', position: -1 }
-		}
-		const token = this.tokens[this.current]
-		if (token === undefined) {
-			return { type: TokenType.EOF, value: '', position: -1 }
-		}
-		return token
+		return this.currentToken
 	}
 
 	/**
-	 * Advance to next token
+	 * Advance to next token by calling lexer
 	 */
 	private advance(): void {
-		this.current++
+		this.currentToken = this.lexer.nextToken()
 	}
 }
 
@@ -240,7 +235,6 @@ export class Parser {
  */
 export function parseSource(source: string): ASTNode {
 	const lexer = new Lexer(source)
-	const tokens = lexer.tokenize()
-	const parser = new Parser(tokens)
+	const parser = new Parser(lexer)
 	return parser.parse()
 }

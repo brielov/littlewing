@@ -156,22 +156,38 @@ For complete language documentation including all operators, functions, and exam
 
 ### Main Functions
 
-#### `execute(source: string, context?: ExecutionContext): number`
+#### `execute(input: string | ASTNode, context?: ExecutionContext): number`
 
-Execute an expression and return the result.
+Execute an expression or AST and return the result. Accepts either a source string or a pre-parsed AST node.
 
 ```typescript
+// Execute source string directly
 execute("2 + 2"); // → 4
 execute("ABS(-5)", { functions: { ABS: Math.abs } }); // → 5
+
+// Execute pre-parsed AST (useful for parse-once, execute-many scenarios)
+const ast = parseSource("2 + 2");
+execute(ast); // → 4
+execute(ast); // → 4 (no re-parsing)
 ```
 
 #### `parseSource(source: string): ASTNode`
 
-Parse source into an Abstract Syntax Tree without executing.
+Parse source into an Abstract Syntax Tree without executing. Useful for parse-once, execute-many scenarios.
 
 ```typescript
 const ast = parseSource("2 + 3 * 4");
-// Use with Executor class or optimize() function
+
+// Execute multiple times with different contexts (no re-parsing)
+execute(ast); // → 14
+execute(ast, {
+	variables: {
+		/* ... */
+	},
+}); // → 14 (with context)
+
+// Or use with Executor class or optimize() function
+const optimized = optimize(ast);
 ```
 
 #### `optimize(node: ASTNode): ASTNode`
@@ -224,6 +240,32 @@ The `defaultContext` includes these built-in functions:
 **Date arithmetic:** `ADD_DAYS`, `ADD_MONTHS`, `ADD_YEARS`
 
 **Date comparisons:** `IS_SAME_DAY`, `IS_WEEKEND`, `IS_LEAP_YEAR` (use `<`, `>`, `<=`, `>=` operators for before/after comparisons)
+
+## Performance Optimization
+
+For expressions that are executed multiple times with different contexts, parse once and reuse the AST:
+
+```typescript
+import { execute, parseSource } from "littlewing";
+
+// Parse once
+const formula = parseSource(
+	"price * quantity * (1 - discount) * (1 + taxRate)",
+);
+
+// Execute many times with different values (no re-parsing)
+execute(formula, {
+	variables: { price: 10, quantity: 5, discount: 0.1, taxRate: 0.08 },
+});
+execute(formula, {
+	variables: { price: 20, quantity: 3, discount: 0.15, taxRate: 0.08 },
+});
+execute(formula, {
+	variables: { price: 15, quantity: 10, discount: 0.2, taxRate: 0.08 },
+});
+
+// This avoids lexing and parsing overhead on every execution
+```
 
 ## Use Cases
 
