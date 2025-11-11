@@ -1,26 +1,7 @@
-import type {
-	ASTNode,
-	Assignment,
-	BinaryOp,
-	ConditionalExpression,
-	FunctionCall,
-	Identifier,
-	NumberLiteral,
-	Operator,
-	Program,
-	UnaryOp,
-} from './types'
-import {
-	isAssignment,
-	isBinaryOp,
-	isConditionalExpression,
-	isFunctionCall,
-	isIdentifier,
-	isNumberLiteral,
-	isProgram,
-	isUnaryOp,
-} from './types'
+import type { ASTNode, Operator } from './types'
+import { isAssignment, isBinaryOp, isUnaryOp } from './types'
 import { getOperatorPrecedence } from './utils'
+import { visit } from './visitor'
 
 /**
  * CodeGenerator - converts AST nodes back to source code
@@ -30,106 +11,83 @@ export class CodeGenerator {
 	 * Generate source code from an AST node
 	 */
 	generate(node: ASTNode): string {
-		if (isProgram(node)) return this.generateProgram(node)
-		if (isNumberLiteral(node)) return this.generateNumberLiteral(node)
-		if (isIdentifier(node)) return this.generateIdentifier(node)
-		if (isBinaryOp(node)) return this.generateBinaryOp(node)
-		if (isUnaryOp(node)) return this.generateUnaryOp(node)
-		if (isFunctionCall(node)) return this.generateFunctionCall(node)
-		if (isAssignment(node)) return this.generateAssignment(node)
-		if (isConditionalExpression(node))
-			return this.generateConditionalExpression(node)
-		throw new Error(`Unknown node type`)
-	}
+		return visit(node, {
+			// Generate code for a program (multiple statements)
+			Program: (n, recurse) => {
+				return n.statements.map(recurse).join('; ')
+			},
 
-	/**
-	 * Generate code for a program (multiple statements)
-	 */
-	private generateProgram(node: Program): string {
-		return node.statements.map((stmt) => this.generate(stmt)).join('; ')
-	}
+			// Generate code for a number literal
+			NumberLiteral: (n) => {
+				return String(n.value)
+			},
 
-	/**
-	 * Generate code for a number literal
-	 */
-	private generateNumberLiteral(node: NumberLiteral): string {
-		return String(node.value)
-	}
+			// Generate code for an identifier
+			Identifier: (n) => {
+				return n.name
+			},
 
-	/**
-	 * Generate code for an identifier
-	 */
-	private generateIdentifier(node: Identifier): string {
-		return node.name
-	}
+			// Generate code for a binary operation
+			BinaryOp: (n, recurse) => {
+				const left = recurse(n.left)
+				const right = recurse(n.right)
 
-	/**
-	 * Generate code for a binary operation
-	 */
-	private generateBinaryOp(node: BinaryOp): string {
-		const left = this.generate(node.left)
-		const right = this.generate(node.right)
+				// Add parentheses to left side if it's a lower precedence operation
+				// Special case: UnaryOp on left of ^ needs parentheses
+				// (-2) ^ 2 = 4, but -2 ^ 2 = -4
+				const leftNeedsParens =
+					this.needsParensLeft(n.left, n.operator) ||
+					(n.operator === '^' && isUnaryOp(n.left))
+				const leftCode = leftNeedsParens ? `(${left})` : left
 
-		// Add parentheses to left side if it's a lower precedence operation
-		// Special case: UnaryOp on left of ^ needs parentheses
-		// (-2) ^ 2 = 4, but -2 ^ 2 = -4
-		const leftNeedsParens =
-			this.needsParensLeft(node.left, node.operator) ||
-			(node.operator === '^' && isUnaryOp(node.left))
-		const leftCode = leftNeedsParens ? `(${left})` : left
+				// Add parentheses to right side if it's a lower precedence operation
+				const rightNeedsParens = this.needsParensRight(n.right, n.operator)
+				const rightCode = rightNeedsParens ? `(${right})` : right
 
-		// Add parentheses to right side if it's a lower precedence operation
-		const rightNeedsParens = this.needsParensRight(node.right, node.operator)
-		const rightCode = rightNeedsParens ? `(${right})` : right
+				return `${leftCode} ${n.operator} ${rightCode}`
+			},
 
-		return `${leftCode} ${node.operator} ${rightCode}`
-	}
+			// Generate code for a unary operation
+			UnaryOp: (n, recurse) => {
+				const arg = recurse(n.argument)
 
-	/**
-	 * Generate code for a unary operation
-	 */
-	private generateUnaryOp(node: UnaryOp): string {
-		const arg = this.generate(node.argument)
+				// Add parentheses around binary/assignment operations
+				const needsParens = isBinaryOp(n.argument) || isAssignment(n.argument)
+				const argCode = needsParens ? `(${arg})` : arg
 
-		// Add parentheses around binary/assignment operations
-		const needsParens = isBinaryOp(node.argument) || isAssignment(node.argument)
-		const argCode = needsParens ? `(${arg})` : arg
+				return `${n.operator}${argCode}`
+			},
 
-		return `${node.operator}${argCode}`
-	}
+			// Generate code for a function call
+			FunctionCall: (n, recurse) => {
+				const args = n.arguments.map(recurse).join(', ')
+				return `${n.name}(${args})`
+			},
 
-	/**
-	 * Generate code for a function call
-	 */
-	private generateFunctionCall(node: FunctionCall): string {
-		const args = node.arguments.map((arg) => this.generate(arg)).join(', ')
-		return `${node.name}(${args})`
-	}
+			// Generate code for a variable assignment
+			Assignment: (n, recurse) => {
+				const value = recurse(n.value)
+				return `${n.name} = ${value}`
+			},
 
-	/**
-	 * Generate code for a variable assignment
-	 */
-	private generateAssignment(node: Assignment): string {
-		const value = this.generate(node.value)
-		return `${node.name} = ${value}`
-	}
+			// Generate code for a conditional expression (ternary operator)
+			ConditionalExpression: (n, recurse) => {
+				const condition = recurse(n.condition)
+				const consequent = recurse(n.consequent)
+				const alternate = recurse(n.alternate)
 
-	/**
-	 * Generate code for a conditional expression (ternary operator)
-	 */
-	private generateConditionalExpression(node: ConditionalExpression): string {
-		const condition = this.generate(node.condition)
-		const consequent = this.generate(node.consequent)
-		const alternate = this.generate(node.alternate)
+				// Add parentheses to condition if it's an assignment or lower-precedence operation
+				const conditionNeedsParens =
+					isAssignment(n.condition) ||
+					(isBinaryOp(n.condition) &&
+						getOperatorPrecedence(n.condition.operator) <= 2)
+				const conditionCode = conditionNeedsParens
+					? `(${condition})`
+					: condition
 
-		// Add parentheses to condition if it's an assignment or lower-precedence operation
-		const conditionNeedsParens =
-			isAssignment(node.condition) ||
-			(isBinaryOp(node.condition) &&
-				getOperatorPrecedence(node.condition.operator) <= 2)
-		const conditionCode = conditionNeedsParens ? `(${condition})` : condition
-
-		return `${conditionCode} ? ${consequent} : ${alternate}`
+				return `${conditionCode} ? ${consequent} : ${alternate}`
+			},
+		})
 	}
 
 	/**

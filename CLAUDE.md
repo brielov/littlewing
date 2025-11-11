@@ -67,6 +67,12 @@ Type guards (`isNumberLiteral`, `isBinaryOp`, etc.) enable safe pattern matching
 
 - `ast` namespace - Functions for manual AST construction
 
+**Visitor Pattern:**
+
+- `visit<T>(node, visitor)` - Exhaustive visitor requiring handlers for all node types
+- `visitPartial<T>(node, visitor, defaultHandler)` - Partial visitor with fallback for unhandled types
+- `Visitor<T>` - Type definition for visitor objects
+
 **Defaults:**
 
 - `defaultContext` - Built-in math and timestamp functions
@@ -111,8 +117,12 @@ src/
 ├── lexer.ts          # Tokenization (source → tokens)
 ├── parser.ts         # Parsing (tokens → AST)
 ├── executor.ts       # Execution (AST + context → result)
+├── optimizer.ts      # AST optimization (constant folding)
+├── visitor.ts        # Visitor pattern for AST traversal
 ├── ast.ts            # AST builder functions
 ├── codegen.ts        # Code generation (AST → source)
+├── humanizer.ts      # AST to English text conversion
+├── analyzer.ts       # Static analysis utilities
 ├── date-utils.ts     # Date/time utility functions
 └── defaults.ts       # Default context with built-in functions
 
@@ -121,13 +131,15 @@ test/
 ├── parser.test.ts          # Parser tests
 ├── executor.test.ts        # Executor tests
 ├── optimizer.test.ts       # Optimizer tests
+├── visitor.test.ts         # Visitor pattern tests
 ├── codegen.test.ts         # Code generation tests
+├── humanizer.test.ts       # Humanizer tests
+├── analyzer.test.ts        # Analyzer tests
 ├── ast.test.ts             # AST builder tests
 ├── defaults.test.ts        # Default context tests
 ├── date-utils.test.ts      # Date utility tests
 ├── integration.test.ts     # Integration tests
 ├── operators.test.ts       # Operator tests
-├── timestamps.test.ts      # Timestamp arithmetic tests
 ├── external-variables.test.ts  # Context override tests
 └── precedence.test.ts      # Precedence tests
 ```
@@ -177,21 +189,79 @@ The lexer supports JavaScript-style decimal shorthand notation where leading zer
 - Conversion to/from JavaScript `Date` happens at boundaries (context functions, user code)
 - Time durations are milliseconds (numbers), enabling clean arithmetic
 
+### Visitor Pattern
+
+The codebase uses a centralized visitor pattern for AST traversal, implemented in `src/visitor.ts`.
+
+**Benefits:**
+
+- **DRY:** Single source of truth for traversal logic
+- **Type safety:** Compile-time exhaustiveness checking via TypeScript's switch statements
+- **Maintainability:** Adding new node types requires updating one place
+- **Public API:** External users can traverse ASTs without reimplementing traversal
+
+**Two visitor functions:**
+
+1. **`visit<T>(node, visitor)`** - Exhaustive visitor
+   - Requires handlers for all 8 node types
+   - TypeScript enforces completeness at compile time
+   - Used by: optimizer, executor, codegen, humanizer
+
+2. **`visitPartial<T>(node, visitor, defaultHandler)`** - Partial visitor
+   - Handlers for specific node types only
+   - Default handler for unhandled types
+   - Used by: analyzer, custom user code
+
+**Usage in modules:**
+
+- `executor.ts`: Evaluates AST nodes to numbers
+- `optimizer.ts`: Transforms AST with constant folding
+- `codegen.ts`: Generates source code from AST
+- `humanizer.ts`: Converts AST to English text
+- `analyzer.ts`: Extracts information (e.g., input variables)
+
+**Example (custom traversal):**
+
+```typescript
+import { visit } from "littlewing";
+
+// Count all nodes
+const count = visit(ast, {
+	Program: (n, recurse) =>
+		1 + n.statements.reduce((sum, s) => sum + recurse(s), 0),
+	NumberLiteral: () => 1,
+	BinaryOp: (n, recurse) => 1 + recurse(n.left) + recurse(n.right),
+	// ... other handlers
+});
+```
+
 ### Testing
 
-Tests use Bun's built-in test framework. Structure:
+Tests use Bun's built-in test framework. Current coverage:
+
+- **485 tests** across 15 test files
+- **99.45% function coverage**
+- **98.57% line coverage**
+
+Test structure:
 
 - Lexer tests (tokenization)
 - Parser tests (AST construction)
 - Executor tests (evaluation)
-- Timestamp arithmetic tests (date calculations)
+- Optimizer tests (constant folding)
+- Visitor tests (traversal patterns)
+- Codegen tests (AST → source)
+- Humanizer tests (AST → English)
+- Analyzer tests (static analysis)
 - AST builder tests (manual construction)
 - Integration tests (full pipeline)
 - Default context tests (built-in functions)
-- Code generation tests (AST → source)
-- Edge cases and error handling
+- Date utilities tests (timestamp operations)
+- Operator tests (all operators)
+- External variables tests (context override)
+- Precedence tests (operator precedence)
 
-Run a single test file: `bun test test/index.test.ts`
+Run a single test file: `bun test test/visitor.test.ts`
 
 ### Code Style
 
@@ -206,12 +276,12 @@ Run a single test file: `bun test test/index.test.ts`
 
 1. Add token type to `TokenType` enum in `src/types.ts`
 2. Handle tokenization in `src/lexer.ts` (nextToken method)
-3. Add precedence in `src/parser.ts` (getPrecedence method)
-4. Implement operation in `src/executor.ts` (executeBinaryOp method)
-5. Add to `evaluateBinaryOperation()` in `src/utils.ts` for optimizer consistency
-6. Add AST builder function in `src/ast.ts`
-7. Add code generation in `src/codegen.ts` (getPrecedence method)
-8. Add comprehensive tests in all relevant test files
+3. Add precedence in `src/utils.ts` (getTokenPrecedence and getOperatorPrecedence)
+4. Add to `evaluateBinaryOperation()` in `src/utils.ts`
+5. Add AST builder function in `src/ast.ts`
+6. Add comprehensive tests in all relevant test files
+
+Note: With the visitor pattern, you don't need to modify `executor.ts`, `optimizer.ts`, or `codegen.ts` individually - they use the shared `evaluateBinaryOperation()` function.
 
 **Adding a new unary operator:**
 
@@ -219,13 +289,15 @@ Run a single test file: `bun test test/index.test.ts`
 2. Update `UnaryOp` interface operator type in `src/types.ts` (e.g., `'-' | '!'`)
 3. Handle tokenization in `src/lexer.ts` (nextToken method)
 4. Add parsing in `src/parser.ts` (parsePrefix method)
-5. Implement operation in `src/executor.ts` (executeUnaryOp method)
-6. Add constant folding in `src/optimizer.ts` (optimize function, UnaryOp case)
-7. Update code generation in `src/codegen.ts` (generateUnaryOp method)
-8. Update `unaryOp()` function signature in `src/ast.ts`
-9. Add convenience builder function in `src/ast.ts` (e.g., `logicalNot()`)
-10. Add comprehensive tests for lexer, parser, executor, optimizer, and codegen
-11. Update documentation (LANGUAGE.md, README.md, CLAUDE.md)
+5. Add operation handling in the visitor handlers:
+   - `src/executor.ts` (UnaryOp visitor handler)
+   - `src/optimizer.ts` (UnaryOp visitor handler for constant folding)
+   - `src/codegen.ts` (UnaryOp visitor handler if special formatting needed)
+   - `src/humanizer.ts` (UnaryOp visitor handler for English text)
+6. Update `unaryOp()` function signature in `src/ast.ts`
+7. Add convenience builder function in `src/ast.ts` (e.g., `logicalNot()`)
+8. Add comprehensive tests for lexer, parser, executor, optimizer, and codegen
+9. Update documentation (LANGUAGE.md, README.md, CLAUDE.md)
 
 **Adding a new function to defaultContext:**
 

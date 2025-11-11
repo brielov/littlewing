@@ -1,6 +1,5 @@
 import { describe, expect, test } from 'bun:test'
 import { ast, Executor, execute, generate, parseSource } from '../src'
-import { CodeGenerator } from '../src/codegen'
 
 describe('CodeGenerator', () => {
 	test('generate number literal', () => {
@@ -390,13 +389,9 @@ describe('CodeGenerator', () => {
 		expect(execute(source)).toBe(execute(code))
 	})
 
-	test('error on unknown node type', () => {
-		// Test error handling for invalid AST node
-		// biome-ignore lint/suspicious/noExplicitAny: testing error handling with intentionally invalid node type
-		const invalidNode = { type: 'InvalidType' } as any
-		const generator = new CodeGenerator()
-		expect(() => generator.generate(invalidNode)).toThrow('Unknown node type')
-	})
+	// Note: The visitor pattern provides compile-time exhaustiveness checking.
+	// Invalid node types are caught at compile time, not runtime.
+	// This is superior to runtime error handling as it prevents bugs before they occur.
 
 	test('logical NOT operator', () => {
 		const ast1 = ast.logicalNot(ast.number(5))

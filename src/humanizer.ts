@@ -1,25 +1,6 @@
-import type {
-	ASTNode,
-	Assignment,
-	BinaryOp,
-	ConditionalExpression,
-	FunctionCall,
-	Identifier,
-	NumberLiteral,
-	Operator,
-	Program,
-	UnaryOp,
-} from './types'
-import {
-	isAssignment,
-	isBinaryOp,
-	isConditionalExpression,
-	isFunctionCall,
-	isIdentifier,
-	isNumberLiteral,
-	isProgram,
-	isUnaryOp,
-} from './types'
+import type { ASTNode, Operator } from './types'
+import { isIdentifier, isNumberLiteral } from './types'
+import { visit } from './visitor'
 
 /**
  * Options for customizing the humanization output
@@ -146,126 +127,101 @@ export class Humanizer {
 	 * Humanize an AST node into English text
 	 */
 	humanize(node: ASTNode): string {
-		if (isProgram(node)) {
-			return this.humanizeProgram(node)
-		}
-		if (isNumberLiteral(node)) {
-			return this.humanizeNumberLiteral(node)
-		}
-		if (isIdentifier(node)) {
-			return this.humanizeIdentifier(node)
-		}
-		if (isBinaryOp(node)) {
-			return this.humanizeBinaryOp(node)
-		}
-		if (isUnaryOp(node)) {
-			return this.humanizeUnaryOp(node)
-		}
-		if (isFunctionCall(node)) {
-			return this.humanizeFunctionCall(node)
-		}
-		if (isAssignment(node)) {
-			return this.humanizeAssignment(node)
-		}
-		if (isConditionalExpression(node)) {
-			return this.humanizeConditionalExpression(node)
-		}
+		return visit(node, {
+			Program: (n, recurse) => {
+				const statements = n.statements.map((stmt) => {
+					const text = recurse(stmt)
+					// Capitalize first letter of each statement
+					return text.charAt(0).toUpperCase() + text.slice(1)
+				})
+				return statements.join('. ')
+			},
 
-		throw new Error(`Unknown node type: ${JSON.stringify(node)}`)
-	}
+			NumberLiteral: (n) => {
+				const text = String(n.value)
+				return this.wrapHtml(text, 'number')
+			},
 
-	private humanizeProgram(node: Program): string {
-		const statements = node.statements.map((stmt) => {
-			const text = this.humanize(stmt)
-			// Capitalize first letter of each statement
-			return text.charAt(0).toUpperCase() + text.slice(1)
+			Identifier: (n) => {
+				return this.wrapHtml(n.name, 'identifier')
+			},
+
+			BinaryOp: (n, recurse) => {
+				const left = recurse(n.left)
+				const right = recurse(n.right)
+				const operator = this.operatorPhrases[n.operator]
+
+				const operatorText = this.wrapHtml(operator, 'operator')
+				return `${left} ${operatorText} ${right}`
+			},
+
+			UnaryOp: (n, recurse) => {
+				const arg = recurse(n.argument)
+
+				if (n.operator === '-') {
+					// Check if we need grouping phrase for complex expressions
+					const needsGrouping =
+						!isNumberLiteral(n.argument) && !isIdentifier(n.argument)
+					if (needsGrouping) {
+						return `the negative of ${arg}`
+					}
+					return `negative ${arg}`
+				}
+
+				if (n.operator === '!') {
+					return `not ${arg}`
+				}
+
+				throw new Error(`Unknown unary operator: ${n.operator}`)
+			},
+
+			FunctionCall: (n, recurse) => {
+				const funcName = this.wrapHtml(n.name, 'function')
+				const args = n.arguments.map(recurse)
+
+				// Check if we have a known phrase for this function
+				const phrase = this.functionPhrases[n.name]
+
+				if (phrase) {
+					// Known function - use the custom phrase
+					if (args.length === 0) {
+						return phrase
+					}
+					if (args.length === 1) {
+						return `${phrase} ${args[0]}`
+					}
+					// Multiple arguments - join with "and"
+					const lastArg = args[args.length - 1]
+					const otherArgs = args.slice(0, -1).join(', ')
+					return `${phrase} ${otherArgs} and ${lastArg}`
+				}
+
+				// Unknown function - use generic phrasing
+				if (args.length === 0) {
+					return `the result of ${funcName}`
+				}
+				if (args.length === 1) {
+					return `the result of ${funcName} with ${args[0]}`
+				}
+				const lastArg = args[args.length - 1]
+				const otherArgs = args.slice(0, -1).join(', ')
+				return `the result of ${funcName} with ${otherArgs} and ${lastArg}`
+			},
+
+			Assignment: (n, recurse) => {
+				const name = this.wrapHtml(n.name, 'identifier')
+				const value = recurse(n.value)
+				return `set ${name} to ${value}`
+			},
+
+			ConditionalExpression: (n, recurse) => {
+				const condition = recurse(n.condition)
+				const consequent = recurse(n.consequent)
+				const alternate = recurse(n.alternate)
+
+				return `if ${condition} then ${consequent}, otherwise ${alternate}`
+			},
 		})
-		return statements.join('. ')
-	}
-
-	private humanizeNumberLiteral(node: NumberLiteral): string {
-		const text = String(node.value)
-		return this.wrapHtml(text, 'number')
-	}
-
-	private humanizeIdentifier(node: Identifier): string {
-		return this.wrapHtml(node.name, 'identifier')
-	}
-
-	private humanizeBinaryOp(node: BinaryOp): string {
-		const left = this.humanize(node.left)
-		const right = this.humanize(node.right)
-		const operator = this.operatorPhrases[node.operator]
-
-		const operatorText = this.wrapHtml(operator, 'operator')
-		return `${left} ${operatorText} ${right}`
-	}
-
-	private humanizeUnaryOp(node: UnaryOp): string {
-		const arg = this.humanize(node.argument)
-
-		if (node.operator === '-') {
-			// Check if we need grouping phrase for complex expressions
-			const needsGrouping =
-				!isNumberLiteral(node.argument) && !isIdentifier(node.argument)
-			if (needsGrouping) {
-				return `the negative of ${arg}`
-			}
-			return `negative ${arg}`
-		}
-
-		if (node.operator === '!') {
-			return `not ${arg}`
-		}
-
-		throw new Error(`Unknown unary operator: ${node.operator}`)
-	}
-
-	private humanizeFunctionCall(node: FunctionCall): string {
-		const funcName = this.wrapHtml(node.name, 'function')
-		const args = node.arguments.map((arg) => this.humanize(arg))
-
-		// Check if we have a known phrase for this function
-		const phrase = this.functionPhrases[node.name]
-
-		if (phrase) {
-			// Known function - use the custom phrase
-			if (args.length === 0) {
-				return phrase
-			}
-			if (args.length === 1) {
-				return `${phrase} ${args[0]}`
-			}
-			// Multiple arguments - join with "and"
-			const lastArg = args[args.length - 1]
-			const otherArgs = args.slice(0, -1).join(', ')
-			return `${phrase} ${otherArgs} and ${lastArg}`
-		}
-
-		// Unknown function - use generic phrasing
-		if (args.length === 0) {
-			return `the result of ${funcName}`
-		}
-		if (args.length === 1) {
-			return `the result of ${funcName} with ${args[0]}`
-		}
-		const lastArg = args[args.length - 1]
-		const otherArgs = args.slice(0, -1).join(', ')
-		return `the result of ${funcName} with ${otherArgs} and ${lastArg}`
-	}
-
-	private humanizeAssignment(node: Assignment): string {
-		const name = this.wrapHtml(node.name, 'identifier')
-		const value = this.humanize(node.value)
-		return `set ${name} to ${value}`
-	}
-
-	private humanizeConditionalExpression(node: ConditionalExpression): string {
-		const condition = this.humanize(node.condition)
-		const consequent = this.humanize(node.consequent)
-		const alternate = this.humanize(node.alternate)
-
-		return `if ${condition} then ${consequent}, otherwise ${alternate}`
 	}
 
 	/**

@@ -56,3 +56,6 @@ export {
 	TokenType,
 	type UnaryOp,
 } from './types'
+
+// Visitor pattern
+export { type Visitor, visit, visitPartial } from './visitor'

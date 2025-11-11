@@ -1,15 +1,8 @@
 import * as ast from './ast'
 import type { ASTNode } from './types'
-import {
-	isAssignment,
-	isBinaryOp,
-	isConditionalExpression,
-	isFunctionCall,
-	isNumberLiteral,
-	isProgram,
-	isUnaryOp,
-} from './types'
+import { isNumberLiteral } from './types'
 import { evaluateBinaryOperation } from './utils'
+import { visit } from './visitor'
 
 /**
  * Optimize an AST using constant folding and expression simplification.
@@ -36,88 +29,83 @@ import { evaluateBinaryOperation } from './utils'
  * @returns Optimized AST node
  */
 export function optimize(node: ASTNode): ASTNode {
-	// Number literals are already optimal
-	if (isNumberLiteral(node)) {
-		return node
-	}
+	return visit<ASTNode>(node, {
+		// Number literals are already optimal
+		NumberLiteral: (n) => n,
 
-	// Identifiers cannot be optimized (may be overridden by context)
-	if (node.type === 'Identifier') {
-		return node
-	}
+		// Identifiers cannot be optimized (may be overridden by context)
+		Identifier: (n) => n,
 
-	// Binary operations: try to fold if both operands are literals
-	if (isBinaryOp(node)) {
-		const left = optimize(node.left)
-		const right = optimize(node.right)
+		// Binary operations: try to fold if both operands are literals
+		BinaryOp: (n, recurse) => {
+			const left = recurse(n.left)
+			const right = recurse(n.right)
 
-		// If both sides are literals, fold the operation
-		if (isNumberLiteral(left) && isNumberLiteral(right)) {
-			const result = evaluateBinaryOperation(
-				node.operator,
-				left.value,
-				right.value,
-			)
-			return ast.number(result)
-		}
-
-		// Return optimized binary operation (even if not fully foldable)
-		return ast.binaryOp(left, node.operator, right)
-	}
-
-	// Unary operations: fold if argument is a literal
-	if (isUnaryOp(node)) {
-		const argument = optimize(node.argument)
-
-		if (isNumberLiteral(argument)) {
-			if (node.operator === '-') {
-				return ast.number(-argument.value)
+			// If both sides are literals, fold the operation
+			if (isNumberLiteral(left) && isNumberLiteral(right)) {
+				const result = evaluateBinaryOperation(
+					n.operator,
+					left.value,
+					right.value,
+				)
+				return ast.number(result)
 			}
-			if (node.operator === '!') {
-				return ast.number(argument.value === 0 ? 1 : 0)
+
+			// Return optimized binary operation (even if not fully foldable)
+			return ast.binaryOp(left, n.operator, right)
+		},
+
+		// Unary operations: fold if argument is a literal
+		UnaryOp: (n, recurse) => {
+			const argument = recurse(n.argument)
+
+			if (isNumberLiteral(argument)) {
+				if (n.operator === '-') {
+					return ast.number(-argument.value)
+				}
+				if (n.operator === '!') {
+					return ast.number(argument.value === 0 ? 1 : 0)
+				}
 			}
-		}
 
-		return ast.unaryOp(node.operator, argument)
-	}
+			return ast.unaryOp(n.operator, argument)
+		},
 
-	// Function calls: optimize arguments recursively
-	// We cannot evaluate the function itself (runtime-dependent)
-	if (isFunctionCall(node)) {
-		const optimizedArgs = node.arguments.map((arg) => optimize(arg))
-		return ast.functionCall(node.name, optimizedArgs)
-	}
+		// Function calls: optimize arguments recursively
+		// We cannot evaluate the function itself (runtime-dependent)
+		FunctionCall: (n, recurse) => {
+			const optimizedArgs = n.arguments.map(recurse)
+			return ast.functionCall(n.name, optimizedArgs)
+		},
 
-	// Assignments: optimize the right-hand side
-	// We cannot eliminate the assignment (the variable might be read from context)
-	if (isAssignment(node)) {
-		return ast.assign(node.name, optimize(node.value))
-	}
+		// Assignments: optimize the right-hand side
+		// We cannot eliminate the assignment (the variable might be read from context)
+		Assignment: (n, recurse) => {
+			return ast.assign(n.name, recurse(n.value))
+		},
 
-	// Conditional expressions: fold if condition is a constant
-	if (isConditionalExpression(node)) {
-		const condition = optimize(node.condition)
+		// Conditional expressions: fold if condition is a constant
+		ConditionalExpression: (n, recurse) => {
+			const condition = recurse(n.condition)
 
-		// If condition is a constant, choose the branch at compile-time
-		if (isNumberLiteral(condition)) {
-			return condition.value !== 0
-				? optimize(node.consequent)
-				: optimize(node.alternate)
-		}
+			// If condition is a constant, choose the branch at compile-time
+			if (isNumberLiteral(condition)) {
+				return condition.value !== 0
+					? recurse(n.consequent)
+					: recurse(n.alternate)
+			}
 
-		// Otherwise, optimize all three parts
-		const consequent = optimize(node.consequent)
-		const alternate = optimize(node.alternate)
+			// Otherwise, optimize all three parts
+			const consequent = recurse(n.consequent)
+			const alternate = recurse(n.alternate)
 
-		return ast.conditional(condition, consequent, alternate)
-	}
+			return ast.conditional(condition, consequent, alternate)
+		},
 
-	// Programs: optimize each statement independently
-	if (isProgram(node)) {
-		const optimizedStatements = node.statements.map((stmt) => optimize(stmt))
-		return ast.program(optimizedStatements)
-	}
-
-	// Unknown node type (should never happen with correct types)
-	return node
+		// Programs: optimize each statement independently
+		Program: (n, recurse) => {
+			const optimizedStatements = n.statements.map(recurse)
+			return ast.program(optimizedStatements)
+		},
+	})
 }

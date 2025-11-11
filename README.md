@@ -23,13 +23,13 @@ execute("score = 85; grade = score >= 90 ? 100 : 90", {
 ## Features
 
 - **Numbers-only** - Every value is a number. Simple, predictable, fast.
-- **Zero dependencies** - 6.15 KB gzipped, perfect for browser bundles
+- **Zero dependencies** - 7.8 KB gzipped, perfect for browser bundles
 - **O(n) performance** - Linear time parsing and execution
 - **Safe evaluation** - No eval(), no code generation, no security risks
 - **Timestamp arithmetic** - Built-in date/time functions using numeric timestamps
 - **Extensible** - Add custom functions and variables via context
 - **Type-safe** - Full TypeScript support with strict types
-- **99%+ test coverage** - 276 tests with 99.39% function coverage, 99.56% line coverage
+- **Excellent test coverage** - 485 tests with 99.45% function coverage, 98.57% line coverage
 
 ## Installation
 
@@ -213,6 +213,89 @@ Convert AST back to source code.
 ```typescript
 const ast = parseSource("2 + 3 * 4");
 generate(ast); // → "2 + 3 * 4"
+```
+
+### AST Visitor Pattern
+
+The visitor pattern provides a centralized, type-safe way to traverse and transform ASTs. This is useful for implementing custom analyzers, transformers, or code generators.
+
+#### `visit<T>(node: ASTNode, visitor: Visitor<T>): T`
+
+Exhaustively visit every node in an AST. All node types must be handled.
+
+```typescript
+import { visit, parseSource } from "littlewing";
+
+const ast = parseSource("x = 5; x + 10");
+
+// Count all identifiers in an AST
+const count = visit(ast, {
+	Program: (n, recurse) => n.body.reduce((sum, stmt) => sum + recurse(stmt), 0),
+	NumberLiteral: () => 0,
+	Identifier: () => 1,
+	BinaryOp: (n, recurse) => recurse(n.left) + recurse(n.right),
+	UnaryOp: (n, recurse) => recurse(n.operand),
+	Assignment: (n, recurse) => 1 + recurse(n.value),
+	FunctionCall: (n, recurse) =>
+		1 + n.arguments.reduce((sum, arg) => sum + recurse(arg), 0),
+	Ternary: (n, recurse) =>
+		recurse(n.condition) + recurse(n.consequent) + recurse(n.alternate),
+}); // → 3 (x appears 3 times)
+```
+
+#### `visitPartial<T>(node: ASTNode, visitor: Partial<Visitor<T>>): T | undefined`
+
+Visit only specific node types. Unhandled nodes return `undefined` and stop recursion.
+
+```typescript
+import { visitPartial, parseSource } from "littlewing";
+
+const ast = parseSource("x = 5; y = x + 10; y * 2");
+
+// Find first assignment to a specific variable
+const result = visitPartial(ast, {
+	Program: (n, recurse) => {
+		for (const stmt of n.body) {
+			const found = recurse(stmt);
+			if (found !== undefined) return found;
+		}
+		return undefined;
+	},
+	Assignment: (n, recurse) => {
+		if (n.name === "y") return n; // Found it!
+		return recurse(n.value); // Keep searching
+	},
+	BinaryOp: (n, recurse) => recurse(n.left) ?? recurse(n.right),
+}); // → Assignment node for "y = x + 10"
+```
+
+#### Transform Pattern
+
+Use `visit<ASTNode>` to create AST transformers:
+
+```typescript
+import { visit, parseSource, ast } from "littlewing";
+
+// Double all numeric literals
+const transformed = visit<ASTNode>(parseSource("2 + 3 * 4"), {
+	Program: (n, recurse) => ast.program(n.body.map((stmt) => recurse(stmt))),
+	NumberLiteral: (n) => ast.number(n.value * 2),
+	Identifier: (n) => n,
+	BinaryOp: (n, recurse) =>
+		ast.binaryOp(recurse(n.left), n.operator, recurse(n.right)),
+	UnaryOp: (n, recurse) => ast.unaryOp(n.operator, recurse(n.operand)),
+	Assignment: (n, recurse) => ast.assignment(n.name, recurse(n.value)),
+	FunctionCall: (n, recurse) =>
+		ast.functionCall(n.name, n.arguments.map(recurse)),
+	Ternary: (n, recurse) =>
+		ast.ternary(
+			recurse(n.condition),
+			recurse(n.consequent),
+			recurse(n.alternate),
+		),
+});
+
+generate(transformed); // → "4 + 6 * 8"
 ```
 
 ### ExecutionContext
