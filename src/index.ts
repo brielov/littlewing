@@ -20,6 +20,9 @@ export { defaultContext } from './defaults'
 // Executor
 export { Executor, execute } from './executor'
 
+// Humanizer
+export { type HumanizeOptions, Humanizer, humanize } from './humanizer'
+
 // Lexer
 export { Lexer } from './lexer'
 
