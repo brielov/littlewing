@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test'
 import * as ast from '../src/ast'
-import { parseSource } from '../src/parser'
+import { parse } from '../src/parser'
 import type { ASTNode } from '../src/types'
 import { isNumberLiteral } from '../src/types'
 import { visit, visitPartial } from '../src/visitor'
@@ -329,7 +329,7 @@ describe('visit', () => {
 		})
 
 		test('collects all variable names', () => {
-			const node = parseSource('x = 5; y = x + 10; z = y * 2')
+			const node = parse('x = 5; y = x + 10; z = y * 2')
 			const variables: string[] = []
 
 			visit(node, {
@@ -448,7 +448,7 @@ describe('visit', () => {
 
 describe('visitPartial', () => {
 	test('handles only specified node types', () => {
-		const node = parseSource('x = 5; y = x + 10')
+		const node = parse('x = 5; y = x + 10')
 		const variables: string[] = []
 
 		visitPartial(
@@ -532,7 +532,7 @@ describe('visitPartial', () => {
 	})
 
 	test('collects specific information without full visitor', () => {
-		const node = parseSource('MAX(x + y, 100) + MIN(a, b)')
+		const node = parse('MAX(x + y, 100) + MIN(a, b)')
 		const functionNames: string[] = []
 
 		visitPartial(
@@ -586,7 +586,7 @@ describe('visitor examples from real use cases', () => {
 			})
 		}
 
-		const original = parseSource('x = 5; y = x + 10')
+		const original = parse('x = 5; y = x + 10')
 		const renamed = replaceIdentifier(original, 'x', 'foo')
 
 		// Verify the identifier was renamed
@@ -646,7 +646,7 @@ describe('visitor examples from real use cases', () => {
 			return [...new Set(vars)]
 		}
 
-		const node = parseSource('x = 5; y = x + z; result = y * 2')
+		const node = parse('x = 5; y = x + z; result = y * 2')
 		const vars = extractVariables(node)
 
 		expect(vars.sort()).toEqual(['x', 'y', 'z'].sort())

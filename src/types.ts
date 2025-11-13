@@ -28,8 +28,8 @@ export type Operator =
  * Variables must be numbers
  */
 export interface ExecutionContext {
-	functions?: Record<string, (...args: number[]) => number>
-	variables?: Record<string, number>
+	functions?: Record<string, (...args: RuntimeValue[]) => RuntimeValue>
+	variables?: Record<string, RuntimeValue>
 }
 
 /**

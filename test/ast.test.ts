@@ -1,12 +1,14 @@
 import { describe, expect, test } from 'bun:test'
-import type { BinaryOp } from '../src'
-import { ast, Executor, isBinaryOp } from '../src'
+import * as ast from '../src/ast'
+import { Interpreter } from '../src/interpreter'
+import type { BinaryOp } from '../src/types'
+import { isBinaryOp } from '../src/types'
 
 describe('AST Builders', () => {
 	test('manual construction', () => {
 		const node = ast.add(ast.number(2), ast.number(3))
-		const executor = new Executor()
-		const result = executor.execute(node)
+		const executor = new Interpreter()
+		const result = executor.evaluate(node)
 		expect(result).toBe(5)
 	})
 
@@ -15,31 +17,31 @@ describe('AST Builders', () => {
 			ast.add(ast.number(2), ast.number(3)),
 			ast.number(4),
 		)
-		const executor = new Executor()
-		const result = executor.execute(node)
+		const executor = new Interpreter()
+		const result = executor.evaluate(node)
 		expect(result).toBe(20)
 	})
 
 	test('with variables', () => {
 		const node = ast.assign('x', ast.add(ast.number(2), ast.number(3)))
-		const executor = new Executor()
-		const result = executor.execute(node)
+		const executor = new Interpreter()
+		const result = executor.evaluate(node)
 		expect(result).toBe(5)
 	})
 
 	test('function call', () => {
 		const node = ast.functionCall('ABS', [ast.negate(ast.number(5))])
-		const executor = new Executor({
+		const executor = new Interpreter({
 			functions: { ABS: Math.abs },
 		})
-		const result = executor.execute(node)
+		const result = executor.evaluate(node)
 		expect(result).toBe(5)
 	})
 
 	test('unary operator', () => {
 		const node = ast.negate(ast.number(5))
-		const executor = new Executor()
-		const result = executor.execute(node)
+		const executor = new Interpreter()
+		const result = executor.evaluate(node)
 		expect(result).toBe(-5)
 	})
 
@@ -85,7 +87,7 @@ describe('AST Builders', () => {
 		const node = ast.logicalAnd(ast.number(1), ast.number(1))
 		expect(node.type).toBe('BinaryOp')
 		expect(node.operator).toBe('&&')
-		const result = new Executor().execute(node)
+		const result = new Interpreter().evaluate(node)
 		expect(result).toBe(1)
 	})
 
@@ -93,7 +95,7 @@ describe('AST Builders', () => {
 		const node = ast.logicalOr(ast.number(0), ast.number(1))
 		expect(node.type).toBe('BinaryOp')
 		expect(node.operator).toBe('||')
-		const result = new Executor().execute(node)
+		const result = new Interpreter().evaluate(node)
 		expect(result).toBe(1)
 	})
 })

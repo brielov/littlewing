@@ -1,17 +1,19 @@
 import { describe, expect, test } from 'bun:test'
-import { execute } from '../src'
+import { evaluate } from '../src/interpreter'
 
 describe('External Variables', () => {
 	test('external variables override internal assignments', () => {
 		// External variable should override the assignment
-		expect(execute('price = 100', { variables: { price: 50 } })).toBe(50)
-		expect(execute('price = 100; price', { variables: { price: 50 } })).toBe(50)
+		expect(evaluate('price = 100', { variables: { price: 50 } })).toBe(50)
+		expect(evaluate('price = 100; price', { variables: { price: 50 } })).toBe(
+			50,
+		)
 	})
 
 	test('assignments without external variables work normally', () => {
 		// Without external variable, assignment works as usual
-		expect(execute('price = 100')).toBe(100)
-		expect(execute('price = 100; price')).toBe(100)
+		expect(evaluate('price = 100')).toBe(100)
+		expect(evaluate('price = 100; price')).toBe(100)
 	})
 
 	test('external variables allow script defaults', () => {
@@ -25,28 +27,28 @@ describe('External Variables', () => {
 		`
 
 		// Use all defaults
-		expect(execute(formula)).toBeCloseTo(110)
+		expect(evaluate(formula)).toBeCloseTo(110)
 
 		// Override some values
-		expect(execute(formula, { variables: { price: 200 } })).toBeCloseTo(220)
-		expect(execute(formula, { variables: { discount: 0.2 } })).toBeCloseTo(88)
+		expect(evaluate(formula, { variables: { price: 200 } })).toBeCloseTo(220)
+		expect(evaluate(formula, { variables: { discount: 0.2 } })).toBeCloseTo(88)
 		expect(
-			execute(formula, { variables: { price: 200, discount: 0.1 } }),
+			evaluate(formula, { variables: { price: 200, discount: 0.1 } }),
 		).toBeCloseTo(198)
 	})
 
 	test('external variables preserve zero and falsy values', () => {
 		// Zero should be preserved as an external value
-		expect(execute('discount = 0.2', { variables: { discount: 0 } })).toBe(0)
+		expect(evaluate('discount = 0.2', { variables: { discount: 0 } })).toBe(0)
 		expect(
-			execute('discount = 0.2; discount', { variables: { discount: 0 } }),
+			evaluate('discount = 0.2; discount', { variables: { discount: 0 } }),
 		).toBe(0)
 	})
 
 	test('external variable does not evaluate assignment expression', () => {
 		// Right side should not be evaluated when external variable exists
 		const formula = 'price = undefinedVar * 2; price'
-		expect(execute(formula, { variables: { price: 100 } })).toBe(100)
+		expect(evaluate(formula, { variables: { price: 100 } })).toBe(100)
 	})
 
 	test('mix of external and internal assignments', () => {
@@ -57,7 +59,7 @@ describe('External Variables', () => {
 			result
 		`
 		// Override only 'base', 'multiplier' uses internal default
-		expect(execute(formula, { variables: { base: 50 } })).toBe(100)
+		expect(evaluate(formula, { variables: { base: 50 } })).toBe(100)
 	})
 
 	test('realistic pricing with external overrides', () => {
@@ -73,16 +75,16 @@ describe('External Variables', () => {
 		`
 
 		// Default values
-		expect(execute(pricingScript)).toBeCloseTo(118.8)
+		expect(evaluate(pricingScript)).toBeCloseTo(118.8)
 
 		// Bulk order with external quantity
-		expect(execute(pricingScript, { variables: { quantity: 10 } })).toBeCloseTo(
-			982.8,
-		)
+		expect(
+			evaluate(pricingScript, { variables: { quantity: 10 } }),
+		).toBeCloseTo(982.8)
 
 		// Custom pricing
 		expect(
-			execute(pricingScript, { variables: { basePrice: 50, shipping: 5 } }),
+			evaluate(pricingScript, { variables: { basePrice: 50, shipping: 5 } }),
 		).toBeCloseTo(59.4)
 	})
 })

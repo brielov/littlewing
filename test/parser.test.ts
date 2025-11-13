@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'bun:test'
-import type { BinaryOp, NumberLiteral } from '../src'
+import { parse } from '../src/parser'
+import type { BinaryOp, NumberLiteral } from '../src/types'
 import {
 	isAssignment,
 	isBinaryOp,
@@ -7,25 +8,24 @@ import {
 	isIdentifier,
 	isNumberLiteral,
 	isUnaryOp,
-	parseSource,
-} from '../src'
+} from '../src/types'
 
 describe('Parser', () => {
 	test('parse number literal', () => {
-		const node = parseSource('42')
+		const node = parse('42')
 		expect(isNumberLiteral(node)).toBe(true)
 		const numberNode = node as NumberLiteral
 		expect(numberNode.value).toBe(42)
 	})
 
 	test('parse identifier', () => {
-		const node = parseSource('x')
+		const node = parse('x')
 		expect(isIdentifier(node)).toBe(true)
 		expect((node as { name: string }).name).toBe('x')
 	})
 
 	test('parse binary operation', () => {
-		const node = parseSource('1 + 2')
+		const node = parse('1 + 2')
 		expect(isBinaryOp(node)).toBe(true)
 		const binaryNode = node as BinaryOp
 		expect(binaryNode.operator).toBe('+')
@@ -34,7 +34,7 @@ describe('Parser', () => {
 	})
 
 	test('parse operator precedence', () => {
-		const node = parseSource('1 + 2 * 3')
+		const node = parse('1 + 2 * 3')
 		// Should parse as 1 + (2 * 3)
 		expect(isBinaryOp(node)).toBe(true)
 		const binaryNode = node as BinaryOp
@@ -46,7 +46,7 @@ describe('Parser', () => {
 
 	test('parse exponentiation right-associativity', () => {
 		// 2 ^ 3 ^ 4 should parse as 2 ^ (3 ^ 4), not (2 ^ 3) ^ 4
-		const node = parseSource('2 ^ 3 ^ 4')
+		const node = parse('2 ^ 3 ^ 4')
 		expect(isBinaryOp(node)).toBe(true)
 		const binaryNode = node as BinaryOp
 		expect(binaryNode.operator).toBe('^')
@@ -61,7 +61,7 @@ describe('Parser', () => {
 	})
 
 	test('parse parentheses', () => {
-		const node = parseSource('(1 + 2) * 3')
+		const node = parse('(1 + 2) * 3')
 		// Should parse as (1 + 2) * 3
 		expect(isBinaryOp(node)).toBe(true)
 		const binaryNode = node as BinaryOp
@@ -72,7 +72,7 @@ describe('Parser', () => {
 	})
 
 	test('parse unary minus', () => {
-		const node = parseSource('-42')
+		const node = parse('-42')
 		expect(isUnaryOp(node)).toBe(true)
 		const unaryNode = node as {
 			operator: string
@@ -88,7 +88,7 @@ describe('Parser', () => {
 
 	test('parse unary minus with exponentiation precedence', () => {
 		// -2 ^ 2 should parse as -(2 ^ 2), not (-2) ^ 2
-		const node = parseSource('-2 ^ 2')
+		const node = parse('-2 ^ 2')
 		expect(isUnaryOp(node)).toBe(true)
 		const unaryNode = node as import('../src').UnaryOp
 		expect(unaryNode.operator).toBe('-')
@@ -102,7 +102,7 @@ describe('Parser', () => {
 
 	test('parse unary minus with addition precedence', () => {
 		// -2 + 3 should parse as (-2) + 3, not -(2 + 3)
-		const node = parseSource('-2 + 3')
+		const node = parse('-2 + 3')
 		expect(isBinaryOp(node)).toBe(true)
 		const binaryNode = node as BinaryOp
 		expect(binaryNode.operator).toBe('+')
@@ -116,7 +116,7 @@ describe('Parser', () => {
 	})
 
 	test('parse function call without arguments', () => {
-		const node = parseSource('NOW()')
+		const node = parse('NOW()')
 		expect(isFunctionCall(node)).toBe(true)
 		const funcNode = node as { name: string; arguments: unknown[] }
 		expect(funcNode.name).toBe('NOW')
@@ -124,7 +124,7 @@ describe('Parser', () => {
 	})
 
 	test('parse function call with arguments', () => {
-		const node = parseSource('ABS(-5)')
+		const node = parse('ABS(-5)')
 		expect(isFunctionCall(node)).toBe(true)
 		const funcNode = node as { name: string; arguments: unknown[] }
 		expect(funcNode.name).toBe('ABS')
@@ -132,7 +132,7 @@ describe('Parser', () => {
 	})
 
 	test('parse variable assignment', () => {
-		const node = parseSource('x = 5')
+		const node = parse('x = 5')
 		expect(isAssignment(node)).toBe(true)
 		const assignNode = node as { name: string; value: { type: string } }
 		expect(assignNode.name).toBe('x')
@@ -140,7 +140,7 @@ describe('Parser', () => {
 	})
 
 	test('parse complex assignment', () => {
-		const node = parseSource('z = x + y')
+		const node = parse('z = x + y')
 		expect(isAssignment(node)).toBe(true)
 		const assignNode = node as { name: string; value: { type: string } }
 		expect(assignNode.name).toBe('z')
@@ -148,25 +148,23 @@ describe('Parser', () => {
 	})
 
 	test('parse && operator', () => {
-		const ast = parseSource('5 && 3')
+		const ast = parse('5 && 3')
 		expect(isBinaryOp(ast)).toBe(true)
 		expect((ast as BinaryOp).operator).toBe('&&')
 	})
 
 	test('parse || operator', () => {
-		const ast = parseSource('5 || 0')
+		const ast = parse('5 || 0')
 		expect(isBinaryOp(ast)).toBe(true)
 		expect((ast as BinaryOp).operator).toBe('||')
 	})
 
 	test('ternary error on missing colon', () => {
-		expect(() => parseSource('1 ? 2')).toThrow(
-			'Expected : in ternary expression',
-		)
+		expect(() => parse('1 ? 2')).toThrow('Expected : in ternary expression')
 	})
 
 	test('parse logical NOT', () => {
-		const node = parseSource('!5')
+		const node = parse('!5')
 		expect(isUnaryOp(node)).toBe(true)
 		const unaryNode = node as import('../src').UnaryOp
 		expect(unaryNode.operator).toBe('!')
@@ -175,7 +173,7 @@ describe('Parser', () => {
 	})
 
 	test('parse double NOT', () => {
-		const node = parseSource('!!1')
+		const node = parse('!!1')
 		expect(isUnaryOp(node)).toBe(true)
 		const outerUnary = node as import('../src').UnaryOp
 		expect(outerUnary.operator).toBe('!')
@@ -186,7 +184,7 @@ describe('Parser', () => {
 	})
 
 	test('parse NOT with parentheses', () => {
-		const node = parseSource('!(x + y)')
+		const node = parse('!(x + y)')
 		expect(isUnaryOp(node)).toBe(true)
 		const unaryNode = node as import('../src').UnaryOp
 		expect(unaryNode.operator).toBe('!')
@@ -196,7 +194,7 @@ describe('Parser', () => {
 
 	test('parse NOT with exponentiation precedence', () => {
 		// !2 ^ 2 should parse as !(2 ^ 2), not (!2) ^ 2
-		const node = parseSource('!2 ^ 2')
+		const node = parse('!2 ^ 2')
 		expect(isUnaryOp(node)).toBe(true)
 		const unaryNode = node as import('../src').UnaryOp
 		expect(unaryNode.operator).toBe('!')
@@ -207,7 +205,7 @@ describe('Parser', () => {
 
 	test('parse NOT with addition precedence', () => {
 		// !2 + 3 should parse as (!2) + 3, not !(2 + 3)
-		const node = parseSource('!2 + 3')
+		const node = parse('!2 + 3')
 		expect(isBinaryOp(node)).toBe(true)
 		const binaryNode = node as BinaryOp
 		expect(binaryNode.operator).toBe('+')
@@ -218,7 +216,7 @@ describe('Parser', () => {
 
 	test('parse NOT with logical AND', () => {
 		// !x && y should parse as (!x) && y
-		const node = parseSource('!x && y')
+		const node = parse('!x && y')
 		expect(isBinaryOp(node)).toBe(true)
 		const binaryNode = node as BinaryOp
 		expect(binaryNode.operator).toBe('&&')
@@ -227,7 +225,7 @@ describe('Parser', () => {
 
 	test('parse NOT with comparison', () => {
 		// !x == 1 should parse as (!x) == 1
-		const node = parseSource('!x == 1')
+		const node = parse('!x == 1')
 		expect(isBinaryOp(node)).toBe(true)
 		const binaryNode = node as BinaryOp
 		expect(binaryNode.operator).toBe('==')

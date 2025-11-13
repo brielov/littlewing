@@ -158,28 +158,13 @@ export type Visitor<T> = {
  * })
  */
 export function visit<T>(node: ASTNode, visitor: Visitor<T>): T {
-	const recurse = (n: ASTNode): T => visit(n, visitor)
-
-	// TypeScript ensures this switch is exhaustive
-	// If a new node type is added to ASTNode, this will be a compile error
-	switch (node.type) {
-		case 'Program':
-			return visitor.Program(node, recurse)
-		case 'NumberLiteral':
-			return visitor.NumberLiteral(node, recurse)
-		case 'Identifier':
-			return visitor.Identifier(node, recurse)
-		case 'BinaryOp':
-			return visitor.BinaryOp(node, recurse)
-		case 'UnaryOp':
-			return visitor.UnaryOp(node, recurse)
-		case 'FunctionCall':
-			return visitor.FunctionCall(node, recurse)
-		case 'Assignment':
-			return visitor.Assignment(node, recurse)
-		case 'ConditionalExpression':
-			return visitor.ConditionalExpression(node, recurse)
-	}
+	// visit() is just visitPartial() with a default handler that throws
+	// This eliminates code duplication while maintaining exhaustiveness checking
+	return visitPartial(node, visitor, (node) => {
+		// This should never be reached because Visitor<T> requires all handlers
+		// But we throw just in case
+		throw new Error(`No handler for node type: ${node.type}`)
+	})
 }
 
 /**
@@ -243,12 +228,39 @@ export function visitPartial<T>(
 ): T {
 	const recurse = (n: ASTNode): T => visitPartial(n, visitor, defaultHandler)
 
-	const handler = visitor[node.type as keyof Visitor<T>]
-	if (handler) {
-		// Type assertion needed because handler could be for any node type
-		// but we know it matches the current node.type
-		return (handler as (n: typeof node, r: typeof recurse) => T)(node, recurse)
+	// Use switch for type-safe dispatch - TypeScript narrows node type in each case
+	switch (node.type) {
+		case 'Program':
+			return visitor.Program
+				? visitor.Program(node, recurse)
+				: defaultHandler(node, recurse)
+		case 'NumberLiteral':
+			return visitor.NumberLiteral
+				? visitor.NumberLiteral(node, recurse)
+				: defaultHandler(node, recurse)
+		case 'Identifier':
+			return visitor.Identifier
+				? visitor.Identifier(node, recurse)
+				: defaultHandler(node, recurse)
+		case 'BinaryOp':
+			return visitor.BinaryOp
+				? visitor.BinaryOp(node, recurse)
+				: defaultHandler(node, recurse)
+		case 'UnaryOp':
+			return visitor.UnaryOp
+				? visitor.UnaryOp(node, recurse)
+				: defaultHandler(node, recurse)
+		case 'FunctionCall':
+			return visitor.FunctionCall
+				? visitor.FunctionCall(node, recurse)
+				: defaultHandler(node, recurse)
+		case 'Assignment':
+			return visitor.Assignment
+				? visitor.Assignment(node, recurse)
+				: defaultHandler(node, recurse)
+		case 'ConditionalExpression':
+			return visitor.ConditionalExpression
+				? visitor.ConditionalExpression(node, recurse)
+				: defaultHandler(node, recurse)
 	}
-
-	return defaultHandler(node, recurse)
 }

@@ -370,7 +370,7 @@ You can inject variables when executing expressions:
 
 ```javascript
 // In your JavaScript code
-execute("radius * 2 * 3.14159", {
+evaluate("radius * 2 * 3.14159", {
 	variables: { radius: 10 },
 }); // → 62.8318
 ```
@@ -379,8 +379,8 @@ Variables provided externally override script assignments:
 
 ```javascript
 // Script: x = 5; x * 2
-execute(script); // → 10 (uses x = 5 from script)
-execute(script, { variables: { x: 10 } }); // → 20 (external x overrides)
+evaluate(script); // → 10 (uses x = 5 from script)
+evaluate(script, { variables: { x: 10 } }); // → 20 (external x overrides)
 ```
 
 ### Custom Functions
@@ -389,7 +389,7 @@ Extend littlewing with your own functions:
 
 ```javascript
 // In your JavaScript code
-execute("clamp(x, 0, 100)", {
+evaluate("clamp(x, 0, 100)", {
 	variables: { x: 150 },
 	functions: {
 		clamp: (value, min, max) => Math.min(Math.max(value, min), max),
@@ -494,7 +494,7 @@ kelvin = celsius + 273.15; // → 298.15
 
 1. **Zero Dependencies** - No external libraries needed
 2. **Small Bundle** - Minimal impact on your app size
-3. **O(n) Performance** - Linear time parsing and execution
+3. **O(n) Performance** - Linear time parsing and evaluation
 4. **Type Safety** - Numbers-only means no runtime type checks
 5. **Browser Optimized** - Pure ESM, no Node.js dependencies
 
@@ -511,23 +511,23 @@ kelvin = celsius + 273.15; // → 298.15
 
 ### Performance Characteristics
 
-- **Parse once, execute many** - The `execute()` function accepts both strings and pre-parsed AST nodes, allowing you to parse once and execute many times with different contexts
+- **Parse once, evaluate many** - The `evaluate()` function accepts both strings and pre-parsed AST nodes, allowing you to parse once and evaluate many times with different contexts
 - **High-frequency evaluation** - Suitable for 1000s of evaluations per second
 - **Constant memory** - No memory leaks or unbounded growth
-- **Predictable execution time** - O(n) based on expression size
+- **Predictable evaluation time** - O(n) based on expression size
 
 #### Optimization Example
 
 ```javascript
-import { execute, parseSource } from "littlewing";
+import { evaluate, parse } from "littlewing";
 
-// For expressions executed multiple times, parse once and reuse the AST
-const formula = parseSource("price * quantity * (1 - discount)");
+// For expressions evaluated multiple times, parse once and reuse the AST
+const formula = parse("price * quantity * (1 - discount)");
 
-// Execute many times with different values (no re-parsing overhead)
-execute(formula, { variables: { price: 10, quantity: 5, discount: 0.1 } }); // → 45
-execute(formula, { variables: { price: 20, quantity: 3, discount: 0.15 } }); // → 51
-execute(formula, { variables: { price: 15, quantity: 10, discount: 0.2 } }); // → 120
+// Evaluate many times with different values (no re-parsing overhead)
+evaluate(formula, { variables: { price: 10, quantity: 5, discount: 0.1 } }); // → 45
+evaluate(formula, { variables: { price: 20, quantity: 3, discount: 0.15 } }); // → 51
+evaluate(formula, { variables: { price: 15, quantity: 10, discount: 0.2 } }); // → 120
 
 // This pattern is ideal for:
 // - Applying formulas to datasets

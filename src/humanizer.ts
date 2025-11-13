@@ -253,7 +253,7 @@ export class Humanizer {
  *
  * @example
  * ```typescript
- * const ast = parseSource('price * quantity > 100 ? (price * quantity - discount) * (1 + tax_rate) : MAX(price * quantity, 50)')
+ * const ast = parse('price * quantity > 100 ? (price * quantity - discount) * (1 + tax_rate) : MAX(price * quantity, 50)')
  * const text = humanize(ast)
  * // "if price times quantity is greater than 100 then (price times quantity minus discount) times (1 plus tax_rate), otherwise the maximum of price times quantity and 50"
  * ```

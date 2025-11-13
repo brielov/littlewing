@@ -1,13 +1,13 @@
-import { parseSource } from './parser'
+import { parse } from './parser'
 import type { ASTNode, ExecutionContext, RuntimeValue } from './types'
 import { evaluateBinaryOperation } from './utils'
 import { visit } from './visitor'
 
 /**
- * Executor - evaluates an AST with given context
+ * Interpreter - evaluates an AST with given context
  * Uses a tree-walk interpreter with O(n) execution time where n is the number of AST nodes
  */
-export class Executor {
+export class Interpreter {
 	private context: ExecutionContext
 	private variables: Map<string, number>
 	private externalVariables: Set<string>
@@ -21,9 +21,9 @@ export class Executor {
 	}
 
 	/**
-	 * Execute an AST node and return the result
+	 * Interpret an AST node and return the result
 	 */
-	execute(node: ASTNode): RuntimeValue {
+	evaluate(node: ASTNode): RuntimeValue {
 		return visit(node, {
 			// Execute a program (multiple statements)
 			Program: (n, recurse) => {
@@ -115,15 +115,15 @@ export class Executor {
 }
 
 /**
- * Execute source code or AST with given context
+ * Evaluate source code or AST with given context
  * @param input - Either a source code string or an AST node
  * @param context - Optional execution context with variables and functions
  */
-export function execute(
+export function evaluate(
 	input: string | ASTNode,
 	context?: ExecutionContext,
 ): RuntimeValue {
-	const node = typeof input === 'string' ? parseSource(input) : input
-	const executor = new Executor(context)
-	return executor.execute(node)
+	const node = typeof input === 'string' ? parse(input) : input
+	const interpreter = new Interpreter(context)
+	return interpreter.evaluate(node)
 }

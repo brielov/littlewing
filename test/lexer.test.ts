@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'bun:test'
-import { Lexer, TokenType } from '../src'
+import { TokenType } from '../src'
+import { Lexer } from '../src/lexer'
 
 describe('Lexer', () => {
 	test('tokenize numbers', () => {

@@ -1,5 +1,8 @@
 import { describe, expect, test } from 'bun:test'
-import { ast, Executor, execute, generate, parseSource } from '../src'
+import * as ast from '../src/ast'
+import { generate } from '../src/codegen'
+import { evaluate, Interpreter } from '../src/interpreter'
+import { parse } from '../src/parser'
 
 describe('CodeGenerator', () => {
 	test('generate number literal', () => {
@@ -9,15 +12,15 @@ describe('CodeGenerator', () => {
 	})
 
 	test('decimal shorthand normalizes to standard form', () => {
-		const ast1 = parseSource('.2')
+		const ast1 = parse('.2')
 		const code1 = generate(ast1)
 		expect(code1).toBe('0.2')
 
-		const ast2 = parseSource('.5 + .3')
+		const ast2 = parse('.5 + .3')
 		const code2 = generate(ast2)
 		expect(code2).toBe('0.5 + 0.3')
 
-		const ast3 = parseSource('x = .25')
+		const ast3 = parse('x = .25')
 		const code3 = generate(ast3)
 		expect(code3).toBe('x = 0.25')
 	})
@@ -217,65 +220,65 @@ describe('CodeGenerator', () => {
 
 	test('round-trip simple expression', () => {
 		const source = '2 + 3'
-		const ast1 = parseSource(source)
+		const ast1 = parse(source)
 		const code = generate(ast1)
-		const ast2 = parseSource(code)
-		const result1 = new Executor().execute(ast1)
-		const result2 = new Executor().execute(ast2)
+		const ast2 = parse(code)
+		const result1 = new Interpreter().evaluate(ast1)
+		const result2 = new Interpreter().evaluate(ast2)
 		expect(result1).toBe(result2)
 	})
 
 	test('round-trip with precedence', () => {
 		const source = '2 + 3 * 4'
-		const ast1 = parseSource(source)
+		const ast1 = parse(source)
 		const code = generate(ast1)
-		const ast2 = parseSource(code)
-		const result1 = new Executor().execute(ast1)
-		const result2 = new Executor().execute(ast2)
+		const ast2 = parse(code)
+		const result1 = new Interpreter().evaluate(ast1)
+		const result2 = new Interpreter().evaluate(ast2)
 		expect(result1).toBe(result2)
 	})
 
 	test('round-trip with parentheses', () => {
 		const source = '(2 + 3) * 4'
-		const ast1 = parseSource(source)
+		const ast1 = parse(source)
 		const code = generate(ast1)
-		const ast2 = parseSource(code)
-		const result1 = new Executor().execute(ast1)
-		const result2 = new Executor().execute(ast2)
+		const ast2 = parse(code)
+		const result1 = new Interpreter().evaluate(ast1)
+		const result2 = new Interpreter().evaluate(ast2)
 		expect(result1).toBe(result2)
 	})
 
 	test('round-trip with variables', () => {
 		const source = 'x = 5; y = x + 10'
-		const ast1 = parseSource(source)
+		const ast1 = parse(source)
 		const code = generate(ast1)
-		const ast2 = parseSource(code)
-		const executor1 = new Executor()
-		const result1 = executor1.execute(ast1)
-		const executor2 = new Executor()
-		const result2 = executor2.execute(ast2)
+		const ast2 = parse(code)
+		const executor1 = new Interpreter()
+		const result1 = executor1.evaluate(ast1)
+		const executor2 = new Interpreter()
+		const result2 = executor2.evaluate(ast2)
 		expect(result1).toBe(result2)
 	})
 
 	test('round-trip with functions', () => {
 		const source = 'ABS(-5)'
-		const ast1 = parseSource(source)
+		const ast1 = parse(source)
 		const code = generate(ast1)
-		const ast2 = parseSource(code)
-		const executor1 = new Executor({ functions: { ABS: Math.abs } })
-		const result1 = executor1.execute(ast1)
-		const executor2 = new Executor({ functions: { ABS: Math.abs } })
-		const result2 = executor2.execute(ast2)
+		const ast2 = parse(code)
+		const executor1 = new Interpreter({ functions: { ABS: Math.abs } })
+		const result1 = executor1.evaluate(ast1)
+		const executor2 = new Interpreter({ functions: { ABS: Math.abs } })
+		const result2 = executor2.evaluate(ast2)
 		expect(result1).toBe(result2)
 	})
 
 	test('round-trip complex expression', () => {
 		const source = '2 ^ 3 * 4 + 5'
-		const ast1 = parseSource(source)
+		const ast1 = parse(source)
 		const code = generate(ast1)
-		const ast2 = parseSource(code)
-		const result1 = new Executor().execute(ast1)
-		const result2 = new Executor().execute(ast2)
+		const ast2 = parse(code)
+		const result1 = new Interpreter().evaluate(ast1)
+		const result2 = new Interpreter().evaluate(ast2)
 		expect(result1).toBe(result2)
 	})
 
@@ -298,7 +301,7 @@ describe('CodeGenerator', () => {
 			ast.exponentiate(ast.number(2), ast.number(3)),
 		)
 		const code = generate(node)
-		const parsed = parseSource(code)
+		const parsed = parse(code)
 		expect(parsed).toBeDefined()
 	})
 
@@ -351,42 +354,42 @@ describe('CodeGenerator', () => {
 
 	test('ternary round-trip', () => {
 		const source = 'x > 5 ? 100 : 50'
-		const ast1 = parseSource(source)
+		const ast1 = parse(source)
 		const code = generate(ast1)
-		const _ast2 = parseSource(code)
-		const result1 = execute(source, { variables: { x: 10 } })
-		const result2 = execute(code, { variables: { x: 10 } })
+		const _ast2 = parse(code)
+		const result1 = evaluate(source, { variables: { x: 10 } })
+		const result2 = evaluate(code, { variables: { x: 10 } })
 		expect(result1).toBe(result2)
 		expect(result1).toBe(100)
 	})
 
 	test('&& operator', () => {
 		const source = '5 && 3'
-		const ast1 = parseSource(source)
+		const ast1 = parse(source)
 		const code = generate(ast1)
 		expect(code).toBe('5 && 3')
 	})
 
 	test('|| operator', () => {
 		const source = '0 || 1'
-		const ast1 = parseSource(source)
+		const ast1 = parse(source)
 		const code = generate(ast1)
 		expect(code).toBe('0 || 1')
 	})
 
 	test('mixed logical and comparison operators', () => {
 		const source = '5 > 3 && 10 < 20'
-		const ast1 = parseSource(source)
+		const ast1 = parse(source)
 		const code = generate(ast1)
-		const _ast2 = parseSource(code)
-		expect(execute(source)).toBe(execute(code))
+		const _ast2 = parse(code)
+		expect(evaluate(source)).toBe(evaluate(code))
 	})
 
 	test('logical operators with parentheses', () => {
 		const source = '(1 && 0) || 1'
-		const ast1 = parseSource(source)
+		const ast1 = parse(source)
 		const code = generate(ast1)
-		expect(execute(source)).toBe(execute(code))
+		expect(evaluate(source)).toBe(evaluate(code))
 	})
 
 	// Note: The visitor pattern provides compile-time exhaustiveness checking.
@@ -421,46 +424,46 @@ describe('CodeGenerator', () => {
 
 	test('NOT round-trip', () => {
 		const source = '!x'
-		const ast1 = parseSource(source)
+		const ast1 = parse(source)
 		const code = generate(ast1)
 		expect(code).toBe(source)
 	})
 
 	test('NOT with arithmetic', () => {
 		const source = '!x + 5'
-		const ast1 = parseSource(source)
+		const ast1 = parse(source)
 		const code = generate(ast1)
-		expect(execute(source, { variables: { x: 0 } })).toBe(
-			execute(code, { variables: { x: 0 } }),
+		expect(evaluate(source, { variables: { x: 0 } })).toBe(
+			evaluate(code, { variables: { x: 0 } }),
 		)
 	})
 
 	test('NOT with comparison', () => {
 		const source = '!(x > 5)'
-		const ast1 = parseSource(source)
+		const ast1 = parse(source)
 		const code = generate(ast1)
 		expect(code).toBe(source)
 	})
 
 	test('NOT in conditional', () => {
 		const source = '!x ? 100 : 50'
-		const ast1 = parseSource(source)
+		const ast1 = parse(source)
 		const code = generate(ast1)
-		expect(execute(source, { variables: { x: 0 } })).toBe(
-			execute(code, { variables: { x: 0 } }),
+		expect(evaluate(source, { variables: { x: 0 } })).toBe(
+			evaluate(code, { variables: { x: 0 } }),
 		)
 	})
 
 	test('mixed unary operators', () => {
 		const source = '-!x'
-		const ast1 = parseSource(source)
+		const ast1 = parse(source)
 		const code = generate(ast1)
 		expect(code).toBe(source)
 	})
 
 	test('NOT with logical operators', () => {
 		const source = '!x && !y'
-		const ast1 = parseSource(source)
+		const ast1 = parse(source)
 		const code = generate(ast1)
 		expect(code).toBe(source)
 	})

@@ -9,28 +9,22 @@ export { extractInputVariables } from './analyzer'
 export * as ast from './ast'
 
 // Code generation
-export { CodeGenerator, generate } from './codegen'
-
-// Date utilities
-export * as dateUtils from './date-utils'
+export { generate } from './codegen'
 
 // Defaults
 export { defaultContext } from './defaults'
 
-// Executor
-export { Executor, execute } from './executor'
-
 // Humanizer
-export { type HumanizeOptions, Humanizer, humanize } from './humanizer'
+export { type HumanizeOptions, humanize } from './humanizer'
 
-// Lexer
-export { Lexer } from './lexer'
+// Interpreter
+export { evaluate } from './interpreter'
 
 // Optimizer
 export { optimize } from './optimizer'
 
 // Parser
-export { Parser, parseSource } from './parser'
+export { parse } from './parser'
 
 // Type definitions
 export type { ExecutionContext, RuntimeValue } from './types'

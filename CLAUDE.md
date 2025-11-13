@@ -4,13 +4,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**littlewing** is a minimal, high-performance arithmetic expression language with a complete lexer, parser, and executor. It's optimized for browsers with zero dependencies and strict type safety. The library provides both class-based and functional APIs for executing pure arithmetic expressions with variables and custom functions.
+**littlewing** is a minimal, high-performance arithmetic expression language with a complete lexer, parser, and interpreter. It's optimized for browsers with zero dependencies and strict type safety. The library provides a functional API for evaluating pure arithmetic expressions with variables and custom functions.
 
 Key characteristics:
 
 - **Numbers-only type system** - Pure arithmetic with single `RuntimeValue = number` type
 - **Timestamp-based date handling** - Dates represented as millisecond timestamps (numbers)
-- **O(n) algorithms** - Lexer, parser, executor all run in linear time
+- **O(n) algorithms** - Lexer, parser, interpreter all run in linear time
 - **Zero dependencies** - Small bundle, no external requirements
 - **100% ESM** - No Node.js APIs, optimized for browsers
 
@@ -30,7 +30,7 @@ The codebase follows a **three-stage compilation pipeline**:
    - Supports operator precedence: unary minus > exponentiation > mult/div/mod > add/sub > assignment
    - Handles variable assignments and function calls with variadic arguments
 
-3. **Executor** (`src/executor.ts`) - Tree-walk interpreter
+3. **Interpreter** (`src/interpreter.ts`) - Tree-walk interpreter
    - Evaluates AST nodes using pattern matching via type guards
    - Maintains variable state in a Map
    - **No runtime type checking** - All operations work on numbers
@@ -50,18 +50,13 @@ Type guards (`isNumberLiteral`, `isBinaryOp`, etc.) enable safe pattern matching
 
 ### Public API
 
-**Functional API (recommended):**
+**Functional API:**
 
-- `execute(source, context?)` - Execute code directly, returns number
-- `parseSource(source)` - Parse without executing, returns AST
+- `evaluate(source, context?)` - Evaluate code directly, returns number
+- `parse(source)` - Parse without evaluating, returns AST
 - `generate(ast)` - Convert AST back to source code
-
-**Class-based API (advanced):**
-
-- `Lexer` - Tokenization component
-- `Parser` - Parsing component
-- `Executor` - Execution component
-- `CodeGenerator` - AST to source code generation
+- `humanize(ast)` - Convert AST to English text
+- `optimize(ast)` - Optimize AST with constant folding
 
 **Builders:**
 
@@ -116,7 +111,7 @@ src/
 ├── types.ts          # Type definitions and type guards
 ├── lexer.ts          # Tokenization (source → tokens)
 ├── parser.ts         # Parsing (tokens → AST)
-├── executor.ts       # Execution (AST + context → result)
+├── interpreter.ts    # Evaluation (AST + context → result)
 ├── optimizer.ts      # AST optimization (constant folding)
 ├── visitor.ts        # Visitor pattern for AST traversal
 ├── ast.ts            # AST builder functions
@@ -129,7 +124,7 @@ src/
 test/
 ├── lexer.test.ts           # Lexer tests
 ├── parser.test.ts          # Parser tests
-├── executor.test.ts        # Executor tests
+├── interpreter.test.ts     # Interpreter tests
 ├── optimizer.test.ts       # Optimizer tests
 ├── visitor.test.ts         # Visitor pattern tests
 ├── codegen.test.ts         # Code generation tests
@@ -205,7 +200,7 @@ The codebase uses a centralized visitor pattern for AST traversal, implemented i
 1. **`visit<T>(node, visitor)`** - Exhaustive visitor
    - Requires handlers for all 8 node types
    - TypeScript enforces completeness at compile time
-   - Used by: optimizer, executor, codegen, humanizer
+   - Used by: optimizer, interpreter, codegen, humanizer
 
 2. **`visitPartial<T>(node, visitor, defaultHandler)`** - Partial visitor
    - Handlers for specific node types only
@@ -214,7 +209,7 @@ The codebase uses a centralized visitor pattern for AST traversal, implemented i
 
 **Usage in modules:**
 
-- `executor.ts`: Evaluates AST nodes to numbers
+- `interpreter.ts`: Evaluates AST nodes to numbers
 - `optimizer.ts`: Transforms AST with constant folding
 - `codegen.ts`: Generates source code from AST
 - `humanizer.ts`: Converts AST to English text
@@ -247,7 +242,7 @@ Test structure:
 
 - Lexer tests (tokenization)
 - Parser tests (AST construction)
-- Executor tests (evaluation)
+- Interpreter tests (evaluation)
 - Optimizer tests (constant folding + dead code elimination)
 - Visitor tests (traversal patterns)
 - Codegen tests (AST → source)
@@ -281,7 +276,7 @@ Run a single test file: `bun test test/optimizer.test.ts`
 5. Add AST builder function in `src/ast.ts`
 6. Add comprehensive tests in all relevant test files
 
-Note: With the visitor pattern, you don't need to modify `executor.ts`, `optimizer.ts`, or `codegen.ts` individually - they use the shared `evaluateBinaryOperation()` function.
+Note: With the visitor pattern, you don't need to modify `interpreter.ts`, `optimizer.ts`, or `codegen.ts` individually - they use the shared `evaluateBinaryOperation()` function.
 
 **Adding a new unary operator:**
 
@@ -290,13 +285,13 @@ Note: With the visitor pattern, you don't need to modify `executor.ts`, `optimiz
 3. Handle tokenization in `src/lexer.ts` (nextToken method)
 4. Add parsing in `src/parser.ts` (parsePrefix method)
 5. Add operation handling in the visitor handlers:
-   - `src/executor.ts` (UnaryOp visitor handler)
+   - `src/interpreter.ts` (UnaryOp visitor handler)
    - `src/optimizer.ts` (UnaryOp visitor handler for constant folding)
    - `src/codegen.ts` (UnaryOp visitor handler if special formatting needed)
    - `src/humanizer.ts` (UnaryOp visitor handler for English text)
 6. Update `unaryOp()` function signature in `src/ast.ts`
 7. Add convenience builder function in `src/ast.ts` (e.g., `logicalNot()`)
-8. Add comprehensive tests for lexer, parser, executor, optimizer, and codegen
+8. Add comprehensive tests for lexer, parser, interpreter, optimizer, and codegen
 9. Update documentation (LANGUAGE.md, README.md, CLAUDE.md)
 
 **Adding a new function to defaultContext:**
@@ -321,9 +316,9 @@ Note: With the visitor pattern, you don't need to modify `executor.ts`, `optimiz
 - Comparison functions use `IS_*` pattern and return 1 or 0 (e.g., `IS_WEEKEND(ts)`)
 - Use JavaScript's `Date` object internally, return numbers
 
-**Modifying execution behavior:**
+**Modifying evaluation behavior:**
 
-- Core logic is in `src/executor.ts` execute method
+- Core logic is in `src/interpreter.ts` interpret method
 - Use type guards to safely handle different node types
 - All operators work on `number` operands only
 - Update tests to cover new behavior
@@ -349,8 +344,8 @@ Example:
 
 ```typescript
 // Script: x = 5; x + 10
-execute(script); // Returns 15 (x = 5 from script)
-execute(script, { variables: { x: 100 } }); // Returns 110 (x = 100 from context overrides script)
+evaluate(script); // Returns 15 (x = 5 from script)
+evaluate(script, { variables: { x: 100 } }); // Returns 110 (x = 100 from context overrides script)
 ```
 
 If the optimizer propagated `x = 5`, the second execution would incorrectly return `15` instead of `110`.
@@ -395,27 +390,27 @@ The optimizer performs **safe, local optimizations** in two passes:
 ### Usage
 
 ```typescript
-import { optimize, parseSource } from "littlewing";
+import { optimize, parse } from "littlewing";
 
 // Constant folding works
-const ast1 = parseSource("2 + 3 * 4");
+const ast1 = parse("2 + 3 * 4");
 const optimized1 = optimize(ast1);
 // Result: NumberLiteral(14)
 
 // Dead code elimination removes unused variables
-const ast2 = parseSource("x = 10; y = 20; z = x * 20");
+const ast2 = parse("x = 10; y = 20; z = x * 20");
 const optimized2 = optimize(ast2);
 // Result: Program([Assignment('x', 10), Assignment('z', BinaryOp(...))])
 // Note: y is removed because it's never used
 
 // Variables are NOT propagated (context-safe)
-const ast3 = parseSource("x = 5; x + 10");
+const ast3 = parse("x = 5; x + 10");
 const optimized3 = optimize(ast3);
 // Result: Program([Assignment('x', 5), BinaryOp(Identifier('x'), '+', 10)])
 // Note: x is kept because it's used in the expression
 
 // Function arguments are pre-evaluated
-const ast4 = parseSource("MAX(2 + 3, 4 * 5)");
+const ast4 = parse("MAX(2 + 3, 4 * 5)");
 const optimized4 = optimize(ast4);
 // Result: FunctionCall('MAX', [NumberLiteral(5), NumberLiteral(20)])
 ```
@@ -429,11 +424,11 @@ const source =
 	"principal = 1000; rate = 0.05; result = principal * rate; result";
 
 // Without context: uses script values
-execute(source); // 50
+evaluate(source); // 50
 
 // With context: context overrides work correctly
-execute(source, { variables: { principal: 2000 } }); // 100
-execute(source, { variables: { rate: 0.1 } }); // 100
+evaluate(source, { variables: { principal: 2000 } }); // 100
+evaluate(source, { variables: { rate: 0.1 } }); // 100
 
 // If we had propagated constants, overrides would fail!
 ```
@@ -443,7 +438,7 @@ execute(source, { variables: { rate: 0.1 } }); // 100
 - **Time Complexity:** O(n) where n is the number of AST nodes (single backwards pass for DCE)
 - **Space Complexity:** O(d + v) where d is max depth, v is unique variables
 - **Typical Performance:** <1ms for most programs
-- **Correctness:** 100% semantically equivalent to unoptimized execution
+- **Correctness:** 100% semantically equivalent to unoptimized evaluation
 
 ### Development Notes
 

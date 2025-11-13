@@ -1,11 +1,12 @@
 import { describe, expect, test } from 'bun:test'
-import { defaultContext, execute } from '../src'
+import { defaultContext } from '../src/defaults'
+import { evaluate } from '../src/interpreter'
 
 describe('Date Utils', () => {
 	describe('CORE FUNCTIONS', () => {
 		test('NOW() returns timestamp', () => {
 			const before = Date.now()
-			const result = execute('NOW()', defaultContext)
+			const result = evaluate('NOW()', defaultContext)
 			const after = Date.now()
 			expect(typeof result).toBe('number')
 			expect(result).toBeGreaterThanOrEqual(before)
@@ -13,33 +14,33 @@ describe('Date Utils', () => {
 		})
 
 		test('DATE() creates timestamp with defaults', () => {
-			const result = execute('DATE(2024)', defaultContext)
+			const result = evaluate('DATE(2024)', defaultContext)
 			const expected = Date.UTC(2024, 0, 1, 0, 0, 0, 0)
 			expect(result).toBe(expected)
 		})
 
 		test('DATE() with all components', () => {
-			const result = execute('DATE(2024, 6, 15, 12, 30, 45)', defaultContext)
+			const result = evaluate('DATE(2024, 6, 15, 12, 30, 45)', defaultContext)
 			const expected = Date.UTC(2024, 5, 15, 12, 30, 45)
 			expect(result).toBe(expected)
 		})
 
 		test('DATE() creates same timestamp regardless of timezone', () => {
-			const result = execute('DATE(2024, 6, 15, 12, 0, 0)', defaultContext)
+			const result = evaluate('DATE(2024, 6, 15, 12, 0, 0)', defaultContext)
 			const expected = Date.UTC(2024, 5, 15, 12, 0, 0)
 			expect(result).toBe(expected)
 			expect(result).toBe(1718452800000)
 		})
 
 		test('DATE() at midnight is predictable', () => {
-			const result = execute('DATE(2024, 1, 1)', defaultContext)
+			const result = evaluate('DATE(2024, 1, 1)', defaultContext)
 			const expected = Date.UTC(2024, 0, 1, 0, 0, 0, 0)
 			expect(result).toBe(expected)
 			expect(result).toBe(1704067200000)
 		})
 
 		test('DATE() handles leap year Feb 29', () => {
-			const result = execute('DATE(2024, 2, 29)', defaultContext)
+			const result = evaluate('DATE(2024, 2, 29)', defaultContext)
 			const date = new Date(result)
 			expect(date.getUTCFullYear()).toBe(2024)
 			expect(date.getUTCMonth()).toBe(1)
@@ -49,22 +50,22 @@ describe('Date Utils', () => {
 
 	describe('TIME CONVERTERS', () => {
 		test('FROM_DAYS()', () => {
-			const result = execute('FROM_DAYS(1)', defaultContext)
+			const result = evaluate('FROM_DAYS(1)', defaultContext)
 			expect(result).toBe(24 * 60 * 60 * 1000)
 		})
 
 		test('FROM_WEEKS()', () => {
-			const result = execute('FROM_WEEKS(1)', defaultContext)
+			const result = evaluate('FROM_WEEKS(1)', defaultContext)
 			expect(result).toBe(7 * 24 * 60 * 60 * 1000)
 		})
 
 		test('FROM_MONTHS', () => {
-			const result = execute('FROM_MONTHS(1)', defaultContext)
+			const result = evaluate('FROM_MONTHS(1)', defaultContext)
 			expect(result).toBe(30 * 24 * 60 * 60 * 1000)
 		})
 
 		test('FROM_YEARS', () => {
-			const result = execute('FROM_YEARS(1)', defaultContext)
+			const result = evaluate('FROM_YEARS(1)', defaultContext)
 			expect(result).toBe(365 * 24 * 60 * 60 * 1000)
 		})
 	})
@@ -72,7 +73,7 @@ describe('Date Utils', () => {
 	describe('COMPONENT EXTRACTORS', () => {
 		test('GET_YEAR() extracts year from timestamp', () => {
 			const timestamp = Date.UTC(2024, 5, 15)
-			const result = execute('GET_YEAR(t)', {
+			const result = evaluate('GET_YEAR(t)', {
 				...defaultContext,
 				variables: { t: timestamp },
 			})
@@ -81,7 +82,7 @@ describe('Date Utils', () => {
 
 		test('GET_MONTH() extracts month from timestamp', () => {
 			const timestamp = Date.UTC(2024, 5, 15)
-			const result = execute('GET_MONTH(t)', {
+			const result = evaluate('GET_MONTH(t)', {
 				...defaultContext,
 				variables: { t: timestamp },
 			})
@@ -90,7 +91,7 @@ describe('Date Utils', () => {
 
 		test('GET_DAY() extracts day from timestamp', () => {
 			const timestamp = Date.UTC(2024, 5, 15)
-			const result = execute('GET_DAY(t)', {
+			const result = evaluate('GET_DAY(t)', {
 				...defaultContext,
 				variables: { t: timestamp },
 			})
@@ -99,7 +100,7 @@ describe('Date Utils', () => {
 
 		test('GET_DAY returns UTC day, not local day', () => {
 			const ts = Date.UTC(2024, 5, 15, 23, 0, 0)
-			const result = execute('GET_DAY(ts)', {
+			const result = evaluate('GET_DAY(ts)', {
 				...defaultContext,
 				variables: { ts },
 			})
@@ -108,7 +109,7 @@ describe('Date Utils', () => {
 
 		test('GET_HOUR() extracts hour from timestamp', () => {
 			const timestamp = Date.UTC(2024, 5, 15, 14, 30, 0)
-			const result = execute('GET_HOUR(t)', {
+			const result = evaluate('GET_HOUR(t)', {
 				...defaultContext,
 				variables: { t: timestamp },
 			})
@@ -117,7 +118,7 @@ describe('Date Utils', () => {
 
 		test('GET_HOUR returns UTC hour, not local hour', () => {
 			const ts = Date.UTC(2024, 5, 15, 12, 0, 0)
-			const result = execute('GET_HOUR(ts)', {
+			const result = evaluate('GET_HOUR(ts)', {
 				...defaultContext,
 				variables: { ts },
 			})
@@ -126,7 +127,7 @@ describe('Date Utils', () => {
 
 		test('GET_MINUTE() extracts minute from timestamp', () => {
 			const timestamp = Date.UTC(2024, 5, 15, 14, 30, 0)
-			const result = execute('GET_MINUTE(t)', {
+			const result = evaluate('GET_MINUTE(t)', {
 				...defaultContext,
 				variables: { t: timestamp },
 			})
@@ -135,7 +136,7 @@ describe('Date Utils', () => {
 
 		test('GET_SECOND() extracts second from timestamp', () => {
 			const timestamp = Date.UTC(2024, 5, 15, 14, 30, 45)
-			const result = execute('GET_SECOND(t)', {
+			const result = evaluate('GET_SECOND(t)', {
 				...defaultContext,
 				variables: { t: timestamp },
 			})
@@ -144,7 +145,7 @@ describe('Date Utils', () => {
 
 		test('GET_WEEKDAY() extracts day of week', () => {
 			const timestamp = Date.UTC(2024, 0, 1)
-			const result = execute('GET_WEEKDAY(t)', {
+			const result = evaluate('GET_WEEKDAY(t)', {
 				...defaultContext,
 				variables: { t: timestamp },
 			})
@@ -154,7 +155,7 @@ describe('Date Utils', () => {
 
 		test('GET_WEEKDAY returns UTC day of week', () => {
 			const ts = Date.UTC(2024, 5, 15, 12, 0, 0)
-			const result = execute('GET_WEEKDAY(ts)', {
+			const result = evaluate('GET_WEEKDAY(ts)', {
 				...defaultContext,
 				variables: { ts },
 			})
@@ -163,7 +164,7 @@ describe('Date Utils', () => {
 
 		test('GET_MILLISECOND', () => {
 			const timestamp = Date.UTC(2024, 5, 15, 14, 30, 45, 123)
-			const result = execute('GET_MILLISECOND(ts)', {
+			const result = evaluate('GET_MILLISECOND(ts)', {
 				...defaultContext,
 				variables: { ts: timestamp },
 			})
@@ -172,7 +173,7 @@ describe('Date Utils', () => {
 
 		test('GET_DAY_OF_YEAR - Jan 1 is day 1', () => {
 			const jan1 = Date.UTC(2024, 0, 1)
-			const result = execute('GET_DAY_OF_YEAR(ts)', {
+			const result = evaluate('GET_DAY_OF_YEAR(ts)', {
 				...defaultContext,
 				variables: { ts: jan1 },
 			})
@@ -181,7 +182,7 @@ describe('Date Utils', () => {
 
 		test('GET_DAY_OF_YEAR - Dec 31 in leap year is day 366', () => {
 			const dec31 = Date.UTC(2024, 11, 31)
-			const result = execute('GET_DAY_OF_YEAR(ts)', {
+			const result = evaluate('GET_DAY_OF_YEAR(ts)', {
 				...defaultContext,
 				variables: { ts: dec31 },
 			})
@@ -190,7 +191,7 @@ describe('Date Utils', () => {
 
 		test('GET_DAY_OF_YEAR - Dec 31 in non-leap year is day 365', () => {
 			const ts = Date.UTC(2023, 11, 31)
-			const result = execute('GET_DAY_OF_YEAR(ts)', {
+			const result = evaluate('GET_DAY_OF_YEAR(ts)', {
 				...defaultContext,
 				variables: { ts },
 			})
@@ -199,7 +200,7 @@ describe('Date Utils', () => {
 
 		test('GET_DAY_OF_YEAR - Feb 29 in leap year is day 60', () => {
 			const ts = Date.UTC(2024, 1, 29)
-			const result = execute('GET_DAY_OF_YEAR(ts)', {
+			const result = evaluate('GET_DAY_OF_YEAR(ts)', {
 				...defaultContext,
 				variables: { ts },
 			})
@@ -209,7 +210,7 @@ describe('Date Utils', () => {
 		test('GET_QUARTER', () => {
 			const q1 = Date.UTC(2024, 1, 15)
 			expect(
-				execute('GET_QUARTER(ts)', {
+				evaluate('GET_QUARTER(ts)', {
 					...defaultContext,
 					variables: { ts: q1 },
 				}),
@@ -217,7 +218,7 @@ describe('Date Utils', () => {
 
 			const q2 = Date.UTC(2024, 4, 15)
 			expect(
-				execute('GET_QUARTER(ts)', {
+				evaluate('GET_QUARTER(ts)', {
 					...defaultContext,
 					variables: { ts: q2 },
 				}),
@@ -225,7 +226,7 @@ describe('Date Utils', () => {
 
 			const q3 = Date.UTC(2024, 7, 15)
 			expect(
-				execute('GET_QUARTER(ts)', {
+				evaluate('GET_QUARTER(ts)', {
 					...defaultContext,
 					variables: { ts: q3 },
 				}),
@@ -233,7 +234,7 @@ describe('Date Utils', () => {
 
 			const q4 = Date.UTC(2024, 10, 15)
 			expect(
-				execute('GET_QUARTER(ts)', {
+				evaluate('GET_QUARTER(ts)', {
 					...defaultContext,
 					variables: { ts: q4 },
 				}),
@@ -244,7 +245,7 @@ describe('Date Utils', () => {
 	describe('START/END OF PERIOD', () => {
 		test('START_OF_DAY', () => {
 			const timestamp = Date.UTC(2024, 5, 15, 14, 30, 45, 123)
-			const result = execute('START_OF_DAY(ts)', {
+			const result = evaluate('START_OF_DAY(ts)', {
 				...defaultContext,
 				variables: { ts: timestamp },
 			})
@@ -254,7 +255,7 @@ describe('Date Utils', () => {
 
 		test('START_OF_DAY uses UTC not local time', () => {
 			const ts = Date.UTC(2024, 5, 15, 23, 30, 0)
-			const result = execute('START_OF_DAY(ts)', {
+			const result = evaluate('START_OF_DAY(ts)', {
 				...defaultContext,
 				variables: { ts },
 			})
@@ -266,7 +267,7 @@ describe('Date Utils', () => {
 
 		test('START_OF_DAY at year boundary', () => {
 			const ts = Date.UTC(2024, 0, 1, 12, 0, 0)
-			const result = execute('START_OF_DAY(ts)', {
+			const result = evaluate('START_OF_DAY(ts)', {
 				...defaultContext,
 				variables: { ts },
 			})
@@ -276,7 +277,7 @@ describe('Date Utils', () => {
 
 		test('END_OF_DAY', () => {
 			const timestamp = Date.UTC(2024, 5, 15, 14, 30, 45, 123)
-			const result = execute('END_OF_DAY(ts)', {
+			const result = evaluate('END_OF_DAY(ts)', {
 				...defaultContext,
 				variables: { ts: timestamp },
 			})
@@ -286,7 +287,7 @@ describe('Date Utils', () => {
 
 		test('END_OF_DAY uses UTC not local time', () => {
 			const ts = Date.UTC(2024, 5, 15, 1, 0, 0)
-			const result = execute('END_OF_DAY(ts)', {
+			const result = evaluate('END_OF_DAY(ts)', {
 				...defaultContext,
 				variables: { ts },
 			})
@@ -296,7 +297,7 @@ describe('Date Utils', () => {
 
 		test('END_OF_DAY at year boundary', () => {
 			const ts = Date.UTC(2024, 11, 31, 12, 0, 0)
-			const result = execute('END_OF_DAY(ts)', {
+			const result = evaluate('END_OF_DAY(ts)', {
 				...defaultContext,
 				variables: { ts },
 			})
@@ -306,7 +307,7 @@ describe('Date Utils', () => {
 
 		test('START_OF_WEEK', () => {
 			const timestamp = Date.UTC(2024, 5, 15, 14, 30, 0)
-			const result = execute('START_OF_WEEK(ts)', {
+			const result = evaluate('START_OF_WEEK(ts)', {
 				...defaultContext,
 				variables: { ts: timestamp },
 			})
@@ -318,7 +319,7 @@ describe('Date Utils', () => {
 
 		test('START_OF_WEEK on Sunday returns same day at midnight', () => {
 			const sunday = Date.UTC(2024, 5, 16, 14, 30, 0)
-			const result = execute('START_OF_WEEK(ts)', {
+			const result = evaluate('START_OF_WEEK(ts)', {
 				...defaultContext,
 				variables: { ts: sunday },
 			})
@@ -328,7 +329,7 @@ describe('Date Utils', () => {
 
 		test('START_OF_WEEK on Saturday goes back to previous Sunday', () => {
 			const saturday = Date.UTC(2024, 5, 15, 14, 30, 0)
-			const result = execute('START_OF_WEEK(ts)', {
+			const result = evaluate('START_OF_WEEK(ts)', {
 				...defaultContext,
 				variables: { ts: saturday },
 			})
@@ -340,7 +341,7 @@ describe('Date Utils', () => {
 
 		test('START_OF_WEEK crosses month boundary', () => {
 			const ts = Date.UTC(2024, 6, 2, 10, 0, 0)
-			const result = execute('START_OF_WEEK(ts)', {
+			const result = evaluate('START_OF_WEEK(ts)', {
 				...defaultContext,
 				variables: { ts },
 			})
@@ -352,7 +353,7 @@ describe('Date Utils', () => {
 
 		test('START_OF_MONTH', () => {
 			const timestamp = Date.UTC(2024, 5, 15, 14, 30, 0)
-			const result = execute('START_OF_MONTH(ts)', {
+			const result = evaluate('START_OF_MONTH(ts)', {
 				...defaultContext,
 				variables: { ts: timestamp },
 			})
@@ -362,7 +363,7 @@ describe('Date Utils', () => {
 
 		test('END_OF_MONTH', () => {
 			const timestamp = Date.UTC(2024, 5, 15, 14, 30, 0)
-			const result = execute('END_OF_MONTH(ts)', {
+			const result = evaluate('END_OF_MONTH(ts)', {
 				...defaultContext,
 				variables: { ts: timestamp },
 			})
@@ -376,7 +377,7 @@ describe('Date Utils', () => {
 
 		test('END_OF_MONTH for February in leap year', () => {
 			const feb15 = Date.UTC(2024, 1, 15, 10, 0, 0)
-			const result = execute('END_OF_MONTH(ts)', {
+			const result = evaluate('END_OF_MONTH(ts)', {
 				...defaultContext,
 				variables: { ts: feb15 },
 			})
@@ -390,7 +391,7 @@ describe('Date Utils', () => {
 
 		test('END_OF_MONTH for February in non-leap year', () => {
 			const feb15 = Date.UTC(2023, 1, 15, 10, 0, 0)
-			const result = execute('END_OF_MONTH(ts)', {
+			const result = evaluate('END_OF_MONTH(ts)', {
 				...defaultContext,
 				variables: { ts: feb15 },
 			})
@@ -400,7 +401,7 @@ describe('Date Utils', () => {
 
 		test('END_OF_MONTH for month with 31 days', () => {
 			const jan15 = Date.UTC(2024, 0, 15, 10, 0, 0)
-			const result = execute('END_OF_MONTH(ts)', {
+			const result = evaluate('END_OF_MONTH(ts)', {
 				...defaultContext,
 				variables: { ts: jan15 },
 			})
@@ -410,7 +411,7 @@ describe('Date Utils', () => {
 
 		test('END_OF_MONTH for month with 30 days', () => {
 			const jun15 = Date.UTC(2024, 5, 15, 10, 0, 0)
-			const result = execute('END_OF_MONTH(ts)', {
+			const result = evaluate('END_OF_MONTH(ts)', {
 				...defaultContext,
 				variables: { ts: jun15 },
 			})
@@ -420,7 +421,7 @@ describe('Date Utils', () => {
 
 		test('START_OF_YEAR', () => {
 			const timestamp = Date.UTC(2024, 5, 15, 14, 30, 0)
-			const result = execute('START_OF_YEAR(ts)', {
+			const result = evaluate('START_OF_YEAR(ts)', {
 				...defaultContext,
 				variables: { ts: timestamp },
 			})
@@ -430,7 +431,7 @@ describe('Date Utils', () => {
 
 		test('END_OF_YEAR', () => {
 			const timestamp = Date.UTC(2024, 5, 15, 14, 30, 0)
-			const result = execute('END_OF_YEAR(ts)', {
+			const result = evaluate('END_OF_YEAR(ts)', {
 				...defaultContext,
 				variables: { ts: timestamp },
 			})
@@ -440,7 +441,7 @@ describe('Date Utils', () => {
 
 		test('START_OF_QUARTER', () => {
 			const mayTimestamp = Date.UTC(2024, 4, 15, 10, 0, 0)
-			const result = execute('START_OF_QUARTER(ts)', {
+			const result = evaluate('START_OF_QUARTER(ts)', {
 				...defaultContext,
 				variables: { ts: mayTimestamp },
 			})
@@ -454,7 +455,7 @@ describe('Date Utils', () => {
 	describe('DATE ARITHMETIC', () => {
 		test('ADD_DAYS positive', () => {
 			const timestamp = Date.UTC(2024, 5, 15, 14, 30, 0)
-			const result = execute('ADD_DAYS(ts, 7)', {
+			const result = evaluate('ADD_DAYS(ts, 7)', {
 				...defaultContext,
 				variables: { ts: timestamp },
 			})
@@ -464,7 +465,7 @@ describe('Date Utils', () => {
 
 		test('ADD_DAYS negative', () => {
 			const timestamp = Date.UTC(2024, 5, 15, 14, 30, 0)
-			const result = execute('ADD_DAYS(ts, -5)', {
+			const result = evaluate('ADD_DAYS(ts, -5)', {
 				...defaultContext,
 				variables: { ts: timestamp },
 			})
@@ -474,7 +475,7 @@ describe('Date Utils', () => {
 
 		test('ADD_DAYS maintains UTC consistency', () => {
 			const ts = Date.UTC(2024, 5, 15, 14, 30, 0)
-			const result = execute('ADD_DAYS(ts, 7)', {
+			const result = evaluate('ADD_DAYS(ts, 7)', {
 				...defaultContext,
 				variables: { ts },
 			})
@@ -486,7 +487,7 @@ describe('Date Utils', () => {
 
 		test('ADD_MONTHS positive', () => {
 			const timestamp = Date.UTC(2024, 5, 15, 14, 30, 0)
-			const result = execute('ADD_MONTHS(ts, 2)', {
+			const result = evaluate('ADD_MONTHS(ts, 2)', {
 				...defaultContext,
 				variables: { ts: timestamp },
 			})
@@ -497,7 +498,7 @@ describe('Date Utils', () => {
 
 		test('ADD_MONTHS negative', () => {
 			const timestamp = Date.UTC(2024, 5, 15, 14, 30, 0)
-			const result = execute('ADD_MONTHS(ts, -3)', {
+			const result = evaluate('ADD_MONTHS(ts, -3)', {
 				...defaultContext,
 				variables: { ts: timestamp },
 			})
@@ -507,7 +508,7 @@ describe('Date Utils', () => {
 
 		test('ADD_MONTHS handles month-end overflow', () => {
 			const timestamp = Date.UTC(2024, 0, 31, 14, 30, 0)
-			const result = execute('ADD_MONTHS(ts, 1)', {
+			const result = evaluate('ADD_MONTHS(ts, 1)', {
 				...defaultContext,
 				variables: { ts: timestamp },
 			})
@@ -518,7 +519,7 @@ describe('Date Utils', () => {
 
 		test('ADD_MONTHS with month-end overflow (Jan 31 + 1 month)', () => {
 			const jan31 = Date.UTC(2024, 0, 31, 10, 0, 0)
-			const result = execute('ADD_MONTHS(ts, 1)', {
+			const result = evaluate('ADD_MONTHS(ts, 1)', {
 				...defaultContext,
 				variables: { ts: jan31 },
 			})
@@ -529,7 +530,7 @@ describe('Date Utils', () => {
 
 		test('ADD_MONTHS negative crosses year boundary', () => {
 			const feb2024 = Date.UTC(2024, 1, 15, 10, 0, 0)
-			const result = execute('ADD_MONTHS(ts, -3)', {
+			const result = evaluate('ADD_MONTHS(ts, -3)', {
 				...defaultContext,
 				variables: { ts: feb2024 },
 			})
@@ -541,7 +542,7 @@ describe('Date Utils', () => {
 
 		test('ADD_MONTHS preserves time components', () => {
 			const ts = Date.UTC(2024, 0, 15, 14, 30, 45, 123)
-			const result = execute('ADD_MONTHS(ts, 2)', {
+			const result = evaluate('ADD_MONTHS(ts, 2)', {
 				...defaultContext,
 				variables: { ts },
 			})
@@ -554,7 +555,7 @@ describe('Date Utils', () => {
 
 		test('ADD_YEARS positive', () => {
 			const timestamp = Date.UTC(2024, 5, 15, 14, 30, 0)
-			const result = execute('ADD_YEARS(ts, 5)', {
+			const result = evaluate('ADD_YEARS(ts, 5)', {
 				...defaultContext,
 				variables: { ts: timestamp },
 			})
@@ -566,7 +567,7 @@ describe('Date Utils', () => {
 
 		test('ADD_YEARS negative', () => {
 			const timestamp = Date.UTC(2024, 5, 15, 14, 30, 0)
-			const result = execute('ADD_YEARS(ts, -2)', {
+			const result = evaluate('ADD_YEARS(ts, -2)', {
 				...defaultContext,
 				variables: { ts: timestamp },
 			})
@@ -576,7 +577,7 @@ describe('Date Utils', () => {
 
 		test('ADD_YEARS from Feb 29 to non-leap year', () => {
 			const feb29_2024 = Date.UTC(2024, 1, 29, 10, 0, 0)
-			const result = execute('ADD_YEARS(ts, 1)', {
+			const result = evaluate('ADD_YEARS(ts, 1)', {
 				...defaultContext,
 				variables: { ts: feb29_2024 },
 			})
@@ -588,7 +589,7 @@ describe('Date Utils', () => {
 
 		test('ADD_YEARS negative preserves date', () => {
 			const ts = Date.UTC(2024, 5, 15, 10, 0, 0)
-			const result = execute('ADD_YEARS(ts, -10)', {
+			const result = evaluate('ADD_YEARS(ts, -10)', {
 				...defaultContext,
 				variables: { ts },
 			})
@@ -603,7 +604,7 @@ describe('Date Utils', () => {
 		test('DIFFERENCE_IN_SECONDS', () => {
 			const ts1 = Date.UTC(2024, 5, 15, 10, 0, 0)
 			const ts2 = Date.UTC(2024, 5, 15, 10, 0, 30)
-			const result = execute('DIFFERENCE_IN_SECONDS(ts1, ts2)', {
+			const result = evaluate('DIFFERENCE_IN_SECONDS(ts1, ts2)', {
 				...defaultContext,
 				variables: { ts1, ts2 },
 			})
@@ -613,7 +614,7 @@ describe('Date Utils', () => {
 		test('DIFFERENCE_IN_SECONDS ceils fractional seconds', () => {
 			const ts1 = Date.UTC(2024, 5, 15, 10, 0, 0, 0)
 			const ts2 = Date.UTC(2024, 5, 15, 10, 0, 10, 750)
-			const result = execute('DIFFERENCE_IN_SECONDS(ts1, ts2)', {
+			const result = evaluate('DIFFERENCE_IN_SECONDS(ts1, ts2)', {
 				...defaultContext,
 				variables: { ts1, ts2 },
 			})
@@ -623,7 +624,7 @@ describe('Date Utils', () => {
 		test('DIFFERENCE_IN_MINUTES', () => {
 			const ts1 = Date.UTC(2024, 5, 15, 10, 0, 0)
 			const ts2 = Date.UTC(2024, 5, 15, 10, 15, 0)
-			const result = execute('DIFFERENCE_IN_MINUTES(ts1, ts2)', {
+			const result = evaluate('DIFFERENCE_IN_MINUTES(ts1, ts2)', {
 				...defaultContext,
 				variables: { ts1, ts2 },
 			})
@@ -633,7 +634,7 @@ describe('Date Utils', () => {
 		test('DIFFERENCE_IN_MINUTES ceils fractional minutes', () => {
 			const ts1 = Date.UTC(2024, 5, 15, 10, 0, 0)
 			const ts2 = Date.UTC(2024, 5, 15, 10, 5, 45)
-			const result = execute('DIFFERENCE_IN_MINUTES(ts1, ts2)', {
+			const result = evaluate('DIFFERENCE_IN_MINUTES(ts1, ts2)', {
 				...defaultContext,
 				variables: { ts1, ts2 },
 			})
@@ -643,7 +644,7 @@ describe('Date Utils', () => {
 		test('DIFFERENCE_IN_MINUTES - 23:05 until midnight is 55 minutes', () => {
 			const ts1 = new Date(2025, 10, 7, 23, 5, 0).getTime()
 			const ts2 = new Date(2025, 10, 8, 0, 0, 0).getTime()
-			const result = execute('DIFFERENCE_IN_MINUTES(ts1, ts2)', {
+			const result = evaluate('DIFFERENCE_IN_MINUTES(ts1, ts2)', {
 				...defaultContext,
 				variables: { ts1, ts2 },
 			})
@@ -653,7 +654,7 @@ describe('Date Utils', () => {
 		test('DIFFERENCE_IN_HOURS', () => {
 			const ts1 = Date.UTC(2024, 5, 15, 10, 0, 0)
 			const ts2 = Date.UTC(2024, 5, 15, 14, 0, 0)
-			const result = execute('DIFFERENCE_IN_HOURS(ts1, ts2)', {
+			const result = evaluate('DIFFERENCE_IN_HOURS(ts1, ts2)', {
 				...defaultContext,
 				variables: { ts1, ts2 },
 			})
@@ -663,7 +664,7 @@ describe('Date Utils', () => {
 		test('DIFFERENCE_IN_HOURS ceils fractional hours', () => {
 			const ts1 = Date.UTC(2024, 5, 15, 10, 0, 0)
 			const ts2 = Date.UTC(2024, 5, 15, 13, 45, 30)
-			const result = execute('DIFFERENCE_IN_HOURS(ts1, ts2)', {
+			const result = evaluate('DIFFERENCE_IN_HOURS(ts1, ts2)', {
 				...defaultContext,
 				variables: { ts1, ts2 },
 			})
@@ -673,7 +674,7 @@ describe('Date Utils', () => {
 		test('DIFFERENCE_IN_HOURS - 23:00 until midnight is 1 hour', () => {
 			const ts1 = new Date(2025, 10, 7, 23, 0, 0).getTime()
 			const ts2 = new Date(2025, 10, 8, 0, 0, 0).getTime()
-			const result = execute('DIFFERENCE_IN_HOURS(ts1, ts2)', {
+			const result = evaluate('DIFFERENCE_IN_HOURS(ts1, ts2)', {
 				...defaultContext,
 				variables: { ts1, ts2 },
 			})
@@ -683,7 +684,7 @@ describe('Date Utils', () => {
 		test('DIFFERENCE_IN_DAYS', () => {
 			const ts1 = Date.UTC(2024, 5, 15, 10, 0, 0)
 			const ts2 = Date.UTC(2024, 5, 20, 10, 0, 0)
-			const result = execute('DIFFERENCE_IN_DAYS(ts1, ts2)', {
+			const result = evaluate('DIFFERENCE_IN_DAYS(ts1, ts2)', {
 				...defaultContext,
 				variables: { ts1, ts2 },
 			})
@@ -693,7 +694,7 @@ describe('Date Utils', () => {
 		test('DIFFERENCE_IN_DAYS floors fractional days', () => {
 			const ts1 = Date.UTC(2024, 5, 15, 10, 0, 0)
 			const ts2 = Date.UTC(2024, 5, 20, 14, 30, 45)
-			const result = execute('DIFFERENCE_IN_DAYS(ts1, ts2)', {
+			const result = evaluate('DIFFERENCE_IN_DAYS(ts1, ts2)', {
 				...defaultContext,
 				variables: { ts1, ts2 },
 			})
@@ -703,7 +704,7 @@ describe('Date Utils', () => {
 		test('DIFFERENCE_IN_DAYS is timezone-independent', () => {
 			const ts1 = Date.UTC(2024, 5, 10, 12, 0, 0)
 			const ts2 = Date.UTC(2024, 5, 15, 12, 0, 0)
-			const result = execute('DIFFERENCE_IN_DAYS(ts1, ts2)', {
+			const result = evaluate('DIFFERENCE_IN_DAYS(ts1, ts2)', {
 				...defaultContext,
 				variables: { ts1, ts2 },
 			})
@@ -713,7 +714,7 @@ describe('Date Utils', () => {
 		test('DIFFERENCE_IN_DAYS partial days are floored consistently', () => {
 			const ts1 = Date.UTC(2024, 5, 10, 10, 0, 0)
 			const ts2 = Date.UTC(2024, 5, 15, 16, 30, 0)
-			const result = execute('DIFFERENCE_IN_DAYS(ts1, ts2)', {
+			const result = evaluate('DIFFERENCE_IN_DAYS(ts1, ts2)', {
 				...defaultContext,
 				variables: { ts1, ts2 },
 			})
@@ -723,7 +724,7 @@ describe('Date Utils', () => {
 		test('DIFFERENCE_IN_WEEKS', () => {
 			const ts1 = Date.UTC(2024, 5, 1, 10, 0, 0)
 			const ts2 = Date.UTC(2024, 5, 22, 10, 0, 0)
-			const result = execute('DIFFERENCE_IN_WEEKS(ts1, ts2)', {
+			const result = evaluate('DIFFERENCE_IN_WEEKS(ts1, ts2)', {
 				...defaultContext,
 				variables: { ts1, ts2 },
 			})
@@ -733,7 +734,7 @@ describe('Date Utils', () => {
 		test('DIFFERENCE_IN_WEEKS floors fractional weeks', () => {
 			const ts1 = Date.UTC(2024, 5, 1, 10, 0, 0)
 			const ts2 = Date.UTC(2024, 5, 23, 14, 0, 0)
-			const result = execute('DIFFERENCE_IN_WEEKS(ts1, ts2)', {
+			const result = evaluate('DIFFERENCE_IN_WEEKS(ts1, ts2)', {
 				...defaultContext,
 				variables: { ts1, ts2 },
 			})
@@ -743,7 +744,7 @@ describe('Date Utils', () => {
 		test('DIFFERENCE_IN_MONTHS - exact month boundaries', () => {
 			const ts1 = Date.UTC(2024, 0, 15)
 			const ts2 = Date.UTC(2024, 3, 15)
-			const result = execute('DIFFERENCE_IN_MONTHS(ts1, ts2)', {
+			const result = evaluate('DIFFERENCE_IN_MONTHS(ts1, ts2)', {
 				...defaultContext,
 				variables: { ts1, ts2 },
 			})
@@ -753,7 +754,7 @@ describe('Date Utils', () => {
 		test('DIFFERENCE_IN_MONTHS - day not reached yet', () => {
 			const ts1 = Date.UTC(2024, 0, 15)
 			const ts2 = Date.UTC(2024, 1, 14)
-			const result = execute('DIFFERENCE_IN_MONTHS(ts1, ts2)', {
+			const result = evaluate('DIFFERENCE_IN_MONTHS(ts1, ts2)', {
 				...defaultContext,
 				variables: { ts1, ts2 },
 			})
@@ -763,7 +764,7 @@ describe('Date Utils', () => {
 		test('DIFFERENCE_IN_MONTHS - end of month edge case', () => {
 			const ts1 = Date.UTC(2024, 0, 31)
 			const ts2 = Date.UTC(2024, 1, 28)
-			const result = execute('DIFFERENCE_IN_MONTHS(ts1, ts2)', {
+			const result = evaluate('DIFFERENCE_IN_MONTHS(ts1, ts2)', {
 				...defaultContext,
 				variables: { ts1, ts2 },
 			})
@@ -773,7 +774,7 @@ describe('Date Utils', () => {
 		test('DIFFERENCE_IN_MONTHS - crosses year boundary', () => {
 			const ts1 = Date.UTC(2023, 10, 15)
 			const ts2 = Date.UTC(2024, 1, 15)
-			const result = execute('DIFFERENCE_IN_MONTHS(ts1, ts2)', {
+			const result = evaluate('DIFFERENCE_IN_MONTHS(ts1, ts2)', {
 				...defaultContext,
 				variables: { ts1, ts2 },
 			})
@@ -783,7 +784,7 @@ describe('Date Utils', () => {
 		test('DIFFERENCE_IN_MONTHS - returns absolute value', () => {
 			const ts1 = Date.UTC(2024, 3, 15)
 			const ts2 = Date.UTC(2024, 0, 15)
-			const result = execute('DIFFERENCE_IN_MONTHS(ts1, ts2)', {
+			const result = evaluate('DIFFERENCE_IN_MONTHS(ts1, ts2)', {
 				...defaultContext,
 				variables: { ts1, ts2 },
 			})
@@ -793,7 +794,7 @@ describe('Date Utils', () => {
 		test('DIFFERENCE_IN_YEARS - exact year boundaries', () => {
 			const ts1 = Date.UTC(2020, 5, 15)
 			const ts2 = Date.UTC(2024, 5, 15)
-			const result = execute('DIFFERENCE_IN_YEARS(ts1, ts2)', {
+			const result = evaluate('DIFFERENCE_IN_YEARS(ts1, ts2)', {
 				...defaultContext,
 				variables: { ts1, ts2 },
 			})
@@ -803,7 +804,7 @@ describe('Date Utils', () => {
 		test('DIFFERENCE_IN_YEARS - day not reached yet', () => {
 			const ts1 = Date.UTC(2020, 5, 15)
 			const ts2 = Date.UTC(2024, 5, 14)
-			const result = execute('DIFFERENCE_IN_YEARS(ts1, ts2)', {
+			const result = evaluate('DIFFERENCE_IN_YEARS(ts1, ts2)', {
 				...defaultContext,
 				variables: { ts1, ts2 },
 			})
@@ -813,7 +814,7 @@ describe('Date Utils', () => {
 		test('DIFFERENCE_IN_YEARS - leap year edge case', () => {
 			const ts1 = Date.UTC(2020, 1, 29)
 			const ts2 = Date.UTC(2021, 1, 28)
-			const result = execute('DIFFERENCE_IN_YEARS(ts1, ts2)', {
+			const result = evaluate('DIFFERENCE_IN_YEARS(ts1, ts2)', {
 				...defaultContext,
 				variables: { ts1, ts2 },
 			})
@@ -823,7 +824,7 @@ describe('Date Utils', () => {
 		test('DIFFERENCE_IN_YEARS - leap year to next leap year', () => {
 			const ts1 = Date.UTC(2020, 1, 29)
 			const ts2 = Date.UTC(2024, 1, 29)
-			const result = execute('DIFFERENCE_IN_YEARS(ts1, ts2)', {
+			const result = evaluate('DIFFERENCE_IN_YEARS(ts1, ts2)', {
 				...defaultContext,
 				variables: { ts1, ts2 },
 			})
@@ -833,7 +834,7 @@ describe('Date Utils', () => {
 		test('DIFFERENCE functions return absolute values', () => {
 			const ts1 = Date.UTC(2024, 5, 15, 14, 0, 0)
 			const ts2 = Date.UTC(2024, 5, 15, 10, 0, 0)
-			const result = execute('DIFFERENCE_IN_HOURS(ts1, ts2)', {
+			const result = evaluate('DIFFERENCE_IN_HOURS(ts1, ts2)', {
 				...defaultContext,
 				variables: { ts1, ts2 },
 			})
@@ -845,7 +846,7 @@ describe('Date Utils', () => {
 		test('Timestamp comparison using < operator', () => {
 			const ts1 = Date.UTC(2024, 5, 15, 10, 0, 0)
 			const ts2 = Date.UTC(2024, 5, 15, 14, 0, 0)
-			const result = execute('ts1 < ts2 ? 1 : 0', {
+			const result = evaluate('ts1 < ts2 ? 1 : 0', {
 				...defaultContext,
 				variables: { ts1, ts2 },
 			})
@@ -855,7 +856,7 @@ describe('Date Utils', () => {
 		test('Timestamp comparison using > operator', () => {
 			const ts1 = Date.UTC(2024, 5, 15, 14, 0, 0)
 			const ts2 = Date.UTC(2024, 5, 15, 10, 0, 0)
-			const result = execute('ts1 > ts2 ? 1 : 0', {
+			const result = evaluate('ts1 > ts2 ? 1 : 0', {
 				...defaultContext,
 				variables: { ts1, ts2 },
 			})
@@ -865,7 +866,7 @@ describe('Date Utils', () => {
 		test('IS_SAME_DAY returns 1 for same calendar day', () => {
 			const ts1 = Date.UTC(2024, 5, 15, 10, 0, 0)
 			const ts2 = Date.UTC(2024, 5, 15, 23, 0, 0)
-			const result = execute('IS_SAME_DAY(ts1, ts2)', {
+			const result = evaluate('IS_SAME_DAY(ts1, ts2)', {
 				...defaultContext,
 				variables: { ts1, ts2 },
 			})
@@ -875,7 +876,7 @@ describe('Date Utils', () => {
 		test('IS_SAME_DAY returns 0 for different days', () => {
 			const ts1 = Date.UTC(2024, 5, 15, 23, 0, 0)
 			const ts2 = Date.UTC(2024, 5, 16, 1, 0, 0)
-			const result = execute('IS_SAME_DAY(ts1, ts2)', {
+			const result = evaluate('IS_SAME_DAY(ts1, ts2)', {
 				...defaultContext,
 				variables: { ts1, ts2 },
 			})
@@ -885,7 +886,7 @@ describe('Date Utils', () => {
 		test('IS_SAME_DAY uses UTC, not local time', () => {
 			const ts1 = Date.UTC(2024, 5, 15, 1, 0, 0)
 			const ts2 = Date.UTC(2024, 5, 15, 23, 0, 0)
-			const result = execute('IS_SAME_DAY(ts1, ts2)', {
+			const result = evaluate('IS_SAME_DAY(ts1, ts2)', {
 				...defaultContext,
 				variables: { ts1, ts2 },
 			})
@@ -895,7 +896,7 @@ describe('Date Utils', () => {
 		test('IS_SAME_DAY returns 0 for adjacent days at midnight', () => {
 			const ts1 = Date.UTC(2024, 5, 15, 23, 59, 59, 999)
 			const ts2 = Date.UTC(2024, 5, 16, 0, 0, 0, 0)
-			const result = execute('IS_SAME_DAY(ts1, ts2)', {
+			const result = evaluate('IS_SAME_DAY(ts1, ts2)', {
 				...defaultContext,
 				variables: { ts1, ts2 },
 			})
@@ -904,7 +905,7 @@ describe('Date Utils', () => {
 
 		test('IS_WEEKEND returns 1 for Saturday', () => {
 			const saturday = Date.UTC(2024, 5, 15, 10, 0, 0)
-			const result = execute('IS_WEEKEND(ts)', {
+			const result = evaluate('IS_WEEKEND(ts)', {
 				...defaultContext,
 				variables: { ts: saturday },
 			})
@@ -913,7 +914,7 @@ describe('Date Utils', () => {
 
 		test('IS_WEEKEND returns 1 for Sunday', () => {
 			const sunday = Date.UTC(2024, 5, 16, 10, 0, 0)
-			const result = execute('IS_WEEKEND(ts)', {
+			const result = evaluate('IS_WEEKEND(ts)', {
 				...defaultContext,
 				variables: { ts: sunday },
 			})
@@ -922,7 +923,7 @@ describe('Date Utils', () => {
 
 		test('IS_WEEKEND returns 0 for weekday', () => {
 			const monday = Date.UTC(2024, 5, 17, 10, 0, 0)
-			const result = execute('IS_WEEKEND(ts)', {
+			const result = evaluate('IS_WEEKEND(ts)', {
 				...defaultContext,
 				variables: { ts: monday },
 			})
@@ -931,7 +932,7 @@ describe('Date Utils', () => {
 
 		test('IS_WEEKEND uses UTC day of week', () => {
 			const saturday = Date.UTC(2024, 5, 15, 12, 0, 0)
-			const result = execute('IS_WEEKEND(ts)', {
+			const result = evaluate('IS_WEEKEND(ts)', {
 				...defaultContext,
 				variables: { ts: saturday },
 			})
@@ -941,7 +942,7 @@ describe('Date Utils', () => {
 		test('IS_WEEKEND at day boundary', () => {
 			const friday = Date.UTC(2024, 5, 14, 23, 59, 59, 999)
 			expect(
-				execute('IS_WEEKEND(ts)', {
+				evaluate('IS_WEEKEND(ts)', {
 					...defaultContext,
 					variables: { ts: friday },
 				}),
@@ -949,7 +950,7 @@ describe('Date Utils', () => {
 
 			const saturday = Date.UTC(2024, 5, 15, 0, 0, 0, 0)
 			expect(
-				execute('IS_WEEKEND(ts)', {
+				evaluate('IS_WEEKEND(ts)', {
 					...defaultContext,
 					variables: { ts: saturday },
 				}),
@@ -958,7 +959,7 @@ describe('Date Utils', () => {
 
 		test('IS_LEAP_YEAR returns 1 for leap year', () => {
 			const ts2024 = Date.UTC(2024, 5, 15, 10, 0, 0)
-			const result = execute('IS_LEAP_YEAR(ts)', {
+			const result = evaluate('IS_LEAP_YEAR(ts)', {
 				...defaultContext,
 				variables: { ts: ts2024 },
 			})
@@ -967,7 +968,7 @@ describe('Date Utils', () => {
 
 		test('IS_LEAP_YEAR returns 0 for non-leap year', () => {
 			const ts2023 = Date.UTC(2023, 5, 15, 10, 0, 0)
-			const result = execute('IS_LEAP_YEAR(ts)', {
+			const result = evaluate('IS_LEAP_YEAR(ts)', {
 				...defaultContext,
 				variables: { ts: ts2023 },
 			})
@@ -977,7 +978,7 @@ describe('Date Utils', () => {
 		test('IS_LEAP_YEAR handles century years', () => {
 			const ts2000 = Date.UTC(2000, 5, 15, 10, 0, 0)
 			expect(
-				execute('IS_LEAP_YEAR(ts)', {
+				evaluate('IS_LEAP_YEAR(ts)', {
 					...defaultContext,
 					variables: { ts: ts2000 },
 				}),
@@ -985,7 +986,7 @@ describe('Date Utils', () => {
 
 			const ts1900 = Date.UTC(1900, 5, 15, 10, 0, 0)
 			expect(
-				execute('IS_LEAP_YEAR(ts)', {
+				evaluate('IS_LEAP_YEAR(ts)', {
 					...defaultContext,
 					variables: { ts: ts1900 },
 				}),
@@ -996,7 +997,7 @@ describe('Date Utils', () => {
 	describe('TIMESTAMP ARITHMETIC', () => {
 		test('add milliseconds to timestamp', () => {
 			const timestamp = 1704067200000
-			const result = execute('t + 1000', {
+			const result = evaluate('t + 1000', {
 				variables: { t: timestamp },
 			})
 			expect(result).toBe(timestamp + 1000)
@@ -1004,7 +1005,7 @@ describe('Date Utils', () => {
 
 		test('subtract milliseconds from timestamp', () => {
 			const timestamp = 1704067200000
-			const result = execute('t - 1000', {
+			const result = evaluate('t - 1000', {
 				variables: { t: timestamp },
 			})
 			expect(result).toBe(timestamp - 1000)
@@ -1013,7 +1014,7 @@ describe('Date Utils', () => {
 		test('difference between two timestamps', () => {
 			const t1 = 1704067200000
 			const t2 = 1704153600000
-			const result = execute('t2 - t1', {
+			const result = evaluate('t2 - t1', {
 				variables: { t1, t2 },
 			})
 			expect(result).toBe(t2 - t1)
@@ -1021,7 +1022,7 @@ describe('Date Utils', () => {
 
 		test('NOW() returns timestamp', () => {
 			const now = 1704067200000
-			const result = execute('NOW()', {
+			const result = evaluate('NOW()', {
 				functions: { NOW: () => now },
 			})
 			expect(result).toBe(now)
@@ -1029,7 +1030,7 @@ describe('Date Utils', () => {
 
 		test('timestamp + time duration', () => {
 			const now = 1704067200000
-			const result = execute('NOW() + 5 * 60 * 1000', {
+			const result = evaluate('NOW() + 5 * 60 * 1000', {
 				functions: {
 					NOW: () => now,
 				},
@@ -1039,7 +1040,7 @@ describe('Date Utils', () => {
 
 		test('complex date arithmetic', () => {
 			const now = 1704067200000
-			const result = execute('NOW() + 2 * 60 * 60 * 1000 + 30 * 60 * 1000', {
+			const result = evaluate('NOW() + 2 * 60 * 60 * 1000 + 30 * 60 * 1000', {
 				functions: {
 					NOW: () => now,
 				},
@@ -1050,7 +1051,7 @@ describe('Date Utils', () => {
 		test('calculate deadline', () => {
 			const start = 1704067200000
 			const duration = 7 * 24 * 60 * 60 * 1000
-			const result = execute('start + duration', {
+			const result = evaluate('start + duration', {
 				variables: { start, duration },
 			})
 			expect(result).toBe(start + duration)
@@ -1060,7 +1061,7 @@ describe('Date Utils', () => {
 	describe('INTEGRATION TESTS', () => {
 		test('Calculate business days until deadline', () => {
 			const today = Date.now()
-			const result = execute('ADD_DAYS(START_OF_WEEK(NOW()), 12)', {
+			const result = evaluate('ADD_DAYS(START_OF_WEEK(NOW()), 12)', {
 				...defaultContext,
 			})
 			expect(result).toBeGreaterThan(today)
@@ -1068,7 +1069,7 @@ describe('Date Utils', () => {
 
 		test('Check if timestamp is in working hours', () => {
 			const workdayMorning = Date.UTC(2024, 5, 17, 9, 0, 0)
-			const result = execute(
+			const result = evaluate(
 				'GET_HOUR(ts) >= 9 && GET_HOUR(ts) < 17 && IS_WEEKEND(ts) == 0 ? 1 : 0',
 				{
 					...defaultContext,
@@ -1081,7 +1082,7 @@ describe('Date Utils', () => {
 		test('Calculate age in years using DIFFERENCE_IN_YEARS', () => {
 			const birthdate = Date.UTC(1990, 5, 15)
 			const today = Date.UTC(2024, 5, 15)
-			const result = execute('DIFFERENCE_IN_YEARS(birth, today)', {
+			const result = evaluate('DIFFERENCE_IN_YEARS(birth, today)', {
 				...defaultContext,
 				variables: { birth: birthdate, today },
 			})
@@ -1090,7 +1091,7 @@ describe('Date Utils', () => {
 
 		test('Get last day of previous month', () => {
 			const june15 = Date.UTC(2024, 5, 15, 10, 0, 0)
-			const result = execute('ADD_DAYS(START_OF_MONTH(ts), -1)', {
+			const result = evaluate('ADD_DAYS(START_OF_MONTH(ts), -1)', {
 				...defaultContext,
 				variables: { ts: june15 },
 			})
@@ -1103,7 +1104,7 @@ describe('Date Utils', () => {
 			// Use local time instead of UTC for calendar day calculations
 			const today = new Date(2024, 10, 8, 14, 45, 30).getTime()
 			const christmas = new Date(2025, 11, 25, 0, 0, 0).getTime()
-			const result = execute('DIFFERENCE_IN_DAYS(today, christmas)', {
+			const result = evaluate('DIFFERENCE_IN_DAYS(today, christmas)', {
 				...defaultContext,
 				variables: { today, christmas },
 			})
@@ -1116,7 +1117,7 @@ describe('Date Utils', () => {
 			// Use local time for calendar day calculations
 			const start = new Date(2024, 0, 1, 0, 0, 0).getTime()
 			const end = new Date(2024, 11, 31, 23, 59, 59).getTime()
-			const days = execute('DIFFERENCE_IN_DAYS(start, end)', {
+			const days = evaluate('DIFFERENCE_IN_DAYS(start, end)', {
 				...defaultContext,
 				variables: { start, end },
 			})

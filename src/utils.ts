@@ -108,7 +108,7 @@ export function getOperatorPrecedence(operator: Operator): number {
  *
  * @example
  * ```typescript
- * const ast = parseSource('x + y * z')
+ * const ast = parse('x + y * z')
  * const identifiers = collectAllIdentifiers(ast)
  * // Returns: Set(['x', 'y', 'z'])
  * ```

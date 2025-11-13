@@ -245,7 +245,7 @@ export class Parser {
  * @param source - The source code to parse
  * @returns Parsed AST
  */
-export function parseSource(source: string): ASTNode {
+export function parse(source: string): ASTNode {
 	const lexer = new Lexer(source)
 	const parser = new Parser(lexer)
 	return parser.parse()

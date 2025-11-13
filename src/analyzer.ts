@@ -19,7 +19,7 @@ import { collectAllIdentifiers } from './utils'
  *
  * @example
  * ```typescript
- * const ast = parseSource('price = 100; tax = price * 0.08')
+ * const ast = parse('price = 100; tax = price * 0.08')
  * extractInputVariables(ast) // ['price']
  * ```
  */

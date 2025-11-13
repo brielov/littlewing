@@ -3,19 +3,19 @@
 A minimal, high-performance arithmetic expression language for JavaScript. Pure numbers, zero dependencies, built for the browser.
 
 ```typescript
-import { execute, defaultContext } from "littlewing";
+import { evaluate, defaultContext } from "littlewing";
 
 // Simple arithmetic
-execute("2 + 3 * 4"); // → 14
+evaluate("2 + 3 * 4"); // → 14
 
 // Variables and functions
-execute("radius = 5; area = 3.14159 * radius ^ 2", defaultContext); // → 78.54
+evaluate("radius = 5; area = 3.14159 * radius ^ 2", defaultContext); // → 78.54
 
 // Date arithmetic with timestamps
-execute("deadline = NOW() + FROM_DAYS(7)", defaultContext); // → timestamp 7 days from now
+evaluate("deadline = NOW() + FROM_DAYS(7)", defaultContext); // → timestamp 7 days from now
 
 // Conditional logic
-execute("score = 85; grade = score >= 90 ? 100 : 90", {
+evaluate("score = 85; grade = score >= 90 ? 100 : 90", {
 	variables: { score: 85 },
 }); // → 90
 ```
@@ -42,71 +42,71 @@ npm install littlewing
 ### Basic Usage
 
 ```typescript
-import { execute } from "littlewing";
+import { evaluate } from "littlewing";
 
 // Arithmetic expressions
-execute("2 + 3 * 4"); // → 14
-execute("10 ^ 2"); // → 100
-execute("17 % 5"); // → 2
+evaluate("2 + 3 * 4"); // → 14
+evaluate("10 ^ 2"); // → 100
+evaluate("17 % 5"); // → 2
 
 // Variables
-execute("x = 10; y = 20; x + y"); // → 30
+evaluate("x = 10; y = 20; x + y"); // → 30
 
 // Comparisons (return 1 for true, 0 for false)
-execute("5 > 3"); // → 1
-execute("10 == 10"); // → 1
-execute("2 != 2"); // → 0
+evaluate("5 > 3"); // → 1
+evaluate("10 == 10"); // → 1
+evaluate("2 != 2"); // → 0
 
 // Logical operators
-execute("!0"); // → 1 (NOT)
-execute("1 && 1"); // → 1 (AND)
-execute("0 || 1"); // → 1 (OR)
-execute("!(5 > 10)"); // → 1 (negates comparison)
+evaluate("!0"); // → 1 (NOT)
+evaluate("1 && 1"); // → 1 (AND)
+evaluate("0 || 1"); // → 1 (OR)
+evaluate("!(5 > 10)"); // → 1 (negates comparison)
 
 // Ternary conditionals
-execute("age >= 18 ? 100 : 0", { variables: { age: 21 } }); // → 100
-execute("!isBlocked ? 100 : 0", { variables: { isBlocked: 0 } }); // → 100
+evaluate("age >= 18 ? 100 : 0", { variables: { age: 21 } }); // → 100
+evaluate("!isBlocked ? 100 : 0", { variables: { isBlocked: 0 } }); // → 100
 ```
 
 ### With Built-in Functions
 
 ```typescript
-import { execute, defaultContext } from "littlewing";
+import { evaluate, defaultContext } from "littlewing";
 
 // Math functions
-execute("ABS(-42)", defaultContext); // → 42
-execute("SQRT(16)", defaultContext); // → 4
-execute("MAX(3, 7, 2)", defaultContext); // → 7
+evaluate("ABS(-42)", defaultContext); // → 42
+evaluate("SQRT(16)", defaultContext); // → 4
+evaluate("MAX(3, 7, 2)", defaultContext); // → 7
 
 // Current timestamp
-execute("NOW()", defaultContext); // → 1704067200000
+evaluate("NOW()", defaultContext); // → 1704067200000
 
 // Date arithmetic
-execute("NOW() + FROM_HOURS(2)", defaultContext); // → timestamp 2 hours from now
-execute("tomorrow = NOW() + FROM_DAYS(1)", defaultContext); // → tomorrow's timestamp
+evaluate("NOW() + FROM_HOURS(2)", defaultContext); // → timestamp 2 hours from now
+evaluate("tomorrow = NOW() + FROM_DAYS(1)", defaultContext); // → tomorrow's timestamp
 
 // Extract date components
 const ctx = { ...defaultContext, variables: { ts: Date.now() } };
-execute("GET_YEAR(ts)", ctx); // → 2024
-execute("GET_MONTH(ts)", ctx); // → 11
-execute("GET_DAY(ts)", ctx); // → 6
+evaluate("GET_YEAR(ts)", ctx); // → 2024
+evaluate("GET_MONTH(ts)", ctx); // → 11
+evaluate("GET_DAY(ts)", ctx); // → 6
 
 // Calculate time differences
 const ts1 = Date.now();
 const ts2 = ts1 + 1000 * 60 * 60 * 5; // 5 hours later
 const context = { ...defaultContext, variables: { ts1, ts2 } };
-execute("DIFFERENCE_IN_HOURS(ts1, ts2)", context); // → 5
+evaluate("DIFFERENCE_IN_HOURS(ts1, ts2)", context); // → 5
 
 // Date arithmetic and comparisons
-execute("ADD_DAYS(NOW(), 7)", defaultContext); // → 7 days from now
-execute("START_OF_DAY(NOW())", defaultContext); // → today at 00:00:00.000
-execute("IS_WEEKEND(NOW())", defaultContext); // → 1 if today is Sat/Sun, else 0
+evaluate("ADD_DAYS(NOW(), 7)", defaultContext); // → 7 days from now
+evaluate("START_OF_DAY(NOW())", defaultContext); // → today at 00:00:00.000
+evaluate("IS_WEEKEND(NOW())", defaultContext); // → 1 if today is Sat/Sun, else 0
 ```
 
 ### Custom Functions and Variables
 
 ```typescript
-import { execute } from "littlewing";
+import { evaluate } from "littlewing";
 
 const context = {
 	functions: {
@@ -120,9 +120,9 @@ const context = {
 	},
 };
 
-execute("fahrenheit(20)", context); // → 68
-execute("discount(100, 15)", context); // → 85
-execute("100 * (1 + taxRate)", context); // → 108
+evaluate("fahrenheit(20)", context); // → 68
+evaluate("discount(100, 15)", context); // → 85
+evaluate("100 * (1 + taxRate)", context); // → 108
 ```
 
 ### External Variables Override Script Defaults
@@ -132,11 +132,11 @@ execute("100 * (1 + taxRate)", context); // → 108
 const formula = "multiplier = 2; value = 100; value * multiplier";
 
 // Without external variables: uses script defaults
-execute(formula); // → 200
+evaluate(formula); // → 200
 
 // External variables override script assignments
-execute(formula, { variables: { multiplier: 3 } }); // → 300
-execute(formula, { variables: { value: 50 } }); // → 100
+evaluate(formula, { variables: { multiplier: 3 } }); // → 300
+evaluate(formula, { variables: { value: 50 } }); // → 100
 
 // Useful for configurable formulas
 const pricing = `
@@ -146,9 +146,9 @@ const pricing = `
   finalPrice = basePrice * (1 - discount) * (1 + taxRate)
 `;
 
-execute(pricing); // → 108 (uses all defaults)
-execute(pricing, { variables: { discount: 0.1 } }); // → 97.2 (10% discount)
-execute(pricing, { variables: { basePrice: 200, discount: 0.2 } }); // → 172.8
+evaluate(pricing); // → 108 (uses all defaults)
+evaluate(pricing, { variables: { discount: 0.1 } }); // → 97.2 (10% discount)
+evaluate(pricing, { variables: { basePrice: 200, discount: 0.2 } }); // → 172.8
 ```
 
 ## Language Reference
@@ -159,37 +159,37 @@ For complete language documentation including all operators, functions, and exam
 
 ### Main Functions
 
-#### `execute(input: string | ASTNode, context?: ExecutionContext): number`
+#### `evaluate(input: string | ASTNode, context?: ExecutionContext): number`
 
-Execute an expression or AST and return the result. Accepts either a source string or a pre-parsed AST node.
+Evaluate an expression or AST and return the result. Accepts either a source string or a pre-parsed AST node.
 
 ```typescript
-// Execute source string directly
-execute("2 + 2"); // → 4
-execute("ABS(-5)", { functions: { ABS: Math.abs } }); // → 5
+// Evaluate source string directly
+evaluate("2 + 2"); // → 4
+evaluate("ABS(-5)", { functions: { ABS: Math.abs } }); // → 5
 
-// Execute pre-parsed AST (useful for parse-once, execute-many scenarios)
-const ast = parseSource("2 + 2");
-execute(ast); // → 4
-execute(ast); // → 4 (no re-parsing)
+// Evaluate pre-parsed AST (useful for parse-once, evaluate-many scenarios)
+const ast = parse("2 + 2");
+evaluate(ast); // → 4
+evaluate(ast); // → 4 (no re-parsing)
 ```
 
-#### `parseSource(source: string): ASTNode`
+#### `parse(source: string): ASTNode`
 
-Parse source into an Abstract Syntax Tree without executing. Useful for parse-once, execute-many scenarios.
+Parse source into an Abstract Syntax Tree without evaluating. Useful for parse-once, execute-many scenarios.
 
 ```typescript
-const ast = parseSource("2 + 3 * 4");
+const ast = parse("2 + 3 * 4");
 
-// Execute multiple times with different contexts (no re-parsing)
-execute(ast); // → 14
-execute(ast, {
+// Evaluate multiple times with different contexts (no re-parsing)
+evaluate(ast); // → 14
+evaluate(ast, {
 	variables: {
 		/* ... */
 	},
 }); // → 14 (with context)
 
-// Or use with Executor class or optimize() function
+// Or use with optimize() function
 const optimized = optimize(ast);
 ```
 
@@ -198,11 +198,11 @@ const optimized = optimize(ast);
 Optimize an AST by folding constants. Safe for use with external variables.
 
 ```typescript
-const ast = parseSource("2 + 3 * 4");
+const ast = parse("2 + 3 * 4");
 const optimized = optimize(ast); // → NumberLiteral(14)
 
 // Variables are NOT folded (can be overridden by context)
-const ast2 = parseSource("x = 5; x + 10");
+const ast2 = parse("x = 5; x + 10");
 const opt2 = optimize(ast2); // Still has variable reference
 ```
 
@@ -211,7 +211,7 @@ const opt2 = optimize(ast2); // Still has variable reference
 Convert AST back to source code.
 
 ```typescript
-const ast = parseSource("2 + 3 * 4");
+const ast = parse("2 + 3 * 4");
 generate(ast); // → "2 + 3 * 4"
 ```
 
@@ -224,9 +224,9 @@ The visitor pattern provides a centralized, type-safe way to traverse and transf
 Exhaustively visit every node in an AST. All node types must be handled.
 
 ```typescript
-import { visit, parseSource } from "littlewing";
+import { visit, parse } from "littlewing";
 
-const ast = parseSource("x = 5; x + 10");
+const ast = parse("x = 5; x + 10");
 
 // Count all identifiers in an AST
 const count = visit(ast, {
@@ -248,9 +248,9 @@ const count = visit(ast, {
 Visit only specific node types. Unhandled nodes return `undefined` and stop recursion.
 
 ```typescript
-import { visitPartial, parseSource } from "littlewing";
+import { visitPartial, parse } from "littlewing";
 
-const ast = parseSource("x = 5; y = x + 10; y * 2");
+const ast = parse("x = 5; y = x + 10; y * 2");
 
 // Find first assignment to a specific variable
 const result = visitPartial(ast, {
@@ -274,10 +274,10 @@ const result = visitPartial(ast, {
 Use `visit<ASTNode>` to create AST transformers:
 
 ```typescript
-import { visit, parseSource, ast } from "littlewing";
+import { visit, parse, ast } from "littlewing";
 
 // Double all numeric literals
-const transformed = visit<ASTNode>(parseSource("2 + 3 * 4"), {
+const transformed = visit<ASTNode>(parse("2 + 3 * 4"), {
 	Program: (n, recurse) => ast.program(n.body.map((stmt) => recurse(stmt))),
 	NumberLiteral: (n) => ast.number(n.value * 2),
 	Identifier: (n) => n,
@@ -332,21 +332,19 @@ The `defaultContext` includes these built-in functions:
 For expressions that are executed multiple times with different contexts, parse once and reuse the AST:
 
 ```typescript
-import { execute, parseSource } from "littlewing";
+import { execute, parse } from "littlewing";
 
 // Parse once
-const formula = parseSource(
-	"price * quantity * (1 - discount) * (1 + taxRate)",
-);
+const formula = parse("price * quantity * (1 - discount) * (1 + taxRate)");
 
 // Execute many times with different values (no re-parsing)
-execute(formula, {
+evaluate(formula, {
 	variables: { price: 10, quantity: 5, discount: 0.1, taxRate: 0.08 },
 });
-execute(formula, {
+evaluate(formula, {
 	variables: { price: 20, quantity: 3, discount: 0.15, taxRate: 0.08 },
 });
-execute(formula, {
+evaluate(formula, {
 	variables: { price: 15, quantity: 10, discount: 0.2, taxRate: 0.08 },
 });
 

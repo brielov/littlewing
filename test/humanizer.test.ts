@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'bun:test'
 import * as ast from '../src/ast'
-import { humanize, parseSource } from '../src/index'
+import { humanize } from '../src/humanizer'
+import { parse } from '../src/parser'
 
 describe('Humanizer', () => {
 	describe('Basic node types', () => {
@@ -251,7 +252,7 @@ describe('Humanizer', () => {
 		test('humanize user example from requirements', () => {
 			const source =
 				'price * quantity > 100 ? (price * quantity - discount) * (1 + tax_rate) : MAX(price * quantity, 50)'
-			const node = parseSource(source)
+			const node = parse(source)
 			expect(humanize(node)).toBe(
 				'if price times quantity is greater than 100 then price times quantity minus discount times 1 plus tax_rate, otherwise the maximum of price times quantity and 50',
 			)
@@ -337,7 +338,7 @@ describe('Humanizer', () => {
 	describe('Real-world examples', () => {
 		test('compound interest formula', () => {
 			const source = 'principal * (1 + rate) ^ years'
-			const node = parseSource(source)
+			const node = parse(source)
 			expect(humanize(node)).toBe(
 				'principal times 1 plus rate to the power of years',
 			)
@@ -345,13 +346,13 @@ describe('Humanizer', () => {
 
 		test('discount calculation', () => {
 			const source = 'price * (1 - discount_rate)'
-			const node = parseSource(source)
+			const node = parse(source)
 			expect(humanize(node)).toBe('price times 1 minus discount_rate')
 		})
 
 		test('tax calculation with conditional', () => {
 			const source = 'amount > 1000 ? amount * 0.2 : amount * 0.1'
-			const node = parseSource(source)
+			const node = parse(source)
 			expect(humanize(node)).toBe(
 				'if amount is greater than 1000 then amount times 0.2, otherwise amount times 0.1',
 			)
@@ -359,7 +360,7 @@ describe('Humanizer', () => {
 
 		test('complex date calculation', () => {
 			const source = 'DIFFERENCE_IN_DAYS(deadline, NOW()) < 7'
-			const node = parseSource(source)
+			const node = parse(source)
 			expect(humanize(node)).toBe(
 				'the difference in days between deadline and the current time is less than 7',
 			)
@@ -368,7 +369,7 @@ describe('Humanizer', () => {
 		test('formula with assignment and calculation', () => {
 			const source =
 				'total = price * quantity; total > 100 ? total * 0.9 : total'
-			const node = parseSource(source)
+			const node = parse(source)
 			expect(humanize(node)).toBe(
 				'Set total to price times quantity. If total is greater than 100 then total times 0.9, otherwise total',
 			)
