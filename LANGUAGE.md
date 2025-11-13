@@ -14,30 +14,32 @@ Littlewing is a **pure arithmetic expression language** where every value is a n
 - **Linear time execution** - O(n) parsing and evaluation
 - **Context variables** - Runtime value injection
 - **Custom functions** - Extensible with JavaScript functions
+- **Comments supported** - Single-line comments with `//`
+- **Optional semicolons** - Semicolons between statements are optional
 
 ## Quick Examples
 
-```javascript
+```
 // Basic arithmetic
-2 + 3 * 4; // → 14
+2 + 3 * 4 // → 14
 
 // Variables and assignment
-radius = 5;
-area = (3.14159 * radius) ^ 2; // → 78.54
+radius = 5
+area = 3.14159 * radius ^ 2 // → 78.54
 
 // Conditional expressions
-score = 85;
-grade = score >= 90 ? 100 : score >= 80 ? 90 : 75; // → 90
+score = 85
+grade = score >= 90 ? 100 : score >= 80 ? 90 : 75 // → 90
 
 // Date arithmetic
-deadline = NOW() + FROM_DAYS(7); // 7 days from now
-hoursLeft = DIFFERENCE_IN_HOURS(deadline, NOW());
+deadline = NOW() + FROM_DAYS(7) // 7 days from now
+hoursLeft = DIFFERENCE_IN_HOURS(deadline, NOW())
 
 // Financial calculations
-principal = 1000;
-rate = 0.05;
-years = 3;
-futureValue = (principal * (1 + rate)) ^ years; // → 1157.625
+principal = 1000
+rate = 0.05
+years = 3
+futureValue = principal * (1 + rate) ^ years // → 1157.625
 ```
 
 ## Language Fundamentals
@@ -51,26 +53,26 @@ All values in littlewing are numbers. This includes:
 - Decimal shorthand: `.5` (same as `0.5`)
 - Scientific notation: `1.5e6` (1,500,000), `2e-3` (0.002)
 
-```javascript
+```
 // All valid number formats
-x = 42; // integer
-y = 3.14159; // decimal
-z = 0.5; // shorthand decimal
-w = 1.5e6; // scientific notation
-v = 0.5e2; // shorthand + scientific (50)
+x = 42 // integer
+y = 3.14159 // decimal
+z = .5 // shorthand decimal (same as 0.5)
+w = 1.5e6 // scientific notation
+v = .5e2 // shorthand + scientific = 50
 ```
 
 ### Variables
 
 Variables store numeric values and can be assigned and reassigned:
 
-```javascript
-x = 10; // assign 10 to x
-y = x * 2; // use x in expression
-x = x + 1; // reassign x
+```
+x = 10 // assign 10 to x
+y = x * 2 // use x in expression
+x = x + 1 // reassign x
 
 // Chain assignments (right-associative)
-a = b = c = 5; // all get value 5
+a = b = c = 5 // all get value 5
 ```
 
 Variable names:
@@ -78,6 +80,37 @@ Variable names:
 - Start with letter or underscore
 - Contain letters, numbers, underscores
 - Case-sensitive (`myVar` ≠ `myvar`)
+
+### Comments
+
+Single-line comments are supported using `//`:
+
+```
+// This is a comment
+x = 10 // Comment after code
+// y = 20 // This line is ignored
+z = 30
+```
+
+Comments are ignored by the lexer and do not affect execution.
+
+### Semicolons
+
+Semicolons between statements are **optional**. Use them if you prefer, or omit them:
+
+```
+// With semicolons
+x = 10; y = 20; x + y
+
+// Without semicolons (also valid)
+x = 10
+y = 20
+x + y
+
+// Mixed (also valid)
+x = 10; y = 20
+x + y
+```
 
 ### Operators
 
@@ -92,7 +125,6 @@ Variable names:
 | `%`         | Modulo         | `10 % 3` | `1`    |
 | `^`         | Exponentiation | `2 ^ 3`  | `8`    |
 | `-` (unary) | Negation       | `-5`     | `-5`   |
-| `!` (unary) | Logical NOT    | `!0`     | `1`    |
 
 #### Comparison Operators
 
@@ -117,83 +149,80 @@ Work with truthiness (0 is false, non-zero is true):
 | `&&`     | AND  | `1 && 1`   | `1`    |
 | `\|\|`   | OR   | `0 \|\| 1` | `1`    |
 
-```javascript
+```
 // Logical NOT
-!0; // → 1 (true)
-!5; // → 0 (false, because 5 is non-zero)
-!!x; // → normalizes x to 0 or 1
+!0 // → 1 (true)
+!5 // → 0 (false, because 5 is non-zero)
+!!x // → normalizes x to 0 or 1
 
 // Logical operators with comparisons
-x = 10;
-result = x > 5 && x < 20; // → 1 (true)
-notResult = !(x > 5); // → 0 (false)
+x = 10
+result = x > 5 && x < 20 // → 1 (true)
+notResult = !(x > 5) // → 0 (false)
 
 // Short-circuit evaluation
-y = 0;
-safe = y != 0 && 100 / y > 5; // → 0 (avoids division by zero)
+y = 0
+safe = y != 0 && 100 / y > 5 // → 0 (avoids division by zero)
 
 // NOT in conditionals
-isBlocked = 1;
-canAccess = !isBlocked; // → 0 (false)
+isBlocked = 1
+canAccess = !isBlocked // → 0 (false)
 ```
 
 #### Conditional (Ternary) Operator
 
 Syntax: `condition ? consequent : alternate`
 
-```javascript
+```
 // Basic conditional
-age = 18;
-canVote = age >= 18 ? 1 : 0; // → 1
+age = 18
+canVote = age >= 18 ? 1 : 0 // → 1
 
 // Nested conditionals
-score = 85;
-grade = score >= 90 ? 100 : score >= 80 ? 90 : score >= 70 ? 80 : 60; // → 90
+score = 85
+grade = score >= 90 ? 100 : score >= 80 ? 90 : score >= 70 ? 80 : 60 // → 90
 
 // With calculations
-discount = quantity > 100 ? price * 0.2 : price * 0.1;
+discount = quantity > 100 ? price * 0.2 : price * 0.1
 ```
 
 ### Operator Precedence
 
 From highest to lowest (use parentheses to override):
 
-1. Parentheses: `(expression)`
-2. Unary operators: `-x`, `!x`
-3. Exponentiation: `x ^ y` (right-associative)
-4. Multiply/Divide/Modulo: `x * y`, `x / y`, `x % y`
-5. Add/Subtract: `x + y`, `x - y`
-6. Comparisons: `<`, `>`, `<=`, `>=`, `==`, `!=`
-7. Logical AND: `x && y`
-8. Logical OR: `x || y`
-9. Conditional: `x ? y : z`
-10. Assignment: `x = y` (right-associative)
+1. **Parentheses:** `(expression)`
+2. **Unary operators:** `-x`, `!x`
+3. **Exponentiation:** `x ^ y` (right-associative)
+4. **Multiply/Divide/Modulo:** `x * y`, `x / y`, `x % y`
+5. **Add/Subtract:** `x + y`, `x - y`
+6. **Comparisons:** `<`, `>`, `<=`, `>=`, `==`, `!=`
+7. **Logical AND:** `x && y`
+8. **Logical OR:** `x || y`
+9. **Conditional:** `x ? y : z` (right-associative)
+10. **Assignment:** `x = y` (right-associative)
 
-```javascript
+```
 // Examples showing precedence
-2 + 3 * 4; // → 14 (not 20)
-2 ^ 3 ^ 2; // → 512 (right-associative: 2^(3^2))
-!5 + 1; // → 1 (unary operators bind tightly: (!5) + 1 = 0 + 1)
-!2 ^ 2; // → 0 (exponentiation has higher precedence: !(2^2) = !4 = 0)
--!5; // → -0 (left-to-right: -((!5)) = -(0) = -0)
-x =
-	5 > 3
-		? 10
-		: (5 - // → x gets 10
-				2) ^
-			2;
+2 + 3 * 4 // → 14 (not 20)
+2 ^ 3 ^ 2 // → 512 (right-associative: 2^(3^2))
+-2 ^ 2 // → -4 (parsed as -(2^2))
+(-2) ^ 2 // → 4 (parentheses change precedence)
+!5 + 1 // → 1 (unary operators bind tightly: (!5) + 1 = 0 + 1)
+!2 ^ 2 // → 0 (exponentiation higher: !(2^2) = !4 = 0)
+-!5 // → -0 (left-to-right: -((!5)) = -(0) = -0)
+x = 5 > 3 ? 10 : 5 - 2 ^ 2 // → x gets 10
 ```
 
 ### Multiple Statements
 
 Separate statements with semicolons or newlines. The last expression is the return value:
 
-```javascript
+```
 // Calculate compound interest
-principal = 1000;
-rate = 0.05;
-years = 3;
-(principal * (1 + rate)) ^ years; // → 1157.625
+principal = 1000
+rate = 0.05
+years = 3
+principal * (1 + rate) ^ years // → 1157.625
 
 // The whole program returns 1157.625
 ```
@@ -223,7 +252,7 @@ All math functions use UPPERCASE names to avoid collisions with user variables:
 
 ### Date & Time Functions
 
-All date/time functions use UPPERCASE names and work with timestamps (milliseconds since Unix epoch).
+All date/time functions use UPPERCASE names and work with timestamps (milliseconds since Unix epoch). All operations use **local timezone**.
 
 #### Current Time
 
@@ -236,16 +265,17 @@ All date/time functions use UPPERCASE names and work with timestamps (millisecon
   - `month` defaults to 1 (January), `day` defaults to 1
   - Month is 1-based (1 = January, 12 = December)
   - Hour, minute, second default to 0 if omitted
+  - Uses local timezone
 
-```javascript
+```
 // Just the year (January 1st at midnight)
-y2024 = DATE(2024);
+y2024 = DATE(2024)
 
 // Christmas 2024
-xmas = DATE(2024, 12, 25);
+xmas = DATE(2024, 12, 25)
 
 // New Year 2025 at midnight
-newYear = DATE(2025, 1, 1, 0, 0, 0);
+newYear = DATE(2025, 1, 1, 0, 0, 0)
 ```
 
 #### Time Converters
@@ -263,7 +293,7 @@ Convert human-readable units to milliseconds:
 
 #### Component Extractors
 
-Extract components from a timestamp:
+Extract components from a timestamp (local timezone):
 
 | Function              | Description      | Returns        |
 | --------------------- | ---------------- | -------------- |
@@ -280,21 +310,21 @@ Extract components from a timestamp:
 
 #### Time Differences
 
-Calculate absolute differences between timestamps:
+Calculate absolute differences between timestamps (always positive, whole units):
 
 | Function                          | Description             | Example                                  |
 | --------------------------------- | ----------------------- | ---------------------------------------- |
 | `DIFFERENCE_IN_SECONDS(ts1, ts2)` | Difference in seconds   | `DIFFERENCE_IN_SECONDS(ts1, ts2)` → `30` |
 | `DIFFERENCE_IN_MINUTES(ts1, ts2)` | Difference in minutes   | `DIFFERENCE_IN_MINUTES(ts1, ts2)` → `15` |
 | `DIFFERENCE_IN_HOURS(ts1, ts2)`   | Difference in hours     | `DIFFERENCE_IN_HOURS(ts1, ts2)` → `4`    |
-| `DIFFERENCE_IN_DAYS(ts1, ts2)`    | Difference in days      | `DIFFERENCE_IN_DAYS(ts1, ts2)` → `7`     |
-| `DIFFERENCE_IN_WEEKS(ts1, ts2)`   | Difference in weeks     | `DIFFERENCE_IN_WEEKS(ts1, ts2)` → `2`    |
+| `DIFFERENCE_IN_DAYS(ts1, ts2)`    | Calendar days between   | `DIFFERENCE_IN_DAYS(ts1, ts2)` → `7`     |
+| `DIFFERENCE_IN_WEEKS(ts1, ts2)`   | Calendar weeks between  | `DIFFERENCE_IN_WEEKS(ts1, ts2)` → `2`    |
 | `DIFFERENCE_IN_MONTHS(ts1, ts2)`  | Calendar months between | `DIFFERENCE_IN_MONTHS(ts1, ts2)` → `3`   |
 | `DIFFERENCE_IN_YEARS(ts1, ts2)`   | Calendar years between  | `DIFFERENCE_IN_YEARS(ts1, ts2)` → `5`    |
 
 #### Start/End of Period
 
-Get the start or end of a time period:
+Get the start or end of a time period (local timezone):
 
 | Function               | Description                     |
 | ---------------------- | ------------------------------- |
@@ -309,7 +339,7 @@ Get the start or end of a time period:
 
 #### Date Arithmetic
 
-Add time to dates:
+Add time to dates (exact calendar calculations, local timezone):
 
 | Function            | Description | Example                              |
 | ------------------- | ----------- | ------------------------------------ |
@@ -319,7 +349,7 @@ Add time to dates:
 
 #### Date Comparisons
 
-Compare dates (return 1 for true, 0 for false):
+Compare dates (return 1 for true, 0 for false, local timezone):
 
 | Function                | Description                                 |
 | ----------------------- | ------------------------------------------- |
@@ -331,35 +361,35 @@ Compare dates (return 1 for true, 0 for false):
 
 ### Date Arithmetic Examples
 
-```javascript
+```
 // Add time to current timestamp
-tomorrow = NOW() + FROM_DAYS(1);
-nextWeek = NOW() + FROM_WEEKS(1);
-in2Hours = NOW() + 2 * 3600000 + 30 * 60000; // 2 hours + 30 minutes
+tomorrow = NOW() + FROM_DAYS(1)
+nextWeek = NOW() + FROM_WEEKS(1)
+in2Hours = NOW() + 2 * 3600000 + 30 * 60000 // 2 hours + 30 minutes
 
 // Calculate time differences using DIFFERENCE functions
-deadline = DATE(2024, 12, 31);
-daysLeft = DIFFERENCE_IN_DAYS(NOW(), deadline);
-hoursLeft = DIFFERENCE_IN_HOURS(NOW(), deadline);
+deadline = DATE(2024, 12, 31)
+daysLeft = DIFFERENCE_IN_DAYS(NOW(), deadline)
+hoursLeft = DIFFERENCE_IN_HOURS(NOW(), deadline)
 
 // Check if date is weekend
-ts = DATE(2024, 11, 9); // Saturday
-isWeekend = IS_WEEKEND(ts); // → 1 (true)
+ts = DATE(2024, 11, 9) // Saturday
+isWeekend = IS_WEEKEND(ts) // → 1 (true)
 
-// Age calculation
-birthdate = DATE(1990, 5, 15);
-today = DATE(2024, 6, 15);
-ageInYears = DIFFERENCE_IN_YEARS(birthdate, today); // Calendar-accurate
+// Age calculation (calendar-accurate)
+birthdate = DATE(1990, 5, 15)
+today = DATE(2024, 6, 15)
+ageInYears = DIFFERENCE_IN_YEARS(birthdate, today)
 
 // Business days calculation
-deadline = ADD_DAYS(START_OF_WEEK(NOW()), 12); // Friday of next week
+deadline = ADD_DAYS(START_OF_WEEK(NOW()), 12) // Friday of next week
 
 // Check if in working hours
-ts = NOW();
-inWorkingHours = GET_HOUR(ts) >= 9 && GET_HOUR(ts) < 17 && IS_WEEKEND(ts) == 0;
+ts = NOW()
+inWorkingHours = GET_HOUR(ts) >= 9 && GET_HOUR(ts) < 17 && IS_WEEKEND(ts) == 0
 
 // Quarter end date
-quarterEnd = END_OF_MONTH(ADD_MONTHS(START_OF_QUARTER(NOW()), 2));
+quarterEnd = END_OF_MONTH(ADD_MONTHS(START_OF_QUARTER(NOW()), 2))
 ```
 
 ## External Variables and Functions
@@ -368,7 +398,7 @@ quarterEnd = END_OF_MONTH(ADD_MONTHS(START_OF_QUARTER(NOW()), 2));
 
 You can inject variables when executing expressions:
 
-```javascript
+```typescript
 // In your JavaScript code
 evaluate("radius * 2 * 3.14159", {
 	variables: { radius: 10 },
@@ -377,7 +407,7 @@ evaluate("radius * 2 * 3.14159", {
 
 Variables provided externally override script assignments:
 
-```javascript
+```typescript
 // Script: x = 5; x * 2
 evaluate(script); // → 10 (uses x = 5 from script)
 evaluate(script, { variables: { x: 10 } }); // → 20 (external x overrides)
@@ -387,12 +417,12 @@ evaluate(script, { variables: { x: 10 } }); // → 20 (external x overrides)
 
 Extend littlewing with your own functions:
 
-```javascript
+```typescript
 // In your JavaScript code
-evaluate("clamp(x, 0, 100)", {
+evaluate("CLAMP(x, 0, 100)", {
 	variables: { x: 150 },
 	functions: {
-		clamp: (value, min, max) => Math.min(Math.max(value, min), max),
+		CLAMP: (value, min, max) => Math.min(Math.max(value, min), max),
 	},
 }); // → 100
 ```
@@ -401,91 +431,92 @@ All custom functions must:
 
 - Accept zero or more number arguments
 - Return a number
-- Be pure (no side effects)
+- Be pure (no side effects recommended)
+- **Use UPPERCASE naming** to match built-in function convention and avoid collisions with variables
 
 ## Common Use Cases
 
 ### Financial Calculations
 
-```javascript
+```
 // Compound interest
-principal = 1000;
-annualRate = 0.07;
-years = 10;
-futureValue = (principal * (1 + annualRate)) ^ years; // → 1967.15
+principal = 1000
+annualRate = 0.07
+years = 10
+futureValue = principal * (1 + annualRate) ^ years // → 1967.15
 
 // Monthly loan payment
-loanAmount = 200000;
-monthlyRate = 0.04 / 12;
-months = 360;
-payment = (loanAmount * monthlyRate) / ((1 - (1 + monthlyRate)) ^ -months);
+loanAmount = 200000
+monthlyRate = 0.04 / 12
+months = 360
+payment = loanAmount * monthlyRate / (1 - (1 + monthlyRate) ^ -months)
 
 // Investment return
-initial = 10000;
-final = 15000;
-years = 3;
-annualReturn = ((final / initial) ^ (1 / years - 1)) * 100; // percent
+initial = 10000
+final = 15000
+years = 3
+annualReturn = ((final / initial) ^ (1 / years) - 1) * 100 // percent
 ```
 
 ### Business Rules
 
-```javascript
+```
 // Tiered pricing
-quantity = 150;
-unitPrice = quantity > 100 ? 0.8 : quantity > 50 ? 0.9 : 1.0;
-total = quantity * unitPrice;
+quantity = 150
+unitPrice = quantity > 100 ? 0.8 : quantity > 50 ? 0.9 : 1.0
+total = quantity * unitPrice
 
 // Employee bonus calculation
-sales = 125000;
-bonus = sales > 100000 ? sales * 0.1 : sales > 50000 ? sales * 0.05 : 0;
+sales = 125000
+bonus = sales > 100000 ? sales * 0.1 : sales > 50000 ? sales * 0.05 : 0
 
 // Shipping cost
-weight = 15; // kg
-distance = 500; // km
-baseCost = 10;
-weightCost = weight * 0.5;
-distanceCost = distance * 0.02;
-shippingTotal = baseCost + weightCost + distanceCost;
+weight = 15 // kg
+distance = 500 // km
+baseCost = 10
+weightCost = weight * 0.5
+distanceCost = distance * 0.02
+shippingTotal = baseCost + weightCost + distanceCost
 ```
 
 ### Data Validation
 
-```javascript
+```
 // Check value ranges
-age = 25;
-isValidAge = age >= 0 && age <= 120; // → 1
+age = 25
+isValidAge = age >= 0 && age <= 120 // → 1
 
 // Complex validation
-score = 85;
-isPass = score >= 60; // → 1
-isExcellent = score >= 90; // → 0
-needsImprovement = score < 70; // → 0
+score = 85
+isPass = score >= 60 // → 1
+isExcellent = score >= 90 // → 0
+needsImprovement = score < 70 // → 0
 
 // Date validation
-inputDate = DATE(2024, 2, 30); // Invalid date becomes valid JS Date
-isValid = GET_DAY(inputDate) == 30; // Will be 0 (JS corrects to March)
+inputDate = DATE(2024, 2, 30) // Invalid date becomes valid JS Date
+isValid = GET_DAY(inputDate) == 30 // Will be 0 (JS corrects to March)
 ```
 
 ### Scientific Computing
 
-```javascript
+```
 // Distance between points
-x1 = 0;
-y1 = 0;
-x2 = 3;
-y2 = 4;
-distance = SQRT((x2 - x1) ^ (2 + (y2 - y1)) ^ 2); // → 5
+x1 = 0
+y1 = 0
+x2 = 3
+y2 = 4
+distance = SQRT((x2 - x1) ^ 2 + (y2 - y1) ^ 2) // → 5
 
 // Circle calculations
-radius = 5;
-pi = 3.14159;
-area = (pi * radius) ^ 2;
-circumference = 2 * pi * radius;
+radius = 5
+pi = 3.14159
+area = pi * radius ^ 2
+circumference = 2 * pi * radius
 
 // Temperature conversion
-celsius = 25;
-fahrenheit = (celsius * 9) / 5 + 32; // → 77
-kelvin = celsius + 273.15; // → 298.15
+celsius = 25
+fahrenheit = celsius * 9 / 5 + 32 // → 77
+kelvin = celsius + 273.15 // → 298.15
 ```
 
 ## Performance Benefits
@@ -493,7 +524,7 @@ kelvin = celsius + 273.15; // → 298.15
 ### Why Choose Littlewing?
 
 1. **Zero Dependencies** - No external libraries needed
-2. **Small Bundle** - Minimal impact on your app size
+2. **Small Bundle** - Minimal impact on your app size (7.8 KB gzipped)
 3. **O(n) Performance** - Linear time parsing and evaluation
 4. **Type Safety** - Numbers-only means no runtime type checks
 5. **Browser Optimized** - Pure ESM, no Node.js dependencies
@@ -518,7 +549,7 @@ kelvin = celsius + 273.15; // → 298.15
 
 #### Optimization Example
 
-```javascript
+```typescript
 import { evaluate, parse } from "littlewing";
 
 // For expressions evaluated multiple times, parse once and reuse the AST

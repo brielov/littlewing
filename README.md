@@ -29,7 +29,7 @@ evaluate("score = 85; grade = score >= 90 ? 100 : 90", {
 - **Timestamp arithmetic** - Built-in date/time functions using numeric timestamps
 - **Extensible** - Add custom functions and variables via context
 - **Type-safe** - Full TypeScript support with strict types
-- **Excellent test coverage** - 485 tests with 99.45% function coverage, 98.57% line coverage
+- **Excellent test coverage** - 502 tests with 99.45% function coverage, 98.57% line coverage
 
 ## Installation
 
@@ -82,7 +82,7 @@ evaluate("MAX(3, 7, 2)", defaultContext); // → 7
 evaluate("NOW()", defaultContext); // → 1704067200000
 
 // Date arithmetic
-evaluate("NOW() + FROM_HOURS(2)", defaultContext); // → timestamp 2 hours from now
+evaluate("NOW() + FROM_DAYS(7)", defaultContext); // → timestamp 7 days from now
 evaluate("tomorrow = NOW() + FROM_DAYS(1)", defaultContext); // → tomorrow's timestamp
 
 // Extract date components
@@ -110,9 +110,9 @@ import { evaluate } from "littlewing";
 
 const context = {
 	functions: {
-		// Custom functions must return numbers
-		fahrenheit: (celsius: number) => (celsius * 9) / 5 + 32,
-		discount: (price: number, percent: number) => price * (1 - percent / 100),
+		// Custom functions should use UPPERCASE naming (like built-in functions)
+		FAHRENHEIT: (celsius: number) => (celsius * 9) / 5 + 32,
+		DISCOUNT: (price: number, percent: number) => price * (1 - percent / 100),
 	},
 	variables: {
 		pi: 3.14159,
@@ -120,8 +120,8 @@ const context = {
 	},
 };
 
-evaluate("fahrenheit(20)", context); // → 68
-evaluate("discount(100, 15)", context); // → 85
+evaluate("FAHRENHEIT(20)", context); // → 68
+evaluate("DISCOUNT(100, 15)", context); // → 85
 evaluate("100 * (1 + taxRate)", context); // → 108
 ```
 
@@ -195,7 +195,7 @@ const optimized = optimize(ast);
 
 #### `optimize(node: ASTNode): ASTNode`
 
-Optimize an AST by folding constants. Safe for use with external variables.
+Optimize an AST with constant folding and dead code elimination. Safe for use with external variables.
 
 ```typescript
 const ast = parse("2 + 3 * 4");
@@ -204,6 +204,10 @@ const optimized = optimize(ast); // → NumberLiteral(14)
 // Variables are NOT folded (can be overridden by context)
 const ast2 = parse("x = 5; x + 10");
 const opt2 = optimize(ast2); // Still has variable reference
+
+// Dead code elimination removes unused variables
+const ast3 = parse("x = 10; y = 20; z = x * 20");
+const opt3 = optimize(ast3); // Removes unused y assignment
 ```
 
 #### `generate(node: ASTNode): string`
@@ -213,6 +217,32 @@ Convert AST back to source code.
 ```typescript
 const ast = parse("2 + 3 * 4");
 generate(ast); // → "2 + 3 * 4"
+```
+
+#### `humanize(node: ASTNode, options?: HumanizeOptions): string`
+
+Convert AST to human-readable English text.
+
+```typescript
+const ast = parse("x + 10");
+humanize(ast); // → "x plus 10"
+
+// With HTML output
+humanize(ast, { html: true }); // → "<span class='identifier'>x</span> plus <span class='number'>10</span>"
+```
+
+#### `extractInputVariables(ast: ASTNode): string[]`
+
+Extract all variable identifiers that are assigned to constant values (literals, constant expressions, or function calls with constant arguments). Variables computed from other variables are excluded.
+
+```typescript
+const ast = parse("price = 100; tax = price * 0.08");
+extractInputVariables(ast); // → ["price"]
+// 'tax' is excluded because it's computed from 'price'
+
+const ast2 = parse("x = 10; y = 20; sum = x + y");
+extractInputVariables(ast2); // → ["x", "y"]
+// 'sum' is excluded because it's computed from 'x' and 'y'
 ```
 
 ### AST Visitor Pattern
@@ -230,22 +260,23 @@ const ast = parse("x = 5; x + 10");
 
 // Count all identifiers in an AST
 const count = visit(ast, {
-	Program: (n, recurse) => n.body.reduce((sum, stmt) => sum + recurse(stmt), 0),
+	Program: (n, recurse) =>
+		n.statements.reduce((sum, stmt) => sum + recurse(stmt), 0),
 	NumberLiteral: () => 0,
 	Identifier: () => 1,
 	BinaryOp: (n, recurse) => recurse(n.left) + recurse(n.right),
-	UnaryOp: (n, recurse) => recurse(n.operand),
+	UnaryOp: (n, recurse) => recurse(n.argument),
 	Assignment: (n, recurse) => 1 + recurse(n.value),
 	FunctionCall: (n, recurse) =>
 		1 + n.arguments.reduce((sum, arg) => sum + recurse(arg), 0),
-	Ternary: (n, recurse) =>
+	ConditionalExpression: (n, recurse) =>
 		recurse(n.condition) + recurse(n.consequent) + recurse(n.alternate),
 }); // → 3 (x appears 3 times)
 ```
 
-#### `visitPartial<T>(node: ASTNode, visitor: Partial<Visitor<T>>): T | undefined`
+#### `visitPartial<T>(node: ASTNode, visitor: Partial<Visitor<T>>, defaultHandler: (node: ASTNode, recurse: (n: ASTNode) => T) => T): T`
 
-Visit only specific node types. Unhandled nodes return `undefined` and stop recursion.
+Visit only specific node types. The `defaultHandler` is called for unhandled node types.
 
 ```typescript
 import { visitPartial, parse } from "littlewing";
@@ -253,20 +284,24 @@ import { visitPartial, parse } from "littlewing";
 const ast = parse("x = 5; y = x + 10; y * 2");
 
 // Find first assignment to a specific variable
-const result = visitPartial(ast, {
-	Program: (n, recurse) => {
-		for (const stmt of n.body) {
-			const found = recurse(stmt);
-			if (found !== undefined) return found;
-		}
-		return undefined;
+const result = visitPartial(
+	ast,
+	{
+		Program: (n, recurse) => {
+			for (const stmt of n.statements) {
+				const found = recurse(stmt);
+				if (found !== undefined) return found;
+			}
+			return undefined;
+		},
+		Assignment: (n, recurse) => {
+			if (n.name === "y") return n; // Found it!
+			return recurse(n.value); // Keep searching
+		},
+		BinaryOp: (n, recurse) => recurse(n.left) ?? recurse(n.right),
 	},
-	Assignment: (n, recurse) => {
-		if (n.name === "y") return n; // Found it!
-		return recurse(n.value); // Keep searching
-	},
-	BinaryOp: (n, recurse) => recurse(n.left) ?? recurse(n.right),
-}); // → Assignment node for "y = x + 10"
+	() => undefined,
+); // → Assignment node for "y = x + 10"
 ```
 
 #### Transform Pattern
@@ -278,17 +313,18 @@ import { visit, parse, ast } from "littlewing";
 
 // Double all numeric literals
 const transformed = visit<ASTNode>(parse("2 + 3 * 4"), {
-	Program: (n, recurse) => ast.program(n.body.map((stmt) => recurse(stmt))),
+	Program: (n, recurse) =>
+		ast.program(n.statements.map((stmt) => recurse(stmt))),
 	NumberLiteral: (n) => ast.number(n.value * 2),
 	Identifier: (n) => n,
 	BinaryOp: (n, recurse) =>
 		ast.binaryOp(recurse(n.left), n.operator, recurse(n.right)),
-	UnaryOp: (n, recurse) => ast.unaryOp(n.operator, recurse(n.operand)),
+	UnaryOp: (n, recurse) => ast.unaryOp(n.operator, recurse(n.argument)),
 	Assignment: (n, recurse) => ast.assignment(n.name, recurse(n.value)),
 	FunctionCall: (n, recurse) =>
 		ast.functionCall(n.name, n.arguments.map(recurse)),
-	Ternary: (n, recurse) =>
-		ast.ternary(
+	ConditionalExpression: (n, recurse) =>
+		ast.conditional(
 			recurse(n.condition),
 			recurse(n.consequent),
 			recurse(n.alternate),
@@ -298,11 +334,34 @@ const transformed = visit<ASTNode>(parse("2 + 3 * 4"), {
 generate(transformed); // → "4 + 6 * 8"
 ```
 
+### AST Builder Functions
+
+The `ast` namespace provides builder functions for constructing AST nodes manually:
+
+```typescript
+import { ast, generate } from "littlewing";
+
+// Core builders
+const node = ast.binaryOp(ast.number(2), "+", ast.number(3));
+generate(node); // → "2 + 3"
+
+// Convenience builders
+const expr = ast.add(ast.identifier("x"), ast.number(10));
+generate(expr); // → "x + 10"
+```
+
+**Available builders:**
+
+- Core: `program()`, `number()`, `identifier()`, `binaryOp()`, `unaryOp()`, `functionCall()`, `assignment()`, `conditional()`
+- Arithmetic: `add()`, `subtract()`, `multiply()`, `divide()`, `modulo()`, `exponentiate()`, `negate()`
+- Comparison: `equals()`, `notEquals()`, `lessThan()`, `greaterThan()`, `lessEqual()`, `greaterEqual()`
+- Logical: `logicalAnd()`, `logicalOr()`, `logicalNot()`
+
 ### ExecutionContext
 
 ```typescript
 interface ExecutionContext {
-	functions?: Record<string, (...args: any[]) => number>;
+	functions?: Record<string, (...args: number[]) => number>;
 	variables?: Record<string, number>;
 }
 ```
@@ -311,33 +370,37 @@ interface ExecutionContext {
 
 The `defaultContext` includes these built-in functions:
 
-**Math:** `ABS`, `CEIL`, `FLOOR`, `ROUND`, `SQRT`, `MIN`, `MAX`, `CLAMP`, `SIN`, `COS`, `TAN`, `LOG`, `LOG10`, `EXP`
+**Math (14 functions):** `ABS`, `CEIL`, `FLOOR`, `ROUND`, `SQRT`, `MIN`, `MAX`, `CLAMP`, `SIN`, `COS`, `TAN`, `LOG`, `LOG10`, `EXP`
 
-**Timestamps:** `NOW`, `DATE`
+**Timestamps (2 functions):** `NOW`, `DATE`
 
-**Time converters (to milliseconds):** `FROM_DAYS`, `FROM_WEEKS`, `FROM_MONTHS`, `FROM_YEARS`
+**Time converters (4 functions, to milliseconds):** `FROM_DAYS`, `FROM_WEEKS`, `FROM_MONTHS`, `FROM_YEARS`
 
-**Date component extractors:** `GET_YEAR`, `GET_MONTH`, `GET_DAY`, `GET_HOUR`, `GET_MINUTE`, `GET_SECOND`, `GET_WEEKDAY`, `GET_MILLISECOND`, `GET_DAY_OF_YEAR`, `GET_QUARTER`
+**Date component extractors (10 functions):** `GET_YEAR`, `GET_MONTH`, `GET_DAY`, `GET_HOUR`, `GET_MINUTE`, `GET_SECOND`, `GET_WEEKDAY`, `GET_MILLISECOND`, `GET_DAY_OF_YEAR`, `GET_QUARTER`
 
-**Time differences (always positive):** `DIFFERENCE_IN_SECONDS`, `DIFFERENCE_IN_MINUTES`, `DIFFERENCE_IN_HOURS`, `DIFFERENCE_IN_DAYS`, `DIFFERENCE_IN_WEEKS`, `DIFFERENCE_IN_MONTHS`, `DIFFERENCE_IN_YEARS`
+**Time differences (7 functions, always positive):** `DIFFERENCE_IN_SECONDS`, `DIFFERENCE_IN_MINUTES`, `DIFFERENCE_IN_HOURS`, `DIFFERENCE_IN_DAYS`, `DIFFERENCE_IN_WEEKS`, `DIFFERENCE_IN_MONTHS`, `DIFFERENCE_IN_YEARS`
 
-**Start/End of period:** `START_OF_DAY`, `END_OF_DAY`, `START_OF_WEEK`, `START_OF_MONTH`, `END_OF_MONTH`, `START_OF_YEAR`, `END_OF_YEAR`, `START_OF_QUARTER`
+**Start/End of period (8 functions):** `START_OF_DAY`, `END_OF_DAY`, `START_OF_WEEK`, `START_OF_MONTH`, `END_OF_MONTH`, `START_OF_YEAR`, `END_OF_YEAR`, `START_OF_QUARTER`
 
-**Date arithmetic:** `ADD_DAYS`, `ADD_MONTHS`, `ADD_YEARS`
+**Date arithmetic (3 functions):** `ADD_DAYS`, `ADD_MONTHS`, `ADD_YEARS`
 
-**Date comparisons:** `IS_SAME_DAY`, `IS_WEEKEND`, `IS_LEAP_YEAR` (use `<`, `>`, `<=`, `>=` operators for before/after comparisons)
+**Date comparisons (3 functions):** `IS_SAME_DAY`, `IS_WEEKEND`, `IS_LEAP_YEAR`
+
+**Note:** For before/after comparisons, use the comparison operators directly: `ts1 < ts2`, `ts1 > ts2`, `ts1 <= ts2`, `ts1 >= ts2`
+
+**Total: 54 built-in functions**
 
 ## Performance Optimization
 
 For expressions that are executed multiple times with different contexts, parse once and reuse the AST:
 
 ```typescript
-import { execute, parse } from "littlewing";
+import { evaluate, parse } from "littlewing";
 
 // Parse once
 const formula = parse("price * quantity * (1 - discount) * (1 + taxRate)");
 
-// Execute many times with different values (no re-parsing)
+// Evaluate many times with different values (no re-parsing)
 evaluate(formula, {
 	variables: { price: 10, quantity: 5, discount: 0.1, taxRate: 0.08 },
 });
@@ -369,7 +432,7 @@ Your app needs to evaluate user-provided formulas or dynamic expressions. Using 
 
 ### The Solution
 
-Littlewing provides just enough: arithmetic expressions with variables and functions. It's safe (no code execution), fast (linear time), and tiny (5KB gzipped).
+Littlewing provides just enough: arithmetic expressions with variables and functions. It's safe (no code execution), fast (linear time), and tiny (7.8 KB gzipped).
 
 ### What Makes It Different
 
