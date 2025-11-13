@@ -1,6 +1,6 @@
 import type { ASTNode } from './types'
 import { isAssignment, isProgram } from './types'
-import { visitPartial } from './visitor'
+import { collectAllIdentifiers } from './utils'
 
 /**
  * Extracts input variables from an AST.
@@ -44,66 +44,11 @@ export function extractInputVariables(ast: ASTNode): string[] {
 /**
  * Recursively checks if an AST node contains any variable references (Identifier nodes).
  *
- * Uses the visitor pattern to traverse the AST. Returns true if any Identifier node is found.
+ * Uses the shared collectAllIdentifiers utility to check for any identifiers in the tree.
  *
  * @param node - The AST node to check
  * @returns true if the node or any of its children contain an Identifier
  */
 function containsVariableReference(node: ASTNode): boolean {
-	let hasIdentifier = false
-
-	visitPartial(
-		node,
-		{
-			// If we find an identifier, we're done
-			Identifier: () => {
-				hasIdentifier = true
-				return undefined
-			},
-		},
-		(n, recurse) => {
-			// Early exit if we already found an identifier
-			if (hasIdentifier) {
-				return undefined
-			}
-
-			// Default: recurse into all children
-			switch (n.type) {
-				case 'NumberLiteral':
-					// Leaf node, no recursion needed
-					return undefined
-				case 'BinaryOp':
-					recurse(n.left)
-					recurse(n.right)
-					return undefined
-				case 'UnaryOp':
-					recurse(n.argument)
-					return undefined
-				case 'FunctionCall':
-					for (const arg of n.arguments) {
-						recurse(arg)
-						if (hasIdentifier) break // Early exit
-					}
-					return undefined
-				case 'ConditionalExpression':
-					recurse(n.condition)
-					if (!hasIdentifier) recurse(n.consequent)
-					if (!hasIdentifier) recurse(n.alternate)
-					return undefined
-				case 'Program':
-					for (const stmt of n.statements) {
-						recurse(stmt)
-						if (hasIdentifier) break // Early exit
-					}
-					return undefined
-				case 'Assignment':
-					recurse(n.value)
-					return undefined
-				default:
-					return undefined
-			}
-		},
-	)
-
-	return hasIdentifier
+	return collectAllIdentifiers(node).size > 0
 }

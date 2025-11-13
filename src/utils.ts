@@ -1,4 +1,6 @@
-import { type Operator, TokenType } from './types'
+import type { ASTNode, Operator } from './types'
+import { TokenType } from './types'
+import { visit } from './visitor'
 
 /**
  * Evaluate a binary operation on two numbers
@@ -89,6 +91,65 @@ export function getOperatorPrecedence(operator: Operator): number {
 		default:
 			return 0
 	}
+}
+
+/**
+ * Collect all identifier names from an AST node.
+ *
+ * Traverses the entire AST tree and collects the names of all Identifier nodes.
+ * This is a general-purpose utility used by both the optimizer (for liveness analysis)
+ * and analyzer (for dependency detection).
+ *
+ * Time complexity: O(n) where n is the number of AST nodes
+ * Space complexity: O(d) where d is the max depth (recursion stack)
+ *
+ * @param node - The AST node to traverse
+ * @returns Set of all identifier names found in the tree
+ *
+ * @example
+ * ```typescript
+ * const ast = parseSource('x + y * z')
+ * const identifiers = collectAllIdentifiers(ast)
+ * // Returns: Set(['x', 'y', 'z'])
+ * ```
+ */
+export function collectAllIdentifiers(node: ASTNode): Set<string> {
+	const identifiers = new Set<string>()
+
+	visit<void>(node, {
+		Program: (n, recurse) => {
+			for (const stmt of n.statements) {
+				recurse(stmt)
+			}
+		},
+		NumberLiteral: () => {},
+		Identifier: (n) => {
+			identifiers.add(n.name)
+		},
+		BinaryOp: (n, recurse) => {
+			recurse(n.left)
+			recurse(n.right)
+		},
+		UnaryOp: (n, recurse) => {
+			recurse(n.argument)
+		},
+		FunctionCall: (n, recurse) => {
+			for (const arg of n.arguments) {
+				recurse(arg)
+			}
+		},
+		Assignment: (n, recurse) => {
+			// Collect from RHS only (LHS is the variable being assigned)
+			recurse(n.value)
+		},
+		ConditionalExpression: (n, recurse) => {
+			recurse(n.condition)
+			recurse(n.consequent)
+			recurse(n.alternate)
+		},
+	})
+
+	return identifiers
 }
 
 /**

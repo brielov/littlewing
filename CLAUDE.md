@@ -239,7 +239,7 @@ const count = visit(ast, {
 
 Tests use Bun's built-in test framework. Current coverage:
 
-- **485 tests** across 15 test files
+- **502 tests** across 15 test files
 - **99.45% function coverage**
 - **98.57% line coverage**
 
@@ -248,7 +248,7 @@ Test structure:
 - Lexer tests (tokenization)
 - Parser tests (AST construction)
 - Executor tests (evaluation)
-- Optimizer tests (constant folding)
+- Optimizer tests (constant folding + dead code elimination)
 - Visitor tests (traversal patterns)
 - Codegen tests (AST → source)
 - Humanizer tests (AST → English)
@@ -261,7 +261,7 @@ Test structure:
 - External variables tests (context override)
 - Precedence tests (operator precedence)
 
-Run a single test file: `bun test test/visitor.test.ts`
+Run a single test file: `bun test test/optimizer.test.ts`
 
 ### Code Style
 
@@ -357,7 +357,9 @@ If the optimizer propagated `x = 5`, the second execution would incorrectly retu
 
 ### Algorithm Overview
 
-The optimizer performs **local, expression-level optimizations** only:
+The optimizer performs **safe, local optimizations** in two passes:
+
+**Pass 1: Constant Folding & Expression Simplification**
 
 1. **Constant Folding** - Evaluates pure arithmetic at compile-time
    - Binary operations: `2 + 3` → `5`, `10 * 5` → `50`
@@ -375,12 +377,20 @@ The optimizer performs **local, expression-level optimizations** only:
    - `0 ? 100 : 50` → `50`
    - `5 > 3 ? 100 : 50` → `100` (condition is constant, foldable)
 
+**Pass 2: Dead Code Elimination**
+
+4. **Dead Code Elimination** - Removes unused variable assignments
+   - `x = 10; y = 20; z = x * 20` → `x = 10; z = x * 20` (y is unused)
+   - Uses iterative liveness analysis to handle transitive dependencies
+   - Always preserves the last statement (it's the return value)
+   - Conservative: if a variable is read anywhere, all assignments are kept
+
 ### What is NOT Optimized (By Design)
 
 - ❌ **Variable propagation** - Variables might be overridden by context
-- ❌ **Dead code elimination** - Assignments might be used by context
 - ❌ **Cross-statement analysis** - Each statement must remain independent
 - ❌ **Function evaluation** - Functions have runtime behavior (`now()`, etc.)
+- ❌ **Reaching definitions** - Doesn't track which specific assignment reaches which use
 
 ### Usage
 
@@ -392,14 +402,21 @@ const ast1 = parseSource("2 + 3 * 4");
 const optimized1 = optimize(ast1);
 // Result: NumberLiteral(14)
 
-// Variables are NOT propagated (context-safe)
-const ast2 = parseSource("x = 5; x + 10");
+// Dead code elimination removes unused variables
+const ast2 = parseSource("x = 10; y = 20; z = x * 20");
 const optimized2 = optimize(ast2);
+// Result: Program([Assignment('x', 10), Assignment('z', BinaryOp(...))])
+// Note: y is removed because it's never used
+
+// Variables are NOT propagated (context-safe)
+const ast3 = parseSource("x = 5; x + 10");
+const optimized3 = optimize(ast3);
 // Result: Program([Assignment('x', 5), BinaryOp(Identifier('x'), '+', 10)])
+// Note: x is kept because it's used in the expression
 
 // Function arguments are pre-evaluated
-const ast3 = parseSource("MAX(2 + 3, 4 * 5)");
-const optimized3 = optimize(ast3);
+const ast4 = parseSource("MAX(2 + 3, 4 * 5)");
+const optimized4 = optimize(ast4);
 // Result: FunctionCall('MAX', [NumberLiteral(5), NumberLiteral(20)])
 ```
 
@@ -423,9 +440,9 @@ execute(source, { variables: { rate: 0.1 } }); // 100
 
 ### Performance Characteristics
 
-- **Time Complexity:** O(n) where n is the number of AST nodes
-- **Space Complexity:** O(d) where d is the max depth (recursion stack)
-- **Typical Performance:** <0.5ms for most programs
+- **Time Complexity:** O(n) where n is the number of AST nodes (single backwards pass for DCE)
+- **Space Complexity:** O(d + v) where d is max depth, v is unique variables
+- **Typical Performance:** <1ms for most programs
 - **Correctness:** 100% semantically equivalent to unoptimized execution
 
 ### Development Notes
@@ -440,6 +457,15 @@ When adding new operators:
 When modifying the optimizer:
 
 - **Never propagate variables** - they can be overridden by context
-- Maintain O(n) complexity guarantee
+- Keep DCE conservative - only eliminate clearly unused assignments
+- Maintain O(n\*k) complexity (where k is small and bounded)
 - Preserve formal correctness (no semantic changes)
 - Update tests to cover new behavior
+
+**Dead Code Elimination Notes:**
+
+- DCE uses a single backwards pass to handle transitive dependencies efficiently
+- Example: `x = 1; y = x; z = 5; z` → removes both `x` and `y` (transitively dead)
+- Processing backwards: last statement is live → marks used variables → removes unused assignments
+- Always preserves the last statement (return value)
+- More aggressive than iterative approach: can eliminate unreachable assignments (e.g., `x=10; y=x; x=20` removes second `x`)
