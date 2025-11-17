@@ -42,17 +42,49 @@ function getTextValue(
 	return readText(cursor, token)
 }
 
+/**
+ * Helper to assert token kind
+ */
+function expectToken(token: Token | undefined, kind: TokenKind): void {
+	expect(token).toBeDefined()
+	expect(token![0]).toBe(kind)
+}
+
+/**
+ * Helper to assert token kind and get text value
+ */
+function expectTokenText(
+	cursor: ReturnType<typeof createCursor>,
+	token: Token | undefined,
+	kind: TokenKind,
+	text: string,
+): void {
+	expectToken(token, kind)
+	expect(getTextValue(cursor, token!)).toBe(text)
+}
+
+/**
+ * Helper to assert token kind and get number value
+ */
+function expectTokenNumber(
+	cursor: ReturnType<typeof createCursor>,
+	token: Token | undefined,
+	kind: TokenKind,
+	value: number,
+): void {
+	expectToken(token, kind)
+	expect(getNumberValue(cursor, token!)).toBe(value)
+}
+
 describe('Lexer', () => {
 	test('tokenize numbers', () => {
 		const source = '42 3.14'
 		const cursor = createCursor(source)
 		const tokens = tokenize(source)
 
-		expect(tokens[0]?.[0]).toBe(TokenKind.Number)
-		expect(getNumberValue(cursor, tokens[0]!)).toBe(42)
-		expect(tokens[1]?.[0]).toBe(TokenKind.Number)
-		expect(getNumberValue(cursor, tokens[1]!)).toBe(3.14)
-		expect(tokens[2]?.[0]).toBe(TokenKind.Eof)
+		expectTokenNumber(cursor, tokens[0], TokenKind.Number, 42)
+		expectTokenNumber(cursor, tokens[1], TokenKind.Number, 3.14)
+		expectToken(tokens[2], TokenKind.Eof)
 	})
 
 	test('tokenize identifiers', () => {
@@ -60,22 +92,19 @@ describe('Lexer', () => {
 		const cursor = createCursor(source)
 		const tokens = tokenize(source)
 
-		expect(tokens[0]?.[0]).toBe(TokenKind.Identifier)
-		expect(getTextValue(cursor, tokens[0]!)).toBe('x')
-		expect(tokens[1]?.[0]).toBe(TokenKind.Identifier)
-		expect(getTextValue(cursor, tokens[1]!)).toBe('my_var')
-		expect(tokens[2]?.[0]).toBe(TokenKind.Identifier)
-		expect(getTextValue(cursor, tokens[2]!)).toBe('now')
+		expectTokenText(cursor, tokens[0], TokenKind.Identifier, 'x')
+		expectTokenText(cursor, tokens[1], TokenKind.Identifier, 'my_var')
+		expectTokenText(cursor, tokens[2], TokenKind.Identifier, 'now')
 	})
 
 	test('tokenize operators', () => {
 		const tokens = tokenize('+ - * / % ^')
-		expect(tokens[0]?.[0]).toBe(TokenKind.Plus)
-		expect(tokens[1]?.[0]).toBe(TokenKind.Minus)
-		expect(tokens[2]?.[0]).toBe(TokenKind.Star)
-		expect(tokens[3]?.[0]).toBe(TokenKind.Slash)
-		expect(tokens[4]?.[0]).toBe(TokenKind.Percent)
-		expect(tokens[5]?.[0]).toBe(TokenKind.Caret)
+		expectToken(tokens[0], TokenKind.Plus)
+		expectToken(tokens[1], TokenKind.Minus)
+		expectToken(tokens[2], TokenKind.Star)
+		expectToken(tokens[3], TokenKind.Slash)
+		expectToken(tokens[4], TokenKind.Percent)
+		expectToken(tokens[5], TokenKind.Caret)
 	})
 
 	test('skip comments', () => {
@@ -83,8 +112,8 @@ describe('Lexer', () => {
 		const cursor = createCursor(source)
 		const tokens = tokenize(source)
 
-		expect(getNumberValue(cursor, tokens[0]!)).toBe(42)
-		expect(getNumberValue(cursor, tokens[1]!)).toBe(3.14)
+		expectTokenNumber(cursor, tokens[0], TokenKind.Number, 42)
+		expectTokenNumber(cursor, tokens[1], TokenKind.Number, 3.14)
 	})
 
 	test('skip whitespace and semicolons', () => {
@@ -98,11 +127,11 @@ describe('Lexer', () => {
 		const cursor = createCursor(source)
 		const tokens = tokenize(source)
 
-		expect(getTextValue(cursor, tokens[0]!)).toBe('x')
-		expect(getTextValue(cursor, tokens[1]!)).toBe('=')
-		expect(getNumberValue(cursor, tokens[2]!)).toBe(1)
-		expect(getTextValue(cursor, tokens[3]!)).toBe('+')
-		expect(getNumberValue(cursor, tokens[4]!)).toBe(2)
+		expectTokenText(cursor, tokens[0], TokenKind.Identifier, 'x')
+		expectTokenText(cursor, tokens[1], TokenKind.Eq, '=')
+		expectTokenNumber(cursor, tokens[2], TokenKind.Number, 1)
+		expectTokenText(cursor, tokens[3], TokenKind.Plus, '+')
+		expectTokenNumber(cursor, tokens[4], TokenKind.Number, 2)
 	})
 
 	test('tokenize decimal numbers', () => {
@@ -110,13 +139,11 @@ describe('Lexer', () => {
 		const cursor = createCursor(source)
 		const tokens = tokenize(source)
 
-		expect(tokens[0]?.[0]).toBe(TokenKind.Number)
+		expectToken(tokens[0], TokenKind.Number)
 		// biome-ignore lint/suspicious/noApproximativeNumericConstant: testing lexer parsing of literal
 		expect(getNumberValue(cursor, tokens[0]!)).toBeCloseTo(3.14159)
-		expect(tokens[1]?.[0]).toBe(TokenKind.Number)
-		expect(getNumberValue(cursor, tokens[1]!)).toBe(0.5)
-		expect(tokens[2]?.[0]).toBe(TokenKind.Number)
-		expect(getNumberValue(cursor, tokens[2]!)).toBe(100.0)
+		expectTokenNumber(cursor, tokens[1], TokenKind.Number, 0.5)
+		expectTokenNumber(cursor, tokens[2], TokenKind.Number, 100.0)
 	})
 
 	test('tokenize large numbers', () => {
@@ -124,8 +151,7 @@ describe('Lexer', () => {
 		const cursor = createCursor(source)
 		const tokens = tokenize(source)
 
-		expect(tokens[0]?.[0]).toBe(TokenKind.Number)
-		expect(getNumberValue(cursor, tokens[0]!)).toBe(1704067200000)
+		expectTokenNumber(cursor, tokens[0], TokenKind.Number, 1704067200000)
 	})
 
 	test('tokenize scientific notation', () => {
@@ -133,14 +159,10 @@ describe('Lexer', () => {
 		const cursor = createCursor(source)
 		const tokens = tokenize(source)
 
-		expect(tokens[0]?.[0]).toBe(TokenKind.Number)
-		expect(getNumberValue(cursor, tokens[0]!)).toBe(1500000)
-		expect(tokens[1]?.[0]).toBe(TokenKind.Number)
-		expect(getNumberValue(cursor, tokens[1]!)).toBe(20000000000)
-		expect(tokens[2]?.[0]).toBe(TokenKind.Number)
-		expect(getNumberValue(cursor, tokens[2]!)).toBe(0.03)
-		expect(tokens[3]?.[0]).toBe(TokenKind.Number)
-		expect(getNumberValue(cursor, tokens[3]!)).toBe(400000)
+		expectTokenNumber(cursor, tokens[0], TokenKind.Number, 1500000)
+		expectTokenNumber(cursor, tokens[1], TokenKind.Number, 20000000000)
+		expectTokenNumber(cursor, tokens[2], TokenKind.Number, 0.03)
+		expectTokenNumber(cursor, tokens[3], TokenKind.Number, 400000)
 	})
 
 	test('error on invalid scientific notation', () => {
@@ -153,12 +175,9 @@ describe('Lexer', () => {
 		const cursor = createCursor(source)
 		const tokens = tokenize(source)
 
-		expect(tokens[0]?.[0]).toBe(TokenKind.Number)
-		expect(getNumberValue(cursor, tokens[0]!)).toBe(0.2)
-		expect(tokens[1]?.[0]).toBe(TokenKind.Number)
-		expect(getNumberValue(cursor, tokens[1]!)).toBe(0.5)
-		expect(tokens[2]?.[0]).toBe(TokenKind.Number)
-		expect(getNumberValue(cursor, tokens[2]!)).toBe(0.999)
+		expectTokenNumber(cursor, tokens[0], TokenKind.Number, 0.2)
+		expectTokenNumber(cursor, tokens[1], TokenKind.Number, 0.5)
+		expectTokenNumber(cursor, tokens[2], TokenKind.Number, 0.999)
 	})
 
 	test('tokenize decimal shorthand with scientific notation', () => {
@@ -166,12 +185,9 @@ describe('Lexer', () => {
 		const cursor = createCursor(source)
 		const tokens = tokenize(source)
 
-		expect(tokens[0]?.[0]).toBe(TokenKind.Number)
-		expect(getNumberValue(cursor, tokens[0]!)).toBe(50)
-		expect(tokens[1]?.[0]).toBe(TokenKind.Number)
-		expect(getNumberValue(cursor, tokens[1]!)).toBe(0.03)
-		expect(tokens[2]?.[0]).toBe(TokenKind.Number)
-		expect(getNumberValue(cursor, tokens[2]!)).toBe(100)
+		expectTokenNumber(cursor, tokens[0], TokenKind.Number, 50)
+		expectTokenNumber(cursor, tokens[1], TokenKind.Number, 0.03)
+		expectTokenNumber(cursor, tokens[2], TokenKind.Number, 100)
 	})
 
 	test('error on lone decimal point', () => {
@@ -185,24 +201,18 @@ describe('Lexer', () => {
 		const cursor = createCursor(source)
 		const tokens = tokenize(source)
 
-		expect(tokens[0]?.[0]).toBe(TokenKind.EqEq)
-		expect(getTextValue(cursor, tokens[0]!)).toBe('==')
-		expect(tokens[1]?.[0]).toBe(TokenKind.NotEq)
-		expect(getTextValue(cursor, tokens[1]!)).toBe('!=')
-		expect(tokens[2]?.[0]).toBe(TokenKind.Lt)
-		expect(getTextValue(cursor, tokens[2]!)).toBe('<')
-		expect(tokens[3]?.[0]).toBe(TokenKind.Gt)
-		expect(getTextValue(cursor, tokens[3]!)).toBe('>')
-		expect(tokens[4]?.[0]).toBe(TokenKind.Le)
-		expect(getTextValue(cursor, tokens[4]!)).toBe('<=')
-		expect(tokens[5]?.[0]).toBe(TokenKind.Ge)
-		expect(getTextValue(cursor, tokens[5]!)).toBe('>=')
+		expectTokenText(cursor, tokens[0], TokenKind.EqEq, '==')
+		expectTokenText(cursor, tokens[1], TokenKind.NotEq, '!=')
+		expectTokenText(cursor, tokens[2], TokenKind.Lt, '<')
+		expectTokenText(cursor, tokens[3], TokenKind.Gt, '>')
+		expectTokenText(cursor, tokens[4], TokenKind.Le, '<=')
+		expectTokenText(cursor, tokens[5], TokenKind.Ge, '>=')
 	})
 
 	test('distinguish = from ==', () => {
 		const tokens = tokenize('x = 5 == 5')
-		expect(tokens[1]?.[0]).toBe(TokenKind.Eq)
-		expect(tokens[3]?.[0]).toBe(TokenKind.EqEq)
+		expectToken(tokens[1], TokenKind.Eq)
+		expectToken(tokens[3], TokenKind.EqEq)
 	})
 
 	test('tokenize ! operator', () => {
@@ -210,8 +220,7 @@ describe('Lexer', () => {
 		const cursor = createCursor(source)
 		const tokens = tokenize(source)
 
-		expect(tokens[0]?.[0]).toBe(TokenKind.Bang)
-		expect(getTextValue(cursor, tokens[0]!)).toBe('!')
+		expectTokenText(cursor, tokens[0], TokenKind.Bang, '!')
 	})
 
 	test('distinguish ! from !=', () => {
@@ -219,10 +228,8 @@ describe('Lexer', () => {
 		const cursor = createCursor(source)
 		const tokens = tokenize(source)
 
-		expect(tokens[0]?.[0]).toBe(TokenKind.Bang)
-		expect(getTextValue(cursor, tokens[0]!)).toBe('!')
-		expect(tokens[1]?.[0]).toBe(TokenKind.NotEq)
-		expect(getTextValue(cursor, tokens[1]!)).toBe('!=')
+		expectTokenText(cursor, tokens[0], TokenKind.Bang, '!')
+		expectTokenText(cursor, tokens[1], TokenKind.NotEq, '!=')
 	})
 
 	test('tokenize ternary operator', () => {
@@ -230,10 +237,8 @@ describe('Lexer', () => {
 		const cursor = createCursor(source)
 		const tokens = tokenize(source)
 
-		expect(tokens[1]?.[0]).toBe(TokenKind.Question)
-		expect(getTextValue(cursor, tokens[1]!)).toBe('?')
-		expect(tokens[3]?.[0]).toBe(TokenKind.Colon)
-		expect(getTextValue(cursor, tokens[3]!)).toBe(':')
+		expectTokenText(cursor, tokens[1], TokenKind.Question, '?')
+		expectTokenText(cursor, tokens[3], TokenKind.Colon, ':')
 	})
 
 	test('tokenize && operator', () => {
@@ -241,10 +246,9 @@ describe('Lexer', () => {
 		const cursor = createCursor(source)
 		const tokens = tokenize(source)
 
-		expect(tokens[0]?.[0]).toBe(TokenKind.Number)
-		expect(tokens[1]?.[0]).toBe(TokenKind.And)
-		expect(getTextValue(cursor, tokens[1]!)).toBe('&&')
-		expect(tokens[2]?.[0]).toBe(TokenKind.Number)
+		expectToken(tokens[0], TokenKind.Number)
+		expectTokenText(cursor, tokens[1], TokenKind.And, '&&')
+		expectToken(tokens[2], TokenKind.Number)
 	})
 
 	test('tokenize || operator', () => {
@@ -252,10 +256,9 @@ describe('Lexer', () => {
 		const cursor = createCursor(source)
 		const tokens = tokenize(source)
 
-		expect(tokens[0]?.[0]).toBe(TokenKind.Number)
-		expect(tokens[1]?.[0]).toBe(TokenKind.Or)
-		expect(getTextValue(cursor, tokens[1]!)).toBe('||')
-		expect(tokens[2]?.[0]).toBe(TokenKind.Number)
+		expectToken(tokens[0], TokenKind.Number)
+		expectTokenText(cursor, tokens[1], TokenKind.Or, '||')
+		expectToken(tokens[2], TokenKind.Number)
 	})
 
 	test('single & throws error', () => {
