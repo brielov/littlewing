@@ -252,24 +252,35 @@ import { visit } from "littlewing";
 
 // Count all nodes
 const count = visit(ast, {
-	Program: (n, recurse) =>
-		1 + n.statements.reduce((sum, s) => sum + recurse(s), 0),
+	// Tuple: [kind, statements]
+	Program: (n, recurse) => {
+		const statements = n[1];
+		return 1 + statements.reduce((sum, s) => sum + recurse(s), 0);
+	},
 	NumberLiteral: () => 1,
 	Identifier: () => 1,
-	BinaryOp: (n, recurse) => 1 + recurse(n.left) + recurse(n.right),
-	UnaryOp: (n, recurse) => 1 + recurse(n.argument),
-	FunctionCall: (n, recurse) =>
-		1 + n.arguments.reduce((sum, arg) => sum + recurse(arg), 0),
-	Assignment: (n, recurse) => 1 + recurse(n.value),
+	// Tuple: [kind, left, operator, right]
+	BinaryOp: (n, recurse) => 1 + recurse(n[1]) + recurse(n[3]),
+	// Tuple: [kind, operator, argument]
+	UnaryOp: (n, recurse) => 1 + recurse(n[2]),
+	// Tuple: [kind, name, arguments]
+	FunctionCall: (n, recurse) => {
+		const args = n[2];
+		return 1 + args.reduce((sum, arg) => sum + recurse(arg), 0);
+	},
+	// Tuple: [kind, name, value]
+	Assignment: (n, recurse) => 1 + recurse(n[2]),
+	// Tuple: [kind, condition, consequent, alternate]
 	ConditionalExpression: (n, recurse) =>
-		1 + recurse(n.condition) + recurse(n.consequent) + recurse(n.alternate),
+		1 + recurse(n[1]) + recurse(n[2]) + recurse(n[3]),
 });
 ```
 
-**Important: Correct property names:**
+**Important: Tuple-based AST structure:**
 
-- `Program` has `statements` (not `body`)
-- `UnaryOp` has `argument` (not `operand`)
+- Nodes are readonly tuples: `[NodeKind, ...fields]`
+- Access fields by index: `n[1]`, `n[2]`, etc.
+- Use type guards for safe type narrowing: `if (isBinaryOp(node))`
 - Node type is `ConditionalExpression` (not `Ternary`)
 
 ### Testing
@@ -520,27 +531,23 @@ When modifying the optimizer:
 
 ## AST Node Types Reference
 
-For quick reference, here are all 8 AST node types with their exact TypeScript definitions:
+For quick reference, here are all 8 AST node types with their tuple-based structure:
 
 ```typescript
-interface Program {
-	type: "Program";
-	statements: ASTNode[]; // Note: 'statements', not 'body'
-}
+// Tuple-based AST nodes (readonly tuples for zero-cost abstractions)
 
-interface NumberLiteral {
-	type: "NumberLiteral";
-	value: number;
-}
+type Program = readonly [
+	kind: NodeKind.Program,
+	statements: readonly ASTNode[],
+];
 
-interface Identifier {
-	type: "Identifier";
-	name: string;
-}
+type NumberLiteral = readonly [kind: NodeKind.NumberLiteral, value: number];
 
-interface BinaryOp {
-	type: "BinaryOp";
-	left: ASTNode;
+type Identifier = readonly [kind: NodeKind.Identifier, name: string];
+
+type BinaryOp = readonly [
+	kind: NodeKind.BinaryOp,
+	left: ASTNode,
 	operator:
 		| "+"
 		| "-"
@@ -555,35 +562,40 @@ interface BinaryOp {
 		| "<="
 		| ">="
 		| "&&"
-		| "||";
-	right: ASTNode;
-}
+		| "||",
+	right: ASTNode,
+];
 
-interface UnaryOp {
-	type: "UnaryOp";
-	operator: "-" | "!";
-	argument: ASTNode; // Note: 'argument', not 'operand'
-}
+type UnaryOp = readonly [
+	kind: NodeKind.UnaryOp,
+	operator: "-" | "!",
+	argument: ASTNode,
+];
 
-interface FunctionCall {
-	type: "FunctionCall";
-	name: string;
-	arguments: ASTNode[];
-}
+type FunctionCall = readonly [
+	kind: NodeKind.FunctionCall,
+	name: string,
+	arguments: readonly ASTNode[],
+];
 
-interface Assignment {
-	type: "Assignment";
-	name: string;
-	value: ASTNode;
-}
+type Assignment = readonly [
+	kind: NodeKind.Assignment,
+	name: string,
+	value: ASTNode,
+];
 
-interface ConditionalExpression {
-	// Note: 'ConditionalExpression', not 'Ternary'
-	type: "ConditionalExpression";
-	condition: ASTNode;
-	consequent: ASTNode;
-	alternate: ASTNode;
-}
+type ConditionalExpression = readonly [
+	kind: NodeKind.ConditionalExpression,
+	condition: ASTNode,
+	consequent: ASTNode,
+	alternate: ASTNode,
+];
+
+// Access tuple fields by index:
+// Program: n[0] = kind, n[1] = statements
+// NumberLiteral: n[0] = kind, n[1] = value
+// BinaryOp: n[0] = kind, n[1] = left, n[2] = operator, n[3] = right
+// etc.
 ```
 
 ## Built-in Functions Summary
