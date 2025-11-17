@@ -1,36 +1,29 @@
 import { bench, group, run } from 'mitata'
-import { Lexer } from '../src/lexer'
+import { createCursor, nextToken, type Token, TokenKind } from '../src/lexer'
 import { LARGE_SCRIPT, MEDIUM_SCRIPT, SMALL_SCRIPT } from './fixtures'
+
+function tokenize(script: string): readonly Token[] {
+	const cursor = createCursor(script)
+	const tokens: Token[] = []
+	let token = nextToken(cursor)
+	while (token[0] !== TokenKind.Eof) {
+		tokens.push(token)
+		token = nextToken(cursor)
+	}
+	return tokens
+}
 
 group('Lexer', () => {
 	bench('small script', () => {
-		const lexer = new Lexer(SMALL_SCRIPT)
-		const tokens = []
-		let token = lexer.nextToken()
-		while (token.type !== 'EOF') {
-			tokens.push(token)
-			token = lexer.nextToken()
-		}
+		tokenize(SMALL_SCRIPT)
 	})
 
 	bench('medium script', () => {
-		const lexer = new Lexer(MEDIUM_SCRIPT)
-		const tokens = []
-		let token = lexer.nextToken()
-		while (token.type !== 'EOF') {
-			tokens.push(token)
-			token = lexer.nextToken()
-		}
+		tokenize(MEDIUM_SCRIPT)
 	})
 
 	bench('large script', () => {
-		const lexer = new Lexer(LARGE_SCRIPT)
-		const tokens = []
-		let token = lexer.nextToken()
-		while (token.type !== 'EOF') {
-			tokens.push(token)
-			token = lexer.nextToken()
-		}
+		tokenize(LARGE_SCRIPT)
 	})
 })
 
