@@ -1,26 +1,33 @@
 import * as ast from './ast'
-import { Lexer } from './lexer'
-import { type ASTNode, type Operator, type Token, TokenType } from './types'
+import {
+	type Cursor,
+	createCursor,
+	nextToken,
+	readText,
+	type Token,
+	TokenKind,
+} from './lexer'
+import type { ASTNode, Operator } from './types'
 import { getTokenPrecedence } from './utils'
 
 /**
- * Set of binary operator token types for O(1) lookup
+ * Set of binary operator token kinds for O(1) lookup
  */
 const BINARY_OPERATOR_TOKENS = new Set([
-	TokenType.PLUS,
-	TokenType.MINUS,
-	TokenType.STAR,
-	TokenType.SLASH,
-	TokenType.PERCENT,
-	TokenType.CARET,
-	TokenType.DOUBLE_EQUALS,
-	TokenType.NOT_EQUALS,
-	TokenType.LESS_THAN,
-	TokenType.GREATER_THAN,
-	TokenType.LESS_EQUAL,
-	TokenType.GREATER_EQUAL,
-	TokenType.LOGICAL_AND,
-	TokenType.LOGICAL_OR,
+	TokenKind.Plus,
+	TokenKind.Minus,
+	TokenKind.Star,
+	TokenKind.Slash,
+	TokenKind.Percent,
+	TokenKind.Caret,
+	TokenKind.EqEq,
+	TokenKind.NotEq,
+	TokenKind.Lt,
+	TokenKind.Gt,
+	TokenKind.Le,
+	TokenKind.Ge,
+	TokenKind.And,
+	TokenKind.Or,
 ])
 
 /**
@@ -29,12 +36,12 @@ const BINARY_OPERATOR_TOKENS = new Set([
  * Uses lazy lexing - calls lexer on-demand instead of receiving all tokens upfront
  */
 export class Parser {
-	private lexer: Lexer
+	private cursor: Cursor
 	private currentToken: Token
 
-	constructor(lexer: Lexer) {
-		this.lexer = lexer
-		this.currentToken = lexer.nextToken()
+	constructor(cursor: Cursor) {
+		this.cursor = cursor
+		this.currentToken = nextToken(cursor)
 	}
 
 	/**
@@ -44,7 +51,7 @@ export class Parser {
 	parse(): ASTNode {
 		const statements: ASTNode[] = []
 
-		while (this.peek().type !== TokenType.EOF) {
+		while (this.peekKind() !== TokenKind.Eof) {
 			statements.push(this.parseExpression(0))
 		}
 
@@ -73,14 +80,14 @@ export class Parser {
 		let left = this.parsePrefix()
 
 		while (true) {
-			const token = this.peek()
-			const precedence = getTokenPrecedence(token.type)
+			const tokenKind = this.peekKind()
+			const precedence = getTokenPrecedence(tokenKind)
 
 			if (precedence < minPrecedence) {
 				break
 			}
 
-			if (token.type === TokenType.EQUALS) {
+			if (tokenKind === TokenKind.Eq) {
 				// Variable assignment (right-associative)
 				if (left.type !== 'Identifier') {
 					throw new Error('Invalid assignment target')
@@ -91,20 +98,20 @@ export class Parser {
 				// This allows: x = y = 5 and x = 5 > 3 ? 100 : 50
 				const value = this.parseExpression(precedence)
 				left = ast.assign(identName, value)
-			} else if (token.type === TokenType.QUESTION) {
+			} else if (tokenKind === TokenKind.Question) {
 				// Ternary conditional expression (right-associative)
 				this.advance() // consume ?
 				const consequent = this.parseExpression(0)
-				if (this.peek().type !== TokenType.COLON) {
+				if (this.peekKind() !== TokenKind.Colon) {
 					throw new Error('Expected : in ternary expression')
 				}
 				this.advance() // consume :
 				// Use precedence for right-associativity
 				const alternate = this.parseExpression(precedence)
 				left = ast.conditional(left, consequent, alternate)
-			} else if (this.isBinaryOperator(token.type)) {
+			} else if (this.isBinaryOperator(tokenKind)) {
 				// Binary operation
-				const operator = token.value as Operator
+				const operator = this.getOperatorFromToken(this.currentToken)
 				this.advance() // consume operator
 				// Right-associative operators (^) use precedence
 				// Left-associative operators (+, -, *, /, %, ==, !=, <, >, <=, >=, &&, ||) use precedence + 1
@@ -125,27 +132,27 @@ export class Parser {
 	 * Parse prefix (unary) expressions
 	 */
 	private parsePrefix(): ASTNode {
-		const token = this.peek()
+		const tokenKind = this.peekKind()
 
 		// Unary minus
-		if (token.type === TokenType.MINUS) {
+		if (tokenKind === TokenKind.Minus) {
 			this.advance()
 			const argument = this.parseExpression(this.getUnaryPrecedence())
 			return ast.unaryOp('-', argument)
 		}
 
 		// Logical NOT
-		if (token.type === TokenType.EXCLAMATION) {
+		if (tokenKind === TokenKind.Bang) {
 			this.advance()
 			const argument = this.parseExpression(this.getUnaryPrecedence())
 			return ast.unaryOp('!', argument)
 		}
 
 		// Parenthesized expression
-		if (token.type === TokenType.LPAREN) {
+		if (tokenKind === TokenKind.LParen) {
 			this.advance()
 			const expr = this.parseExpression(0)
-			if (this.peek().type !== TokenType.RPAREN) {
+			if (this.peekKind() !== TokenKind.RParen) {
 				throw new Error('Expected closing parenthesis')
 			}
 			this.advance()
@@ -153,21 +160,24 @@ export class Parser {
 		}
 
 		// Number literal
-		if (token.type === TokenType.NUMBER) {
+		if (tokenKind === TokenKind.Number) {
+			const token = this.currentToken
 			this.advance()
-			return ast.number(token.value as number)
+			const value = Number.parseFloat(readText(this.cursor, token))
+			return ast.number(value)
 		}
 
 		// Identifier or function call
-		if (token.type === TokenType.IDENTIFIER) {
-			const name = token.value as string
+		if (tokenKind === TokenKind.Identifier) {
+			const token = this.currentToken
+			const name = readText(this.cursor, token)
 			this.advance()
 
 			// Check for function call
-			if (this.peek().type === TokenType.LPAREN) {
+			if (this.peekKind() === TokenKind.LParen) {
 				this.advance()
 				const args = this.parseFunctionArguments()
-				if (this.peek().type !== TokenType.RPAREN) {
+				if (this.peekKind() !== TokenKind.RParen) {
 					throw new Error('Expected closing parenthesis')
 				}
 				this.advance()
@@ -178,7 +188,9 @@ export class Parser {
 			return ast.identifier(name)
 		}
 
-		throw new Error(`Unexpected token: ${token.value}`)
+		const token = this.currentToken
+		const tokenText = readText(this.cursor, token)
+		throw new Error(`Unexpected token: ${tokenText}`)
 	}
 
 	/**
@@ -188,7 +200,7 @@ export class Parser {
 		const args: ASTNode[] = []
 
 		// Empty argument list
-		if (this.peek().type === TokenType.RPAREN) {
+		if (this.peekKind() === TokenKind.RParen) {
 			return args
 		}
 
@@ -196,7 +208,7 @@ export class Parser {
 		args.push(this.parseExpression(0))
 
 		// Parse remaining arguments
-		while (this.peek().type === TokenType.COMMA) {
+		while (this.peekKind() === TokenKind.Comma) {
 			this.advance() // consume comma
 			args.push(this.parseExpression(0))
 		}
@@ -217,36 +229,44 @@ export class Parser {
 	}
 
 	/**
-	 * Check if token is a binary operator (O(1) Set lookup)
+	 * Check if token kind is a binary operator (O(1) Set lookup)
 	 */
-	private isBinaryOperator(type: TokenType): boolean {
-		return BINARY_OPERATOR_TOKENS.has(type)
+	private isBinaryOperator(kind: TokenKind): boolean {
+		return BINARY_OPERATOR_TOKENS.has(kind)
 	}
 
 	/**
-	 * Get current token without advancing
+	 * Get the operator string from a token
+	 * Extracts the text representation of an operator token
 	 */
-	private peek(): Token {
-		return this.currentToken
+	private getOperatorFromToken(token: Token): Operator {
+		return readText(this.cursor, token) as Operator
+	}
+
+	/**
+	 * Get current token kind without advancing
+	 */
+	private peekKind(): TokenKind {
+		return this.currentToken[0]
 	}
 
 	/**
 	 * Advance to next token by calling lexer
 	 */
 	private advance(): void {
-		this.currentToken = this.lexer.nextToken()
+		this.currentToken = nextToken(this.cursor)
 	}
 }
 
 /**
  * Parse source code string into AST
- * Convenience function that creates lexer and parser
+ * Convenience function that creates cursor and parser
  *
  * @param source - The source code to parse
  * @returns Parsed AST
  */
 export function parse(source: string): ASTNode {
-	const lexer = new Lexer(source)
-	const parser = new Parser(lexer)
+	const cursor = createCursor(source)
+	const parser = new Parser(cursor)
 	return parser.parse()
 }

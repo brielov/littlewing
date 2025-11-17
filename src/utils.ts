@@ -1,5 +1,5 @@
+import { TokenKind } from './lexer'
 import type { ASTNode, Operator } from './types'
-import { TokenType } from './types'
 import { visit } from './visitor'
 
 /**
@@ -154,33 +154,33 @@ export function collectAllIdentifiers(node: ASTNode): Set<string> {
 
 /**
  * Get token precedence for parsing
- * Maps TokenType to operator precedence values
+ * Maps TokenKind to operator precedence values
  */
-export function getTokenPrecedence(type: TokenType): number {
-	switch (type) {
-		case TokenType.EQUALS:
+export function getTokenPrecedence(kind: TokenKind): number {
+	switch (kind) {
+		case TokenKind.Eq:
 			return 1 // Assignment has lowest precedence
-		case TokenType.QUESTION:
+		case TokenKind.Question:
 			return 2 // Ternary conditional
-		case TokenType.LOGICAL_OR:
+		case TokenKind.Or:
 			return 3 // Logical OR
-		case TokenType.LOGICAL_AND:
+		case TokenKind.And:
 			return 4 // Logical AND (binds tighter than OR)
-		case TokenType.DOUBLE_EQUALS:
-		case TokenType.NOT_EQUALS:
-		case TokenType.LESS_THAN:
-		case TokenType.GREATER_THAN:
-		case TokenType.LESS_EQUAL:
-		case TokenType.GREATER_EQUAL:
+		case TokenKind.EqEq:
+		case TokenKind.NotEq:
+		case TokenKind.Lt:
+		case TokenKind.Gt:
+		case TokenKind.Le:
+		case TokenKind.Ge:
 			return 5 // Comparison operators
-		case TokenType.PLUS:
-		case TokenType.MINUS:
+		case TokenKind.Plus:
+		case TokenKind.Minus:
 			return 6
-		case TokenType.STAR:
-		case TokenType.SLASH:
-		case TokenType.PERCENT:
+		case TokenKind.Star:
+		case TokenKind.Slash:
+		case TokenKind.Percent:
 			return 7
-		case TokenType.CARET:
+		case TokenKind.Caret:
 			return 8 // Exponentiation has highest precedence
 		default:
 			return 0
