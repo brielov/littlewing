@@ -1,5 +1,5 @@
-import type { ASTNode, Operator } from './types'
-import { isIdentifier, isNumberLiteral } from './types'
+import type { ASTNode, Operator } from './ast'
+import { isIdentifier, isNumberLiteral } from './ast'
 import { visit } from './visitor'
 
 /**
@@ -106,142 +106,145 @@ const DEFAULT_FUNCTION_PHRASES: Record<string, string> = {
 }
 
 /**
- * Converts an AST node to human-readable English text
+ * Wrap text in HTML tag if html option is enabled
  */
-export class Humanizer {
-	private readonly operatorPhrases: Record<Operator, string>
-	private readonly functionPhrases: Record<string, string>
-
-	constructor(private readonly options: HumanizeOptions = {}) {
-		this.operatorPhrases = {
-			...DEFAULT_OPERATOR_PHRASES,
-			...options.operatorPhrases,
-		}
-		this.functionPhrases = {
-			...DEFAULT_FUNCTION_PHRASES,
-			...options.functionPhrases,
-		}
+function wrapHtml(
+	text: string,
+	type: keyof NonNullable<HumanizeOptions['htmlClasses']>,
+	options: HumanizeOptions,
+): string {
+	if (!options.html) {
+		return text
 	}
 
-	/**
-	 * Humanize an AST node into English text
-	 */
-	humanize(node: ASTNode): string {
-		return visit(node, {
-			Program: (n, recurse) => {
-				const statements = n.statements.map((stmt) => {
-					const text = recurse(stmt)
-					// Capitalize first letter of each statement
-					return text.charAt(0).toUpperCase() + text.slice(1)
-				})
-				return statements.join('. ')
-			},
-
-			NumberLiteral: (n) => {
-				const text = String(n.value)
-				return this.wrapHtml(text, 'number')
-			},
-
-			Identifier: (n) => {
-				return this.wrapHtml(n.name, 'identifier')
-			},
-
-			BinaryOp: (n, recurse) => {
-				const left = recurse(n.left)
-				const right = recurse(n.right)
-				const operator = this.operatorPhrases[n.operator]
-
-				const operatorText = this.wrapHtml(operator, 'operator')
-				return `${left} ${operatorText} ${right}`
-			},
-
-			UnaryOp: (n, recurse) => {
-				const arg = recurse(n.argument)
-
-				if (n.operator === '-') {
-					// Check if we need grouping phrase for complex expressions
-					const needsGrouping =
-						!isNumberLiteral(n.argument) && !isIdentifier(n.argument)
-					if (needsGrouping) {
-						return `the negative of ${arg}`
-					}
-					return `negative ${arg}`
-				}
-
-				if (n.operator === '!') {
-					return `not ${arg}`
-				}
-
-				throw new Error(`Unknown unary operator: ${n.operator}`)
-			},
-
-			FunctionCall: (n, recurse) => {
-				const funcName = this.wrapHtml(n.name, 'function')
-				const args = n.arguments.map(recurse)
-
-				// Check if we have a known phrase for this function
-				const phrase = this.functionPhrases[n.name]
-
-				if (phrase) {
-					// Known function - use the custom phrase
-					if (args.length === 0) {
-						return phrase
-					}
-					if (args.length === 1) {
-						return `${phrase} ${args[0]}`
-					}
-					// Multiple arguments - join with "and"
-					const lastArg = args[args.length - 1]
-					const otherArgs = args.slice(0, -1).join(', ')
-					return `${phrase} ${otherArgs} and ${lastArg}`
-				}
-
-				// Unknown function - use generic phrasing
-				if (args.length === 0) {
-					return `the result of ${funcName}`
-				}
-				if (args.length === 1) {
-					return `the result of ${funcName} with ${args[0]}`
-				}
-				const lastArg = args[args.length - 1]
-				const otherArgs = args.slice(0, -1).join(', ')
-				return `the result of ${funcName} with ${otherArgs} and ${lastArg}`
-			},
-
-			Assignment: (n, recurse) => {
-				const name = this.wrapHtml(n.name, 'identifier')
-				const value = recurse(n.value)
-				return `set ${name} to ${value}`
-			},
-
-			ConditionalExpression: (n, recurse) => {
-				const condition = recurse(n.condition)
-				const consequent = recurse(n.consequent)
-				const alternate = recurse(n.alternate)
-
-				return `if ${condition} then ${consequent}, otherwise ${alternate}`
-			},
-		})
+	const className = options.htmlClasses?.[type]
+	if (className) {
+		return `<span class="${className}">${text}</span>`
 	}
 
-	/**
-	 * Wrap text in HTML tag if html option is enabled
-	 */
-	private wrapHtml(
-		text: string,
-		type: keyof NonNullable<HumanizeOptions['htmlClasses']>,
-	): string {
-		if (!this.options.html) {
-			return text
-		}
+	return `<span>${text}</span>`
+}
 
-		const className = this.options.htmlClasses?.[type]
-		if (className) {
-			return `<span class="${className}">${text}</span>`
-		}
+/**
+ * Humanize an AST node into English text
+ */
+function humanizeNode(
+	node: ASTNode,
+	operatorPhrases: Record<Operator, string>,
+	functionPhrases: Record<string, string>,
+	options: HumanizeOptions,
+): string {
+	return visit(node, {
+		// Tuple: [kind, statements]
+		Program: (n, recurse) => {
+			const statements = n[1]
+			const texts = statements.map((stmt) => {
+				const text = recurse(stmt)
+				// Capitalize first letter of each statement
+				return text.charAt(0).toUpperCase() + text.slice(1)
+			})
+			return texts.join('. ')
+		},
 
-		return `<span>${text}</span>`
-	}
+		// Tuple: [kind, value]
+		NumberLiteral: (n) => {
+			const text = String(n[1])
+			return wrapHtml(text, 'number', options)
+		},
+
+		// Tuple: [kind, name]
+		Identifier: (n) => {
+			return wrapHtml(n[1], 'identifier', options)
+		},
+
+		// Tuple: [kind, left, operator, right]
+		BinaryOp: (n, recurse) => {
+			const left = recurse(n[1])
+			const operator = n[2]
+			const right = recurse(n[3])
+			const operatorPhrase = operatorPhrases[operator]
+
+			const operatorText = wrapHtml(operatorPhrase, 'operator', options)
+			return `${left} ${operatorText} ${right}`
+		},
+
+		// Tuple: [kind, operator, argument]
+		UnaryOp: (n, recurse) => {
+			const operator = n[1]
+			const argument = n[2]
+			const arg = recurse(argument)
+
+			if (operator === '-') {
+				// Check if we need grouping phrase for complex expressions
+				const needsGrouping =
+					!isNumberLiteral(argument) && !isIdentifier(argument)
+				if (needsGrouping) {
+					return `the negative of ${arg}`
+				}
+				return `negative ${arg}`
+			}
+
+			if (operator === '!') {
+				return `not ${arg}`
+			}
+
+			throw new Error(`Unknown unary operator: ${operator}`)
+		},
+
+		// Tuple: [kind, name, arguments]
+		FunctionCall: (n, recurse) => {
+			const name = n[1]
+			const args = n[2]
+			const funcName = wrapHtml(name, 'function', options)
+			const humanArgs = args.map(recurse)
+
+			// Check if we have a known phrase for this function
+			const phrase = functionPhrases[name]
+
+			if (phrase) {
+				// Known function - use the custom phrase
+				if (humanArgs.length === 0) {
+					return phrase
+				}
+				if (humanArgs.length === 1) {
+					return `${phrase} ${humanArgs[0]}`
+				}
+				// Multiple arguments - join with "and"
+				const lastArg = humanArgs[humanArgs.length - 1]
+				const otherArgs = humanArgs.slice(0, -1).join(', ')
+				return `${phrase} ${otherArgs} and ${lastArg}`
+			}
+
+			// Unknown function - use generic phrasing
+			if (humanArgs.length === 0) {
+				return `the result of ${funcName}`
+			}
+			if (humanArgs.length === 1) {
+				return `the result of ${funcName} with ${humanArgs[0]}`
+			}
+			const lastArg = humanArgs[humanArgs.length - 1]
+			const otherArgs = humanArgs.slice(0, -1).join(', ')
+			return `the result of ${funcName} with ${otherArgs} and ${lastArg}`
+		},
+
+		// Tuple: [kind, name, value]
+		Assignment: (n, recurse) => {
+			const name = n[1]
+			const value = n[2]
+			const humanName = wrapHtml(name, 'identifier', options)
+			const humanValue = recurse(value)
+			return `set ${humanName} to ${humanValue}`
+		},
+
+		// Tuple: [kind, condition, consequent, alternate]
+		ConditionalExpression: (n, recurse) => {
+			const condition = recurse(n[1])
+			const consequent = recurse(n[2])
+			const alternate = recurse(n[3])
+
+			return `if ${condition} then ${consequent}, otherwise ${alternate}`
+		},
+	})
 }
 
 /**
@@ -271,7 +274,15 @@ export class Humanizer {
  * })
  * ```
  */
-export function humanize(node: ASTNode, options?: HumanizeOptions): string {
-	const humanizer = new Humanizer(options)
-	return humanizer.humanize(node)
+export function humanize(node: ASTNode, options: HumanizeOptions = {}): string {
+	const operatorPhrases = {
+		...DEFAULT_OPERATOR_PHRASES,
+		...options.operatorPhrases,
+	}
+	const functionPhrases = {
+		...DEFAULT_FUNCTION_PHRASES,
+		...options.functionPhrases,
+	}
+
+	return humanizeNode(node, operatorPhrases, functionPhrases, options)
 }

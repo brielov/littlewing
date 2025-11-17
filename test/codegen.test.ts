@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'bun:test'
 import * as ast from '../src/ast'
 import { generate } from '../src/codegen'
-import { evaluate, Interpreter } from '../src/interpreter'
+import { evaluate } from '../src/interpreter'
 import { parse } from '../src/parser'
 
 describe('CodeGenerator', () => {
@@ -223,8 +223,8 @@ describe('CodeGenerator', () => {
 		const ast1 = parse(source)
 		const code = generate(ast1)
 		const ast2 = parse(code)
-		const result1 = new Interpreter().evaluate(ast1)
-		const result2 = new Interpreter().evaluate(ast2)
+		const result1 = evaluate(ast1)
+		const result2 = evaluate(ast2)
 		expect(result1).toBe(result2)
 	})
 
@@ -233,8 +233,8 @@ describe('CodeGenerator', () => {
 		const ast1 = parse(source)
 		const code = generate(ast1)
 		const ast2 = parse(code)
-		const result1 = new Interpreter().evaluate(ast1)
-		const result2 = new Interpreter().evaluate(ast2)
+		const result1 = evaluate(ast1)
+		const result2 = evaluate(ast2)
 		expect(result1).toBe(result2)
 	})
 
@@ -243,8 +243,8 @@ describe('CodeGenerator', () => {
 		const ast1 = parse(source)
 		const code = generate(ast1)
 		const ast2 = parse(code)
-		const result1 = new Interpreter().evaluate(ast1)
-		const result2 = new Interpreter().evaluate(ast2)
+		const result1 = evaluate(ast1)
+		const result2 = evaluate(ast2)
 		expect(result1).toBe(result2)
 	})
 
@@ -253,10 +253,8 @@ describe('CodeGenerator', () => {
 		const ast1 = parse(source)
 		const code = generate(ast1)
 		const ast2 = parse(code)
-		const executor1 = new Interpreter()
-		const result1 = executor1.evaluate(ast1)
-		const executor2 = new Interpreter()
-		const result2 = executor2.evaluate(ast2)
+		const result1 = evaluate(ast1)
+		const result2 = evaluate(ast2)
 		expect(result1).toBe(result2)
 	})
 
@@ -265,10 +263,8 @@ describe('CodeGenerator', () => {
 		const ast1 = parse(source)
 		const code = generate(ast1)
 		const ast2 = parse(code)
-		const executor1 = new Interpreter({ functions: { ABS: Math.abs } })
-		const result1 = executor1.evaluate(ast1)
-		const executor2 = new Interpreter({ functions: { ABS: Math.abs } })
-		const result2 = executor2.evaluate(ast2)
+		const result1 = evaluate(ast1, { functions: { ABS: Math.abs } })
+		const result2 = evaluate(ast2, { functions: { ABS: Math.abs } })
 		expect(result1).toBe(result2)
 	})
 
@@ -277,20 +273,17 @@ describe('CodeGenerator', () => {
 		const ast1 = parse(source)
 		const code = generate(ast1)
 		const ast2 = parse(code)
-		const result1 = new Interpreter().evaluate(ast1)
-		const result2 = new Interpreter().evaluate(ast2)
+		const result1 = evaluate(ast1)
+		const result2 = evaluate(ast2)
 		expect(result1).toBe(result2)
 	})
 
 	test('program with multiple statements', () => {
-		const node = {
-			type: 'Program' as const,
-			statements: [
-				ast.assign('x', ast.number(5)),
-				ast.assign('y', ast.number(10)),
-				ast.add(ast.identifier('x'), ast.identifier('y')),
-			],
-		}
+		const node = ast.program([
+			ast.assign('x', ast.number(5)),
+			ast.assign('y', ast.number(10)),
+			ast.add(ast.identifier('x'), ast.identifier('y')),
+		])
 		const code = generate(node)
 		expect(code).toBe('x = 5; y = 10; x + y')
 	})

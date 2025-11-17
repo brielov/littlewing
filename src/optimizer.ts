@@ -1,6 +1,11 @@
 import * as ast from './ast'
-import type { ASTNode, Program } from './types'
-import { isNumberLiteral, isProgram } from './types'
+import {
+	type ASTNode,
+	isAssignment,
+	isNumberLiteral,
+	isProgram,
+	type Program,
+} from './ast'
 import { collectAllIdentifiers, evaluateBinaryOperation } from './utils'
 import { visit } from './visitor'
 
@@ -30,7 +35,7 @@ import { visit } from './visitor'
  * @returns Program with dead assignments removed
  */
 function eliminateDeadCode(program: Program): Program {
-	const statements = program.statements
+	const statements = program[1]
 	const liveVars = new Set<string>()
 	const keptStatements: ASTNode[] = []
 
@@ -51,12 +56,15 @@ function eliminateDeadCode(program: Program): Program {
 		}
 
 		// For assignments, check if the variable is live
-		if (stmt.type === 'Assignment') {
-			if (liveVars.has(stmt.name)) {
+		// Tuple: [kind, name, value]
+		if (isAssignment(stmt)) {
+			const name = stmt[1]
+			const value = stmt[2]
+			if (liveVars.has(name)) {
 				// Variable is used later, keep the assignment
 				keptStatements.push(stmt)
 				// Add identifiers from the RHS to live set
-				const identifiers = collectAllIdentifiers(stmt.value)
+				const identifiers = collectAllIdentifiers(value)
 				for (const id of identifiers) {
 					liveVars.add(id)
 				}
@@ -105,86 +113,106 @@ export function optimize(node: ASTNode): ASTNode {
 	// Step 1: Apply constant folding and expression simplification
 	const folded = visit<ASTNode>(node, {
 		// Number literals are already optimal
+		// Tuple: [kind, value]
 		NumberLiteral: (n) => n,
 
 		// Identifiers cannot be optimized (may be overridden by context)
+		// Tuple: [kind, name]
 		Identifier: (n) => n,
 
 		// Binary operations: try to fold if both operands are literals
+		// Tuple: [kind, left, operator, right]
 		BinaryOp: (n, recurse) => {
-			const left = recurse(n.left)
-			const right = recurse(n.right)
+			const leftNode = n[1]
+			const operator = n[2]
+			const rightNode = n[3]
+
+			const left = recurse(leftNode)
+			const right = recurse(rightNode)
 
 			// If both sides are literals, fold the operation
 			if (isNumberLiteral(left) && isNumberLiteral(right)) {
-				const result = evaluateBinaryOperation(
-					n.operator,
-					left.value,
-					right.value,
-				)
+				const result = evaluateBinaryOperation(operator, left[1], right[1])
 				return ast.number(result)
 			}
 
 			// Return optimized binary operation (even if not fully foldable)
-			return ast.binaryOp(left, n.operator, right)
+			return ast.binaryOp(left, operator, right)
 		},
 
 		// Unary operations: fold if argument is a literal
+		// Tuple: [kind, operator, argument]
 		UnaryOp: (n, recurse) => {
-			const argument = recurse(n.argument)
+			const operator = n[1]
+			const argumentNode = n[2]
+
+			const argument = recurse(argumentNode)
 
 			if (isNumberLiteral(argument)) {
-				if (n.operator === '-') {
-					return ast.number(-argument.value)
+				const value = argument[1]
+				if (operator === '-') {
+					return ast.number(-value)
 				}
-				if (n.operator === '!') {
-					return ast.number(argument.value === 0 ? 1 : 0)
+				if (operator === '!') {
+					return ast.number(value === 0 ? 1 : 0)
 				}
 			}
 
-			return ast.unaryOp(n.operator, argument)
+			return ast.unaryOp(operator, argument)
 		},
 
 		// Function calls: optimize arguments recursively
+		// Tuple: [kind, name, arguments]
 		// We cannot evaluate the function itself (runtime-dependent)
 		FunctionCall: (n, recurse) => {
-			const optimizedArgs = n.arguments.map(recurse)
-			return ast.functionCall(n.name, optimizedArgs)
+			const name = n[1]
+			const args = n[2]
+			const optimizedArgs = args.map(recurse)
+			return ast.functionCall(name, optimizedArgs)
 		},
 
 		// Assignments: optimize the right-hand side
+		// Tuple: [kind, name, value]
 		// We cannot eliminate the assignment (the variable might be read from context)
 		Assignment: (n, recurse) => {
-			return ast.assign(n.name, recurse(n.value))
+			const name = n[1]
+			const value = n[2]
+			return ast.assign(name, recurse(value))
 		},
 
 		// Conditional expressions: fold if condition is a constant
+		// Tuple: [kind, condition, consequent, alternate]
 		ConditionalExpression: (n, recurse) => {
-			const condition = recurse(n.condition)
+			const conditionNode = n[1]
+			const consequentNode = n[2]
+			const alternateNode = n[3]
+
+			const condition = recurse(conditionNode)
 
 			// If condition is a constant, choose the branch at compile-time
 			if (isNumberLiteral(condition)) {
-				return condition.value !== 0
-					? recurse(n.consequent)
-					: recurse(n.alternate)
+				const value = condition[1]
+				return value !== 0 ? recurse(consequentNode) : recurse(alternateNode)
 			}
 
 			// Otherwise, optimize all three parts
-			const consequent = recurse(n.consequent)
-			const alternate = recurse(n.alternate)
+			const consequent = recurse(consequentNode)
+			const alternate = recurse(alternateNode)
 
 			return ast.conditional(condition, consequent, alternate)
 		},
 
 		// Programs: optimize each statement independently
+		// Tuple: [kind, statements]
 		Program: (n, recurse) => {
-			const optimizedStatements = n.statements.map(recurse)
+			const statements = n[1]
+			const optimizedStatements = statements.map(recurse)
 			return ast.program(optimizedStatements)
 		},
 	})
 
 	// Step 2: Apply dead code elimination if the result is a Program
-	if (isProgram(folded) && folded.statements.length > 0) {
+	if (isProgram(folded) && folded[1].length > 0) {
 		return eliminateDeadCode(folded)
 	}
 

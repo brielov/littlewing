@@ -1,7 +1,6 @@
 import { describe, expect, test } from 'bun:test'
+import { isAssignment, isBinaryOp, isConditionalExpression } from '../src/ast'
 import { parse } from '../src/parser'
-import type { Assignment, BinaryOp, ConditionalExpression } from '../src/types'
-import { isAssignment, isBinaryOp, isConditionalExpression } from '../src/types'
 
 describe('Precedence', () => {
 	test('logical operators vs comparison', () => {
@@ -9,12 +8,18 @@ describe('Precedence', () => {
 		// So: 5 > 3 && 10 > 8 should parse as (5 > 3) && (10 > 8)
 		const ast1 = parse('5 > 3 && 10 > 8')
 		expect(isBinaryOp(ast1)).toBe(true)
-		const binaryNode = ast1 as BinaryOp
-		expect(binaryNode.operator).toBe('&&')
-		expect(isBinaryOp(binaryNode.left)).toBe(true)
-		expect(isBinaryOp(binaryNode.right)).toBe(true)
-		expect((binaryNode.left as BinaryOp).operator).toBe('>')
-		expect((binaryNode.right as BinaryOp).operator).toBe('>')
+		if (isBinaryOp(ast1)) {
+			// Tuple: [kind, left, operator, right]
+			expect(ast1[2]).toBe('&&')
+			expect(isBinaryOp(ast1[1])).toBe(true)
+			expect(isBinaryOp(ast1[3])).toBe(true)
+			if (isBinaryOp(ast1[1])) {
+				expect(ast1[1][2]).toBe('>')
+			}
+			if (isBinaryOp(ast1[3])) {
+				expect(ast1[3][2]).toBe('>')
+			}
+		}
 	})
 
 	test('logical operators vs ternary', () => {
@@ -22,9 +27,14 @@ describe('Precedence', () => {
 		// So: 1 && 1 ? 100 : 50 should parse as (1 && 1) ? 100 : 50
 		const ast1 = parse('1 && 1 ? 100 : 50')
 		expect(isConditionalExpression(ast1)).toBe(true)
-		const condNode = ast1 as ConditionalExpression
-		expect(isBinaryOp(condNode.condition)).toBe(true)
-		expect((condNode.condition as BinaryOp).operator).toBe('&&')
+		if (isConditionalExpression(ast1)) {
+			// Tuple: [kind, condition, consequent, alternate]
+			const condition = ast1[1]
+			expect(isBinaryOp(condition)).toBe(true)
+			if (isBinaryOp(condition)) {
+				expect(condition[2]).toBe('&&')
+			}
+		}
 	})
 
 	test('logical operators vs assignment', () => {
@@ -32,8 +42,13 @@ describe('Precedence', () => {
 		// So: x = 1 && 0 should parse as x = (1 && 0)
 		const ast1 = parse('x = 1 && 0')
 		expect(isAssignment(ast1)).toBe(true)
-		const assignNode = ast1 as Assignment
-		expect(isBinaryOp(assignNode.value)).toBe(true)
-		expect((assignNode.value as BinaryOp).operator).toBe('&&')
+		if (isAssignment(ast1)) {
+			// Tuple: [kind, name, value]
+			const value = ast1[2]
+			expect(isBinaryOp(value)).toBe(true)
+			if (isBinaryOp(value)) {
+				expect(value[2]).toBe('&&')
+			}
+		}
 	})
 })

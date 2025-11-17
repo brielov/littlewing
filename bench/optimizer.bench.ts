@@ -1,5 +1,6 @@
 import { bench, group, run } from 'mitata'
-import { optimize, parse } from '../src'
+import { optimize } from '../src/optimizer'
+import { parse } from '../src/parser'
 import { LARGE_SCRIPT, MEDIUM_SCRIPT, SMALL_SCRIPT } from './fixtures'
 
 // Pre-parse ASTs to isolate optimizer performance

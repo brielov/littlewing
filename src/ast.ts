@@ -353,3 +353,26 @@ export function logicalAnd(left: ASTNode, right: ASTNode): BinaryOp {
 export function logicalOr(left: ASTNode, right: ASTNode): BinaryOp {
 	return binaryOp(left, '||', right)
 }
+
+export function getNodeName(node: ASTNode): string {
+	switch (node[0]) {
+		case NodeKind.Assignment:
+			return 'Assignment'
+		case NodeKind.BinaryOp:
+			return 'BinaryOp'
+		case NodeKind.ConditionalExpression:
+			return 'ConditionalExpression'
+		case NodeKind.FunctionCall:
+			return 'FunctionCall'
+		case NodeKind.Identifier:
+			return 'Identifier'
+		case NodeKind.NumberLiteral:
+			return 'NumberLiteral'
+		case NodeKind.Program:
+			return 'Program'
+		case NodeKind.UnaryOp:
+			return 'UnaryOp'
+		default:
+			throw new Error(`Unknown node kind: ${node[0]}`)
+	}
+}

@@ -1,14 +1,12 @@
 import { describe, expect, test } from 'bun:test'
 import * as ast from '../src/ast'
-import { Interpreter } from '../src/interpreter'
-import type { BinaryOp } from '../src/types'
-import { isBinaryOp } from '../src/types'
+import { isBinaryOp, isConditionalExpression, NodeKind } from '../src/ast'
+import { evaluate } from '../src/interpreter'
 
 describe('AST Builders', () => {
 	test('manual construction', () => {
 		const node = ast.add(ast.number(2), ast.number(3))
-		const executor = new Interpreter()
-		const result = executor.evaluate(node)
+		const result = evaluate(node)
 		expect(result).toBe(5)
 	})
 
@@ -17,58 +15,66 @@ describe('AST Builders', () => {
 			ast.add(ast.number(2), ast.number(3)),
 			ast.number(4),
 		)
-		const executor = new Interpreter()
-		const result = executor.evaluate(node)
+		const result = evaluate(node)
 		expect(result).toBe(20)
 	})
 
 	test('with variables', () => {
 		const node = ast.assign('x', ast.add(ast.number(2), ast.number(3)))
-		const executor = new Interpreter()
-		const result = executor.evaluate(node)
+		const result = evaluate(node)
 		expect(result).toBe(5)
 	})
 
 	test('function call', () => {
 		const node = ast.functionCall('ABS', [ast.negate(ast.number(5))])
-		const executor = new Interpreter({
+		const result = evaluate(node, {
 			functions: { ABS: Math.abs },
 		})
-		const result = executor.evaluate(node)
 		expect(result).toBe(5)
 	})
 
 	test('unary operator', () => {
 		const node = ast.negate(ast.number(5))
-		const executor = new Interpreter()
-		const result = executor.evaluate(node)
+		const result = evaluate(node)
 		expect(result).toBe(-5)
 	})
 
 	test('comparison operator builders', () => {
 		const node1 = ast.equals(ast.number(5), ast.number(5))
 		expect(isBinaryOp(node1)).toBe(true)
-		expect((node1 as BinaryOp).operator).toBe('==')
+		if (isBinaryOp(node1)) {
+			expect(node1[2]).toBe('==')
+		}
 
 		const node2 = ast.notEquals(ast.number(5), ast.number(3))
 		expect(isBinaryOp(node2)).toBe(true)
-		expect((node2 as BinaryOp).operator).toBe('!=')
+		if (isBinaryOp(node2)) {
+			expect(node2[2]).toBe('!=')
+		}
 
 		const node3 = ast.lessThan(ast.number(3), ast.number(5))
 		expect(isBinaryOp(node3)).toBe(true)
-		expect((node3 as BinaryOp).operator).toBe('<')
+		if (isBinaryOp(node3)) {
+			expect(node3[2]).toBe('<')
+		}
 
 		const node4 = ast.greaterThan(ast.number(5), ast.number(3))
 		expect(isBinaryOp(node4)).toBe(true)
-		expect((node4 as BinaryOp).operator).toBe('>')
+		if (isBinaryOp(node4)) {
+			expect(node4[2]).toBe('>')
+		}
 
 		const node5 = ast.lessEqual(ast.number(3), ast.number(5))
 		expect(isBinaryOp(node5)).toBe(true)
-		expect((node5 as BinaryOp).operator).toBe('<=')
+		if (isBinaryOp(node5)) {
+			expect(node5[2]).toBe('<=')
+		}
 
 		const node6 = ast.greaterEqual(ast.number(5), ast.number(3))
 		expect(isBinaryOp(node6)).toBe(true)
-		expect((node6 as BinaryOp).operator).toBe('>=')
+		if (isBinaryOp(node6)) {
+			expect(node6[2]).toBe('>=')
+		}
 	})
 
 	test('conditional expression builder', () => {
@@ -77,25 +83,33 @@ describe('AST Builders', () => {
 			ast.number(100),
 			ast.number(50),
 		)
-		expect(node.type).toBe('ConditionalExpression')
-		expect(node.condition).toBeDefined()
-		expect(node.consequent).toBeDefined()
-		expect(node.alternate).toBeDefined()
+		expect(isConditionalExpression(node)).toBe(true)
+		if (isConditionalExpression(node)) {
+			// Tuple: [kind, condition, consequent, alternate]
+			expect(node[0]).toBe(NodeKind.ConditionalExpression)
+			expect(node[1]).toBeDefined()
+			expect(node[2]).toBeDefined()
+			expect(node[3]).toBeDefined()
+		}
 	})
 
 	test('logicalAnd', () => {
 		const node = ast.logicalAnd(ast.number(1), ast.number(1))
-		expect(node.type).toBe('BinaryOp')
-		expect(node.operator).toBe('&&')
-		const result = new Interpreter().evaluate(node)
+		expect(isBinaryOp(node)).toBe(true)
+		if (isBinaryOp(node)) {
+			expect(node[2]).toBe('&&')
+		}
+		const result = evaluate(node)
 		expect(result).toBe(1)
 	})
 
 	test('logicalOr', () => {
 		const node = ast.logicalOr(ast.number(0), ast.number(1))
-		expect(node.type).toBe('BinaryOp')
-		expect(node.operator).toBe('||')
-		const result = new Interpreter().evaluate(node)
+		expect(isBinaryOp(node)).toBe(true)
+		if (isBinaryOp(node)) {
+			expect(node[2]).toBe('||')
+		}
+		const result = evaluate(node)
 		expect(result).toBe(1)
 	})
 })

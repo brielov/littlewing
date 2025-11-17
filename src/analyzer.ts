@@ -1,5 +1,5 @@
-import type { ASTNode } from './types'
-import { isAssignment, isProgram } from './types'
+import type { ASTNode } from './ast'
+import { isAssignment, isProgram } from './ast'
 import { collectAllIdentifiers } from './utils'
 
 /**
@@ -27,13 +27,17 @@ export function extractInputVariables(ast: ASTNode): string[] {
 	const inputVars = new Set<string>()
 
 	// Handle both single statements and Program nodes
-	const statements = isProgram(ast) ? ast.statements : [ast]
+	// Tuple: [kind, statements]
+	const statements = isProgram(ast) ? ast[1] : [ast]
 
 	for (const statement of statements) {
+		// Tuple: [kind, name, value]
 		if (isAssignment(statement)) {
+			const name = statement[1]
+			const value = statement[2]
 			// Check if the assignment value contains any variable references
-			if (!containsVariableReference(statement.value)) {
-				inputVars.add(statement.name)
+			if (!containsVariableReference(value)) {
+				inputVars.add(name)
 			}
 		}
 	}

@@ -388,9 +388,9 @@ describe('Parser', () => {
 		expectKind(node, NodeKind.FunctionCall)
 		expect(node[1]).toBe('MAX')
 		expect(node[2].length).toBe(3)
-		expectNumber(node[2][0], 1)
-		expectNumber(node[2][1], 2)
-		expectNumber(node[2][2], 3)
+		expectNumber(node[2][0]!, 1)
+		expectNumber(node[2][1]!, 2)
+		expectNumber(node[2][2]!, 3)
 	})
 
 	test('parse nested function calls', () => {
@@ -399,7 +399,7 @@ describe('Parser', () => {
 		expect(node[1]).toBe('ABS')
 		expect(node[2].length).toBe(1)
 
-		const innerCall = node[2][0]
+		const innerCall = node[2][0]!
 		expectKind(innerCall, NodeKind.FunctionCall)
 		expect(innerCall[1]).toBe('MIN')
 	})
@@ -415,9 +415,9 @@ describe('Parser', () => {
 		const node = parse('MAX(x + 1, y * 2, z / 3)')
 		expectKind(node, NodeKind.FunctionCall)
 		expect(node[2].length).toBe(3)
-		expectBinaryOp(node[2][0], '+')
-		expectBinaryOp(node[2][1], '*')
-		expectBinaryOp(node[2][2], '/')
+		expectBinaryOp(node[2][0]!, '+')
+		expectBinaryOp(node[2][1]!, '*')
+		expectBinaryOp(node[2][2]!, '/')
 	})
 
 	// Operator precedence combination tests
@@ -479,9 +479,9 @@ describe('Parser', () => {
 		expectKind(node, NodeKind.Program)
 		expect(node[1].length).toBe(3)
 
-		expectKind(node[1][0], NodeKind.Assignment)
-		expectKind(node[1][1], NodeKind.Assignment)
-		expectBinaryOp(node[1][2], '+')
+		expectKind(node[1][0]!, NodeKind.Assignment)
+		expectKind(node[1][1]!, NodeKind.Assignment)
+		expectBinaryOp(node[1][2]!, '+')
 	})
 
 	test('parse program with semicolons', () => {

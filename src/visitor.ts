@@ -1,14 +1,16 @@
-import type {
-	ASTNode,
-	Assignment,
-	BinaryOp,
-	ConditionalExpression,
-	FunctionCall,
-	Identifier,
-	NumberLiteral,
-	Program,
-	UnaryOp,
-} from './types'
+import {
+	type ASTNode,
+	type Assignment,
+	type BinaryOp,
+	type ConditionalExpression,
+	type FunctionCall,
+	getNodeName,
+	type Identifier,
+	NodeKind,
+	type NumberLiteral,
+	type Program,
+	type UnaryOp,
+} from './ast'
 
 /**
  * Type-safe visitor pattern for AST traversal.
@@ -163,7 +165,7 @@ export function visit<T>(node: ASTNode, visitor: Visitor<T>): T {
 	return visitPartial(node, visitor, (node) => {
 		// This should never be reached because Visitor<T> requires all handlers
 		// But we throw just in case
-		throw new Error(`No handler for node type: ${node.type}`)
+		throw new Error(`No handler for node type: ${getNodeName(node)}`)
 	})
 }
 
@@ -229,36 +231,36 @@ export function visitPartial<T>(
 	const recurse = (n: ASTNode): T => visitPartial(n, visitor, defaultHandler)
 
 	// Use switch for type-safe dispatch - TypeScript narrows node type in each case
-	switch (node.type) {
-		case 'Program':
+	switch (node[0]) {
+		case NodeKind.Program:
 			return visitor.Program
 				? visitor.Program(node, recurse)
 				: defaultHandler(node, recurse)
-		case 'NumberLiteral':
+		case NodeKind.NumberLiteral:
 			return visitor.NumberLiteral
 				? visitor.NumberLiteral(node, recurse)
 				: defaultHandler(node, recurse)
-		case 'Identifier':
+		case NodeKind.Identifier:
 			return visitor.Identifier
 				? visitor.Identifier(node, recurse)
 				: defaultHandler(node, recurse)
-		case 'BinaryOp':
+		case NodeKind.BinaryOp:
 			return visitor.BinaryOp
 				? visitor.BinaryOp(node, recurse)
 				: defaultHandler(node, recurse)
-		case 'UnaryOp':
+		case NodeKind.UnaryOp:
 			return visitor.UnaryOp
 				? visitor.UnaryOp(node, recurse)
 				: defaultHandler(node, recurse)
-		case 'FunctionCall':
+		case NodeKind.FunctionCall:
 			return visitor.FunctionCall
 				? visitor.FunctionCall(node, recurse)
 				: defaultHandler(node, recurse)
-		case 'Assignment':
+		case NodeKind.Assignment:
 			return visitor.Assignment
 				? visitor.Assignment(node, recurse)
 				: defaultHandler(node, recurse)
-		case 'ConditionalExpression':
+		case NodeKind.ConditionalExpression:
 			return visitor.ConditionalExpression
 				? visitor.ConditionalExpression(node, recurse)
 				: defaultHandler(node, recurse)

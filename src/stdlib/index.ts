@@ -1,8 +1,9 @@
-import * as dateUtils from './date-utils'
-import type { ExecutionContext } from './types'
+import type { ExecutionContext } from '../types'
+import * as datetime from './datetime'
+import * as math from './math'
 
 /**
- * Default execution context with common Math functions and date/time utilities
+ * Default execution context with standard library functions
  * Users can use this as-is or spread it into their own context
  *
  * All functions use UPPERCASE naming convention to avoid collisions with user variables.
@@ -33,30 +34,13 @@ import type { ExecutionContext } from './types'
  */
 export const defaultContext: ExecutionContext = {
 	functions: {
-		// Math functions (uppercase for consistency)
-		ABS: Math.abs,
-		CEIL: Math.ceil,
-		FLOOR: Math.floor,
-		ROUND: Math.round,
-		SQRT: Math.sqrt,
-		MIN: Math.min,
-		MAX: Math.max,
-		SIN: Math.sin,
-		COS: Math.cos,
-		TAN: Math.tan,
-		LOG: Math.log,
-		LOG10: Math.log10,
-		EXP: Math.exp,
+		// Math utilities
+		...math,
 
-		/**
-		 * Constrain a value between a minimum and maximum
-		 * @example CLAMP(value, 0, 100) - Clamps value between 0 and 100
-		 */
-		CLAMP: (value: number, min: number, max: number): number => {
-			return value < min ? min : value > max ? max : value
-		},
-
-		// All date/time utilities (from date-utils module)
-		...dateUtils,
+		// Date/time utilities
+		...datetime,
 	},
 }
+
+// Re-export stdlib modules for direct access
+export { math, datetime }
