@@ -1,0 +1,58 @@
+{
+    "name": "coffi",
+    "description": "📄 A fast, lightweight, easy-to-use, configuration files loader for Bun",
+    "version": "0.1.37",
+    "type": "module",
+    "files": ["dist"],
+    "module": "./dist/index.js",
+    "main": "./dist/index.cjs",
+    "types": "./dist/index.d.ts",
+    "exports": {
+        ".": {
+            "import": {
+                "types": "./dist/index.d.ts",
+                "default": "./dist/index.js"
+            },
+            "require": {
+                "types": "./dist/index.d.cts",
+                "default": "./dist/index.cjs"
+            }
+        },
+        "./package.json": "./package.json"
+    },
+    "devDependencies": {
+        "@biomejs/biome": "^1.9.4",
+        "@commitlint/cli": "^19.8.0",
+        "@commitlint/config-conventional": "^19.8.0",
+        "@types/bun": "^1.2.23",
+        "bumpp": "^10.1.0",
+        "bunup": "^0.14.14",
+        "husky": "^9.1.7",
+        "typescript": "^5.8.3"
+    },
+    "keywords": [
+        "config",
+        "config-loader",
+        "config-files",
+        "config-files-loader"
+    ],
+    "license": "MIT",
+    "scripts": {
+        "build": "bunup",
+        "dev": "bunup --watch",
+        "lint": "biome check .",
+        "lint:fix": "biome check --write .",
+        "format": "biome format .",
+        "format:fix": "biome format --write .",
+        "tsc": "tsc --noEmit",
+        "test": "bun test",
+        "test:watch": "bun test --watch",
+        "test:coverage": "bun test --coverage",
+        "release": "bumpp --commit --push --tag",
+        "publish:ci": "bun publish --access public --no-git-checks",
+        "prepare": "husky"
+    },
+    "dependencies": {
+        "strip-json-comments": "^5.0.3"
+    }
+}

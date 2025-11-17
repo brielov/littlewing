@@ -1,0 +1,75 @@
+name: Continuous Benchmarking
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+
+permissions:
+  contents: write
+  deployments: write
+  pull-requests: write
+
+jobs:
+  benchmark:
+    name: Performance Benchmarks
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Build
+        run: bun run build
+
+      - name: Run benchmarks
+        run: bun bench/run-all.ts > benchmark-output.txt 2>&1
+
+      - name: Transform benchmark results to JSON
+        run: bun scripts/transform-bench-to-json.ts benchmark-output.txt benchmark-results.json
+
+      - name: Store benchmark result (master branch)
+        if: github.ref == 'refs/heads/master' && github.event_name == 'push'
+        uses: benchmark-action/github-action-benchmark@v1
+        with:
+          name: littlewing Performance
+          tool: 'customSmallerIsBetter'
+          output-file-path: benchmark-results.json
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          auto-push: true
+          alert-threshold: '150%'
+          comment-on-alert: true
+          fail-on-alert: false
+          summary-always: true
+
+      - name: Compare benchmark result (Pull Request)
+        if: github.event_name == 'pull_request'
+        uses: benchmark-action/github-action-benchmark@v1
+        with:
+          name: littlewing Performance
+          tool: 'customSmallerIsBetter'
+          output-file-path: benchmark-results.json
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          auto-push: false
+          save-data-file: false
+          alert-threshold: '150%'
+          comment-on-alert: true
+          fail-on-alert: false
+          summary-always: true
+
+      - name: Upload benchmark artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-results
+          path: |
+            benchmark-output.txt
+            benchmark-results.json
