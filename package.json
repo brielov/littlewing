@@ -35,6 +35,7 @@
 		"dist"
 	],
 	"scripts": {
+		"bench": "bun bench/run-all.ts",
 		"build": "bunup",
 		"dev": "bunup --watch",
 		"postinstall": "bun simple-git-hooks",
@@ -77,5 +78,8 @@
 	},
 	"simple-git-hooks": {
 		"pre-commit": "bun run lint && bun run type-check"
+	},
+	"dependencies": {
+		"mitata": "^1.0.34"
 	}
 }
