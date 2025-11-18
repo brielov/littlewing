@@ -1,6 +1,6 @@
 {
 	"name": "littlewing",
-	"version": "1.1.0",
+	"version": "1.1.1",
 	"description": "A minimal, high-performance arithmetic expression language with lexer, parser, and executor. Optimized for browsers with zero dependencies and type-safe execution.",
 	"keywords": [
 		"arithmetic",
