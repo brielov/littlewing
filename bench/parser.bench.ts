@@ -1,5 +1,5 @@
 import { bench, group, run } from 'mitata'
-import { parse } from '../src'
+import { parse } from '../src/parser'
 import { LARGE_SCRIPT, MEDIUM_SCRIPT, SMALL_SCRIPT } from './fixtures'
 
 group('Parser', () => {

@@ -260,17 +260,27 @@ const ast = parse("x = 5; x + 10");
 
 // Count all identifiers in an AST
 const count = visit(ast, {
-	Program: (n, recurse) =>
-		n.statements.reduce((sum, stmt) => sum + recurse(stmt), 0),
+	// Tuple: [kind, statements]
+	Program: (n, recurse) => {
+		const statements = n[1];
+		return statements.reduce((sum, stmt) => sum + recurse(stmt), 0);
+	},
 	NumberLiteral: () => 0,
 	Identifier: () => 1,
-	BinaryOp: (n, recurse) => recurse(n.left) + recurse(n.right),
-	UnaryOp: (n, recurse) => recurse(n.argument),
-	Assignment: (n, recurse) => 1 + recurse(n.value),
-	FunctionCall: (n, recurse) =>
-		1 + n.arguments.reduce((sum, arg) => sum + recurse(arg), 0),
+	// Tuple: [kind, left, operator, right]
+	BinaryOp: (n, recurse) => recurse(n[1]) + recurse(n[3]),
+	// Tuple: [kind, operator, argument]
+	UnaryOp: (n, recurse) => recurse(n[2]),
+	// Tuple: [kind, name, value]
+	Assignment: (n, recurse) => 1 + recurse(n[2]),
+	// Tuple: [kind, name, arguments]
+	FunctionCall: (n, recurse) => {
+		const args = n[2];
+		return 1 + args.reduce((sum, arg) => sum + recurse(arg), 0);
+	},
+	// Tuple: [kind, condition, consequent, alternate]
 	ConditionalExpression: (n, recurse) =>
-		recurse(n.condition) + recurse(n.consequent) + recurse(n.alternate),
+		recurse(n[1]) + recurse(n[2]) + recurse(n[3]),
 }); // → 3 (x appears 3 times)
 ```
 
@@ -287,18 +297,24 @@ const ast = parse("x = 5; y = x + 10; y * 2");
 const result = visitPartial(
 	ast,
 	{
+		// Tuple: [kind, statements]
 		Program: (n, recurse) => {
-			for (const stmt of n.statements) {
+			const statements = n[1];
+			for (const stmt of statements) {
 				const found = recurse(stmt);
 				if (found !== undefined) return found;
 			}
 			return undefined;
 		},
+		// Tuple: [kind, name, value]
 		Assignment: (n, recurse) => {
-			if (n.name === "y") return n; // Found it!
-			return recurse(n.value); // Keep searching
+			const name = n[1];
+			const value = n[2];
+			if (name === "y") return n; // Found it!
+			return recurse(value); // Keep searching
 		},
-		BinaryOp: (n, recurse) => recurse(n.left) ?? recurse(n.right),
+		// Tuple: [kind, left, operator, right]
+		BinaryOp: (n, recurse) => recurse(n[1]) ?? recurse(n[3]),
 	},
 	() => undefined,
 ); // → Assignment node for "y = x + 10"
@@ -313,22 +329,29 @@ import { visit, parse, ast } from "littlewing";
 
 // Double all numeric literals
 const transformed = visit<ASTNode>(parse("2 + 3 * 4"), {
-	Program: (n, recurse) =>
-		ast.program(n.statements.map((stmt) => recurse(stmt))),
-	NumberLiteral: (n) => ast.number(n.value * 2),
+	// Tuple: [kind, statements]
+	Program: (n, recurse) => {
+		const statements = n[1];
+		return ast.program(statements.map((stmt) => recurse(stmt)));
+	},
+	// Tuple: [kind, value]
+	NumberLiteral: (n) => ast.number(n[1] * 2),
 	Identifier: (n) => n,
-	BinaryOp: (n, recurse) =>
-		ast.binaryOp(recurse(n.left), n.operator, recurse(n.right)),
-	UnaryOp: (n, recurse) => ast.unaryOp(n.operator, recurse(n.argument)),
-	Assignment: (n, recurse) => ast.assignment(n.name, recurse(n.value)),
-	FunctionCall: (n, recurse) =>
-		ast.functionCall(n.name, n.arguments.map(recurse)),
+	// Tuple: [kind, left, operator, right]
+	BinaryOp: (n, recurse) => ast.binaryOp(recurse(n[1]), n[2], recurse(n[3])),
+	// Tuple: [kind, operator, argument]
+	UnaryOp: (n, recurse) => ast.unaryOp(n[1], recurse(n[2])),
+	// Tuple: [kind, name, value]
+	Assignment: (n, recurse) => ast.assign(n[1], recurse(n[2])),
+	// Tuple: [kind, name, arguments]
+	FunctionCall: (n, recurse) => {
+		const name = n[1];
+		const args = n[2];
+		return ast.functionCall(name, args.map(recurse));
+	},
+	// Tuple: [kind, condition, consequent, alternate]
 	ConditionalExpression: (n, recurse) =>
-		ast.conditional(
-			recurse(n.condition),
-			recurse(n.consequent),
-			recurse(n.alternate),
-		),
+		ast.conditional(recurse(n[1]), recurse(n[2]), recurse(n[3])),
 });
 
 generate(transformed); // → "4 + 6 * 8"

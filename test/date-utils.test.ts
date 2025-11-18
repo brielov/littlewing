@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test'
-import { defaultContext } from '../src/defaults'
 import { evaluate } from '../src/interpreter'
+import { defaultContext } from '../src/stdlib'
 
 describe('Date Utils', () => {
 	describe('CORE FUNCTIONS', () => {

@@ -1,5 +1,5 @@
+import type { ASTNode, Operator } from './ast'
 import { TokenKind } from './lexer'
-import type { ASTNode, Operator } from './types'
 import { visit } from './visitor'
 
 /**
@@ -117,35 +117,44 @@ export function collectAllIdentifiers(node: ASTNode): Set<string> {
 	const identifiers = new Set<string>()
 
 	visit<void>(node, {
+		// Tuple: [kind, statements]
 		Program: (n, recurse) => {
-			for (const stmt of n.statements) {
+			const statements = n[1]
+			for (const stmt of statements) {
 				recurse(stmt)
 			}
 		},
 		NumberLiteral: () => {},
+		// Tuple: [kind, name]
 		Identifier: (n) => {
-			identifiers.add(n.name)
+			identifiers.add(n[1])
 		},
+		// Tuple: [kind, left, operator, right]
 		BinaryOp: (n, recurse) => {
-			recurse(n.left)
-			recurse(n.right)
+			recurse(n[1])
+			recurse(n[3])
 		},
+		// Tuple: [kind, operator, argument]
 		UnaryOp: (n, recurse) => {
-			recurse(n.argument)
+			recurse(n[2])
 		},
+		// Tuple: [kind, name, arguments]
 		FunctionCall: (n, recurse) => {
-			for (const arg of n.arguments) {
+			const args = n[2]
+			for (const arg of args) {
 				recurse(arg)
 			}
 		},
+		// Tuple: [kind, name, value]
 		Assignment: (n, recurse) => {
 			// Collect from RHS only (LHS is the variable being assigned)
-			recurse(n.value)
+			recurse(n[2])
 		},
+		// Tuple: [kind, condition, consequent, alternate]
 		ConditionalExpression: (n, recurse) => {
-			recurse(n.condition)
-			recurse(n.consequent)
-			recurse(n.alternate)
+			recurse(n[1])
+			recurse(n[2])
+			recurse(n[3])
 		},
 	})
 

@@ -1,15 +1,163 @@
-import type {
-	ASTNode,
-	Assignment,
-	BinaryOp,
-	ConditionalExpression,
-	FunctionCall,
-	Identifier,
-	NumberLiteral,
-	Operator,
+/**
+ * Binary operator types
+ */
+export type Operator =
+	| '+'
+	| '-'
+	| '*'
+	| '/'
+	| '%'
+	| '^'
+	| '=='
+	| '!='
+	| '<'
+	| '>'
+	| '<='
+	| '>='
+	| '&&'
+	| '||'
+
+/**
+ * AST Node kind discriminator (const enum for zero-cost abstraction)
+ */
+export const enum NodeKind {
 	Program,
+	NumberLiteral,
+	Identifier,
+	BinaryOp,
 	UnaryOp,
-} from './types'
+	FunctionCall,
+	Assignment,
+	ConditionalExpression,
+}
+
+/**
+ * Program node (multiple statements)
+ * Tuple: [kind, statements]
+ */
+export type Program = readonly [
+	kind: NodeKind.Program,
+	statements: readonly ASTNode[],
+]
+
+/**
+ * Number literal (123, 45.67)
+ * Tuple: [kind, value]
+ */
+export type NumberLiteral = readonly [
+	kind: NodeKind.NumberLiteral,
+	value: number,
+]
+
+/**
+ * Identifier (variable or function name)
+ * Tuple: [kind, name]
+ */
+export type Identifier = readonly [kind: NodeKind.Identifier, name: string]
+
+/**
+ * Binary operation (a + b, x * y, etc.)
+ * Tuple: [kind, left, operator, right]
+ * Note: left-to-right reading order
+ */
+export type BinaryOp = readonly [
+	kind: NodeKind.BinaryOp,
+	left: ASTNode,
+	operator: Operator,
+	right: ASTNode,
+]
+
+/**
+ * Unary operation (-x, !x, etc.)
+ * Tuple: [kind, operator, argument]
+ */
+export type UnaryOp = readonly [
+	kind: NodeKind.UnaryOp,
+	operator: '-' | '!',
+	argument: ASTNode,
+]
+
+/**
+ * Function call (NOW(), MAX(a, b), etc.)
+ * Tuple: [kind, name, arguments]
+ */
+export type FunctionCall = readonly [
+	kind: NodeKind.FunctionCall,
+	name: string,
+	arguments: readonly ASTNode[],
+]
+
+/**
+ * Variable assignment (x = 5)
+ * Tuple: [kind, name, value]
+ */
+export type Assignment = readonly [
+	kind: NodeKind.Assignment,
+	name: string,
+	value: ASTNode,
+]
+
+/**
+ * Conditional expression (ternary operator: condition ? consequent : alternate)
+ * Returns consequent if condition !== 0, otherwise returns alternate
+ * Tuple: [kind, condition, consequent, alternate]
+ */
+export type ConditionalExpression = readonly [
+	kind: NodeKind.ConditionalExpression,
+	condition: ASTNode,
+	consequent: ASTNode,
+	alternate: ASTNode,
+]
+
+/**
+ * AST Node - discriminated union of all node types
+ */
+export type ASTNode =
+	| Program
+	| NumberLiteral
+	| Identifier
+	| BinaryOp
+	| UnaryOp
+	| FunctionCall
+	| Assignment
+	| ConditionalExpression
+
+/**
+ * Type guard functions for discriminated union narrowing
+ */
+export function isProgram(node: ASTNode): node is Program {
+	return node[0] === NodeKind.Program
+}
+
+export function isNumberLiteral(node: ASTNode): node is NumberLiteral {
+	return node[0] === NodeKind.NumberLiteral
+}
+
+export function isIdentifier(node: ASTNode): node is Identifier {
+	return node[0] === NodeKind.Identifier
+}
+
+export function isBinaryOp(node: ASTNode): node is BinaryOp {
+	return node[0] === NodeKind.BinaryOp
+}
+
+export function isUnaryOp(node: ASTNode): node is UnaryOp {
+	return node[0] === NodeKind.UnaryOp
+}
+
+export function isFunctionCall(node: ASTNode): node is FunctionCall {
+	return node[0] === NodeKind.FunctionCall
+}
+
+export function isAssignment(node: ASTNode): node is Assignment {
+	return node[0] === NodeKind.Assignment
+}
+
+export function isConditionalExpression(
+	node: ASTNode,
+): node is ConditionalExpression {
+	return node[0] === NodeKind.ConditionalExpression
+}
 
 /**
  * Builder functions for creating AST nodes manually
@@ -18,31 +166,22 @@ import type {
 /**
  * Create a program node
  */
-export function program(statements: ASTNode[]): Program {
-	return {
-		type: 'Program',
-		statements,
-	}
+export function program(statements: readonly ASTNode[]): Program {
+	return [NodeKind.Program, statements]
 }
 
 /**
  * Create a number literal node
  */
 export function number(value: number): NumberLiteral {
-	return {
-		type: 'NumberLiteral',
-		value,
-	}
+	return [NodeKind.NumberLiteral, value]
 }
 
 /**
  * Create an identifier node
  */
 export function identifier(name: string): Identifier {
-	return {
-		type: 'Identifier',
-		name,
-	}
+	return [NodeKind.Identifier, name]
 }
 
 /**
@@ -53,45 +192,31 @@ export function binaryOp(
 	operator: Operator,
 	right: ASTNode,
 ): BinaryOp {
-	return {
-		type: 'BinaryOp',
-		left,
-		operator,
-		right,
-	}
+	return [NodeKind.BinaryOp, left, operator, right]
 }
 
 /**
  * Create a unary operation node (unary minus or logical NOT)
  */
 export function unaryOp(operator: '-' | '!', argument: ASTNode): UnaryOp {
-	return {
-		type: 'UnaryOp',
-		operator,
-		argument,
-	}
+	return [NodeKind.UnaryOp, operator, argument]
 }
 
 /**
  * Create a function call node
  */
-export function functionCall(name: string, args: ASTNode[] = []): FunctionCall {
-	return {
-		type: 'FunctionCall',
-		name,
-		arguments: args,
-	}
+export function functionCall(
+	name: string,
+	args: readonly ASTNode[] = [],
+): FunctionCall {
+	return [NodeKind.FunctionCall, name, args]
 }
 
 /**
  * Create a variable assignment node
  */
 export function assign(name: string, value: ASTNode): Assignment {
-	return {
-		type: 'Assignment',
-		name,
-		value,
-	}
+	return [NodeKind.Assignment, name, value]
 }
 
 /**
@@ -102,12 +227,7 @@ export function conditional(
 	consequent: ASTNode,
 	alternate: ASTNode,
 ): ConditionalExpression {
-	return {
-		type: 'ConditionalExpression',
-		condition,
-		consequent,
-		alternate,
-	}
+	return [NodeKind.ConditionalExpression, condition, consequent, alternate]
 }
 
 /**
@@ -232,4 +352,27 @@ export function logicalAnd(left: ASTNode, right: ASTNode): BinaryOp {
  */
 export function logicalOr(left: ASTNode, right: ASTNode): BinaryOp {
 	return binaryOp(left, '||', right)
+}
+
+export function getNodeName(node: ASTNode): string {
+	switch (node[0]) {
+		case NodeKind.Assignment:
+			return 'Assignment'
+		case NodeKind.BinaryOp:
+			return 'BinaryOp'
+		case NodeKind.ConditionalExpression:
+			return 'ConditionalExpression'
+		case NodeKind.FunctionCall:
+			return 'FunctionCall'
+		case NodeKind.Identifier:
+			return 'Identifier'
+		case NodeKind.NumberLiteral:
+			return 'NumberLiteral'
+		case NodeKind.Program:
+			return 'Program'
+		case NodeKind.UnaryOp:
+			return 'UnaryOp'
+		default:
+			throw new Error(`Unknown node kind: ${node[0]}`)
+	}
 }

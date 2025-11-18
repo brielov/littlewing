@@ -1,8 +1,8 @@
 import { bench, group, run } from 'mitata'
-import { defaultContext, evaluate } from '../src'
+import { defaultContext, evaluate, generate, optimize, parse } from '../src'
 import { LARGE_SCRIPT, MEDIUM_SCRIPT, SMALL_SCRIPT } from './fixtures'
 
-group('Integration (Full Pipeline)', () => {
+group('Integration: Parse + Evaluate', () => {
 	bench('small script', () => {
 		evaluate(SMALL_SCRIPT, defaultContext)
 	})
@@ -16,7 +16,53 @@ group('Integration (Full Pipeline)', () => {
 	})
 })
 
-group('Integration (with external variables)', () => {
+group('Integration: Parse + Optimize + Evaluate', () => {
+	bench('small script', () => {
+		const ast = parse(SMALL_SCRIPT)
+		const optimized = optimize(ast)
+		evaluate(optimized, defaultContext)
+	})
+
+	bench('medium script', () => {
+		const ast = parse(MEDIUM_SCRIPT)
+		const optimized = optimize(ast)
+		evaluate(optimized, defaultContext)
+	})
+
+	bench('large script', () => {
+		const ast = parse(LARGE_SCRIPT)
+		const optimized = optimize(ast)
+		evaluate(optimized, defaultContext)
+	})
+})
+
+group(
+	'Integration: Full Pipeline (Parse + Optimize + Codegen + Parse + Evaluate)',
+	() => {
+		bench('small script', () => {
+			const ast = parse(SMALL_SCRIPT)
+			const optimized = optimize(ast)
+			const code = generate(optimized)
+			evaluate(code, defaultContext)
+		})
+
+		bench('medium script', () => {
+			const ast = parse(MEDIUM_SCRIPT)
+			const optimized = optimize(ast)
+			const code = generate(optimized)
+			evaluate(code, defaultContext)
+		})
+
+		bench('large script', () => {
+			const ast = parse(LARGE_SCRIPT)
+			const optimized = optimize(ast)
+			const code = generate(optimized)
+			evaluate(code, defaultContext)
+		})
+	},
+)
+
+group('Integration: With External Variables', () => {
 	const context = {
 		...defaultContext,
 		variables: {
@@ -27,15 +73,15 @@ group('Integration (with external variables)', () => {
 		},
 	}
 
-	bench('small script', () => {
+	bench('small script (parse + evaluate)', () => {
 		evaluate(SMALL_SCRIPT, context)
 	})
 
-	bench('medium script', () => {
+	bench('medium script (parse + evaluate)', () => {
 		evaluate(MEDIUM_SCRIPT, context)
 	})
 
-	bench('large script', () => {
+	bench('large script (parse + evaluate)', () => {
 		evaluate(LARGE_SCRIPT, context)
 	})
 })

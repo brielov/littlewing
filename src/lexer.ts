@@ -2,7 +2,7 @@
  * Token types for the lexer
  * Represents all valid tokens in the language
  */
-export enum TokenKind {
+export const enum TokenKind {
 	// Literals
 	Number,
 	Identifier,

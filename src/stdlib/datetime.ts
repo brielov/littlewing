@@ -1,3 +1,5 @@
+import type { RuntimeValue } from '../types'
+
 /**
  * Date utility functions for working with timestamps
  * All functions work with milliseconds since Unix epoch (numbers only)
@@ -15,7 +17,7 @@
 /**
  * Get current timestamp (milliseconds since Unix epoch)
  */
-export const NOW = (): number => Date.now()
+export const NOW = (): RuntimeValue => Date.now()
 
 /**
  * Create timestamp from date components (local timezone)
@@ -24,13 +26,14 @@ export const NOW = (): number => Date.now()
  * All parameters are interpreted in local timezone
  */
 export const DATE = (
-	year: number,
+	year: RuntimeValue,
 	month = 1,
 	day = 1,
 	hour = 0,
 	minute = 0,
 	second = 0,
-): number => new Date(year, month - 1, day, hour, minute, second).getTime()
+): RuntimeValue =>
+	new Date(year, month - 1, day, hour, minute, second).getTime()
 
 // ============================================================================
 // TIME CONVERTERS (to milliseconds)
@@ -39,19 +42,21 @@ export const DATE = (
 /**
  * Convert days to milliseconds
  */
-export const FROM_DAYS = (d: number): number => d * 24 * 60 * 60 * 1000
+export const FROM_DAYS = (d: RuntimeValue): RuntimeValue =>
+	d * 24 * 60 * 60 * 1000
 
 /**
  * Convert weeks to milliseconds
  */
-export const FROM_WEEKS = (w: number): number => w * 7 * 24 * 60 * 60 * 1000
+export const FROM_WEEKS = (w: RuntimeValue): RuntimeValue =>
+	w * 7 * 24 * 60 * 60 * 1000
 
 /**
  * Convert months to milliseconds (approximate: 30 days per month)
  * WARNING: This is an approximation. Not all months have 30 days.
  * For accurate month arithmetic, use ADD_MONTHS() instead.
  */
-export const FROM_MONTHS = (months: number): number =>
+export const FROM_MONTHS = (months: RuntimeValue): RuntimeValue =>
 	months * 30 * 24 * 60 * 60 * 1000
 
 /**
@@ -59,7 +64,7 @@ export const FROM_MONTHS = (months: number): number =>
  * WARNING: This is an approximation. Leap years have 366 days.
  * For accurate year arithmetic, use ADD_YEARS() instead.
  */
-export const FROM_YEARS = (years: number): number =>
+export const FROM_YEARS = (years: RuntimeValue): RuntimeValue =>
 	years * 365 * 24 * 60 * 60 * 1000
 
 // ============================================================================
@@ -69,56 +74,56 @@ export const FROM_YEARS = (years: number): number =>
 /**
  * Get the year from a timestamp (local timezone)
  */
-export const GET_YEAR = (timestamp: number): number =>
+export const GET_YEAR = (timestamp: RuntimeValue): RuntimeValue =>
 	new Date(timestamp).getFullYear()
 
 /**
  * Get the month from a timestamp (1-based: 1 = January, 12 = December, local timezone)
  */
-export const GET_MONTH = (timestamp: number): number =>
+export const GET_MONTH = (timestamp: RuntimeValue): RuntimeValue =>
 	new Date(timestamp).getMonth() + 1
 
 /**
  * Get the day of month from a timestamp (1-31, local timezone)
  */
-export const GET_DAY = (timestamp: number): number =>
+export const GET_DAY = (timestamp: RuntimeValue): RuntimeValue =>
 	new Date(timestamp).getDate()
 
 /**
  * Get the hour from a timestamp (0-23, local timezone)
  */
-export const GET_HOUR = (timestamp: number): number =>
+export const GET_HOUR = (timestamp: RuntimeValue): RuntimeValue =>
 	new Date(timestamp).getHours()
 
 /**
  * Get the minute from a timestamp (0-59, local timezone)
  */
-export const GET_MINUTE = (timestamp: number): number =>
+export const GET_MINUTE = (timestamp: RuntimeValue): RuntimeValue =>
 	new Date(timestamp).getMinutes()
 
 /**
  * Get the second from a timestamp (0-59, local timezone)
  */
-export const GET_SECOND = (timestamp: number): number =>
+export const GET_SECOND = (timestamp: RuntimeValue): RuntimeValue =>
 	new Date(timestamp).getSeconds()
 
 /**
  * Get the millisecond component from a timestamp (0-999, local timezone)
  */
-export const GET_MILLISECOND = (timestamp: number): number =>
+export const GET_MILLISECOND = (timestamp: RuntimeValue): RuntimeValue =>
 	new Date(timestamp).getMilliseconds()
 
 /**
  * Get the day of week from a timestamp (0 = Sunday, 6 = Saturday, local timezone)
  */
-export const GET_WEEKDAY = (timestamp: number): number =>
+export const GET_WEEKDAY = (timestamp: RuntimeValue): RuntimeValue =>
 	new Date(timestamp).getDay()
 
 /**
  * Get the day of year (1-366) from a timestamp (local timezone)
  * January 1st = 1, December 31st = 365 or 366 (leap year)
  */
-export const GET_DAY_OF_YEAR = (timestamp: number): number => {
+export const GET_DAY_OF_YEAR = (timestamp: RuntimeValue): RuntimeValue => {
 	const date = new Date(timestamp)
 	const year = date.getFullYear()
 	// Start of year in local timezone: January 1st at 00:00:00.000
@@ -132,7 +137,7 @@ export const GET_DAY_OF_YEAR = (timestamp: number): number => {
 /**
  * Get the quarter (1-4) from a timestamp (local timezone)
  */
-export const GET_QUARTER = (timestamp: number): number => {
+export const GET_QUARTER = (timestamp: RuntimeValue): RuntimeValue => {
 	const month = new Date(timestamp).getMonth()
 	return Math.floor(month / 3) + 1
 }
@@ -144,27 +149,36 @@ export const GET_QUARTER = (timestamp: number): number => {
 /**
  * Get the absolute difference between two timestamps in seconds (whole seconds)
  */
-export const DIFFERENCE_IN_SECONDS = (ts1: number, ts2: number): number =>
-	Math.ceil(Math.abs(ts1 - ts2) / 1000)
+export const DIFFERENCE_IN_SECONDS = (
+	ts1: RuntimeValue,
+	ts2: RuntimeValue,
+): RuntimeValue => Math.ceil(Math.abs(ts1 - ts2) / 1000)
 
 /**
  * Get the absolute difference between two timestamps in minutes (whole minutes)
  */
-export const DIFFERENCE_IN_MINUTES = (ts1: number, ts2: number): number =>
-	Math.ceil(Math.abs(ts1 - ts2) / (60 * 1000))
+export const DIFFERENCE_IN_MINUTES = (
+	ts1: RuntimeValue,
+	ts2: RuntimeValue,
+): RuntimeValue => Math.ceil(Math.abs(ts1 - ts2) / (60 * 1000))
 
 /**
  * Get the absolute difference between two timestamps in hours (whole hours)
  */
-export const DIFFERENCE_IN_HOURS = (ts1: number, ts2: number): number =>
-	Math.ceil(Math.abs(ts1 - ts2) / (60 * 60 * 1000))
+export const DIFFERENCE_IN_HOURS = (
+	ts1: RuntimeValue,
+	ts2: RuntimeValue,
+): RuntimeValue => Math.ceil(Math.abs(ts1 - ts2) / (60 * 60 * 1000))
 
 /**
  * Get the difference in calendar days between two timestamps
  * Counts the number of calendar day boundaries crossed, not 24-hour periods
  * Example: Nov 7 at 11:59 PM to Nov 8 at 12:01 AM = 1 day (different calendar days)
  */
-export const DIFFERENCE_IN_DAYS = (ts1: number, ts2: number): number => {
+export const DIFFERENCE_IN_DAYS = (
+	ts1: RuntimeValue,
+	ts2: RuntimeValue,
+): RuntimeValue => {
 	// Normalize both timestamps to start of their respective days
 	const day1 = START_OF_DAY(ts1)
 	const day2 = START_OF_DAY(ts2)
@@ -176,7 +190,10 @@ export const DIFFERENCE_IN_DAYS = (ts1: number, ts2: number): number => {
  * Get the difference in calendar weeks between two timestamps
  * Counts the number of week boundaries crossed (based on calendar days)
  */
-export const DIFFERENCE_IN_WEEKS = (ts1: number, ts2: number): number => {
+export const DIFFERENCE_IN_WEEKS = (
+	ts1: RuntimeValue,
+	ts2: RuntimeValue,
+): RuntimeValue => {
 	const days = DIFFERENCE_IN_DAYS(ts1, ts2)
 	return Math.floor(days / 7)
 }
@@ -191,7 +208,10 @@ export const DIFFERENCE_IN_WEEKS = (ts1: number, ts2: number): number => {
  *   Jan 31 → Feb 28 = 0 months (Feb 31 doesn't exist)
  *   Jan 31 → Mar 31 = 2 months
  */
-export const DIFFERENCE_IN_MONTHS = (ts1: number, ts2: number): number => {
+export const DIFFERENCE_IN_MONTHS = (
+	ts1: RuntimeValue,
+	ts2: RuntimeValue,
+): RuntimeValue => {
 	const smaller = Math.min(ts1, ts2)
 	const larger = Math.max(ts1, ts2)
 
@@ -221,7 +241,10 @@ export const DIFFERENCE_IN_MONTHS = (ts1: number, ts2: number): number => {
  *   Feb 29, 2020 → Feb 28, 2021 = 0 years (Feb 29 doesn't exist)
  *   Feb 29, 2020 → Mar 1, 2021 = 1 year
  */
-export const DIFFERENCE_IN_YEARS = (ts1: number, ts2: number): number => {
+export const DIFFERENCE_IN_YEARS = (
+	ts1: RuntimeValue,
+	ts2: RuntimeValue,
+): RuntimeValue => {
 	return Math.floor(DIFFERENCE_IN_MONTHS(ts1, ts2) / 12)
 }
 
@@ -232,7 +255,7 @@ export const DIFFERENCE_IN_YEARS = (ts1: number, ts2: number): number => {
 /**
  * Get the start of day (00:00:00.000 local time) for a given timestamp
  */
-export const START_OF_DAY = (timestamp: number): number => {
+export const START_OF_DAY = (timestamp: RuntimeValue): RuntimeValue => {
 	const date = new Date(timestamp)
 	return new Date(
 		date.getFullYear(),
@@ -248,7 +271,7 @@ export const START_OF_DAY = (timestamp: number): number => {
 /**
  * Get the end of day (23:59:59.999 local time) for a given timestamp
  */
-export const END_OF_DAY = (timestamp: number): number => {
+export const END_OF_DAY = (timestamp: RuntimeValue): RuntimeValue => {
 	const date = new Date(timestamp)
 	return new Date(
 		date.getFullYear(),
@@ -264,7 +287,7 @@ export const END_OF_DAY = (timestamp: number): number => {
 /**
  * Get the start of week (Sunday at 00:00:00.000 local time) for a given timestamp
  */
-export const START_OF_WEEK = (timestamp: number): number => {
+export const START_OF_WEEK = (timestamp: RuntimeValue): RuntimeValue => {
 	const date = new Date(timestamp)
 	const dayOfWeek = date.getDay() // 0 = Sunday, 6 = Saturday
 	const currentDay = date.getDate()
@@ -283,7 +306,7 @@ export const START_OF_WEEK = (timestamp: number): number => {
 /**
  * Get the start of month (1st day at 00:00:00.000 local time) for a given timestamp
  */
-export const START_OF_MONTH = (timestamp: number): number => {
+export const START_OF_MONTH = (timestamp: RuntimeValue): RuntimeValue => {
 	const date = new Date(timestamp)
 	return new Date(date.getFullYear(), date.getMonth(), 1, 0, 0, 0, 0).getTime()
 }
@@ -291,7 +314,7 @@ export const START_OF_MONTH = (timestamp: number): number => {
 /**
  * Get the end of month (last day at 23:59:59.999 local time) for a given timestamp
  */
-export const END_OF_MONTH = (timestamp: number): number => {
+export const END_OF_MONTH = (timestamp: RuntimeValue): RuntimeValue => {
 	const date = new Date(timestamp)
 	// Setting day to 0 of next month gives last day of current month
 	return new Date(
@@ -308,7 +331,7 @@ export const END_OF_MONTH = (timestamp: number): number => {
 /**
  * Get the start of year (Jan 1st at 00:00:00.000 local time) for a given timestamp
  */
-export const START_OF_YEAR = (timestamp: number): number => {
+export const START_OF_YEAR = (timestamp: RuntimeValue): RuntimeValue => {
 	const date = new Date(timestamp)
 	return new Date(date.getFullYear(), 0, 1, 0, 0, 0, 0).getTime()
 }
@@ -316,7 +339,7 @@ export const START_OF_YEAR = (timestamp: number): number => {
 /**
  * Get the end of year (Dec 31st at 23:59:59.999 local time) for a given timestamp
  */
-export const END_OF_YEAR = (timestamp: number): number => {
+export const END_OF_YEAR = (timestamp: RuntimeValue): RuntimeValue => {
 	const date = new Date(timestamp)
 	return new Date(date.getFullYear(), 11, 31, 23, 59, 59, 999).getTime()
 }
@@ -328,7 +351,10 @@ export const END_OF_YEAR = (timestamp: number): number => {
 /**
  * Add days to a timestamp (local timezone)
  */
-export const ADD_DAYS = (timestamp: number, days: number): number => {
+export const ADD_DAYS = (
+	timestamp: RuntimeValue,
+	days: RuntimeValue,
+): RuntimeValue => {
 	const date = new Date(timestamp)
 	return new Date(
 		date.getFullYear(),
@@ -344,7 +370,10 @@ export const ADD_DAYS = (timestamp: number, days: number): number => {
 /**
  * Add months to a timestamp (handles variable month lengths correctly, local timezone)
  */
-export const ADD_MONTHS = (timestamp: number, months: number): number => {
+export const ADD_MONTHS = (
+	timestamp: RuntimeValue,
+	months: RuntimeValue,
+): RuntimeValue => {
 	const date = new Date(timestamp)
 	return new Date(
 		date.getFullYear(),
@@ -360,7 +389,10 @@ export const ADD_MONTHS = (timestamp: number, months: number): number => {
 /**
  * Add years to a timestamp (local timezone)
  */
-export const ADD_YEARS = (timestamp: number, years: number): number => {
+export const ADD_YEARS = (
+	timestamp: RuntimeValue,
+	years: RuntimeValue,
+): RuntimeValue => {
 	const date = new Date(timestamp)
 	return new Date(
 		date.getFullYear() + years,
@@ -381,7 +413,10 @@ export const ADD_YEARS = (timestamp: number, years: number): number => {
  * Check if two timestamps are on the same calendar day (local timezone)
  * Returns 1 if true, 0 if false
  */
-export const IS_SAME_DAY = (ts1: number, ts2: number): number => {
+export const IS_SAME_DAY = (
+	ts1: RuntimeValue,
+	ts2: RuntimeValue,
+): RuntimeValue => {
 	const date1 = new Date(ts1)
 	const date2 = new Date(ts2)
 	return date1.getFullYear() === date2.getFullYear() &&
@@ -395,7 +430,7 @@ export const IS_SAME_DAY = (ts1: number, ts2: number): number => {
  * Check if timestamp falls on a weekend (Saturday or Sunday, local timezone)
  * Returns 1 if true, 0 if false
  */
-export const IS_WEEKEND = (timestamp: number): number => {
+export const IS_WEEKEND = (timestamp: RuntimeValue): RuntimeValue => {
 	const day = new Date(timestamp).getDay()
 	return day === 0 || day === 6 ? 1 : 0
 }
@@ -404,7 +439,7 @@ export const IS_WEEKEND = (timestamp: number): number => {
  * Check if timestamp is in a leap year (local timezone)
  * Returns 1 if true, 0 if false
  */
-export const IS_LEAP_YEAR = (timestamp: number): number => {
+export const IS_LEAP_YEAR = (timestamp: RuntimeValue): RuntimeValue => {
 	const year = new Date(timestamp).getFullYear()
 	return (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0 ? 1 : 0
 }
@@ -412,7 +447,7 @@ export const IS_LEAP_YEAR = (timestamp: number): number => {
 /**
  * Get the start of quarter for a given timestamp (local timezone)
  */
-export const START_OF_QUARTER = (timestamp: number): number => {
+export const START_OF_QUARTER = (timestamp: RuntimeValue): RuntimeValue => {
 	const date = new Date(timestamp)
 	const month = date.getMonth()
 	const quarterStartMonth = Math.floor(month / 3) * 3

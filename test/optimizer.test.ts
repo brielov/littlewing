@@ -1,16 +1,12 @@
 import { describe, expect, test } from 'bun:test'
-import * as ast from '../src/ast'
-import { evaluate, Interpreter } from '../src/interpreter'
-import { optimize } from '../src/optimizer'
-import { parse } from '../src/parser'
 import type {
-	ASTNode,
 	Assignment,
 	BinaryOp,
 	FunctionCall,
 	NumberLiteral,
 	Program,
-} from '../src/types'
+} from '../src/ast'
+import * as ast from '../src/ast'
 import {
 	isAssignment,
 	isBinaryOp,
@@ -19,43 +15,46 @@ import {
 	isNumberLiteral,
 	isProgram,
 	isUnaryOp,
-} from '../src/types'
+} from '../src/ast'
+import { evaluate } from '../src/interpreter'
+import { optimize } from '../src/optimizer'
+import { parse } from '../src/parser'
 
 describe('Optimizer', () => {
 	test('constant folding binary operations', () => {
 		const node = optimize(parse('2 + 3'))
 		expect(isNumberLiteral(node)).toBe(true)
-		expect((node as NumberLiteral).value).toBe(5)
+		expect((node as NumberLiteral)[1]).toBe(5)
 	})
 
 	test('constant folding with multiplication', () => {
 		const node = optimize(parse('4 * 5'))
 		expect(isNumberLiteral(node)).toBe(true)
-		expect((node as NumberLiteral).value).toBe(20)
+		expect((node as NumberLiteral)[1]).toBe(20)
 	})
 
 	test('constant folding complex expression', () => {
 		const node = optimize(parse('2 + 3 * 4'))
 		expect(isNumberLiteral(node)).toBe(true)
-		expect((node as NumberLiteral).value).toBe(14)
+		expect((node as NumberLiteral)[1]).toBe(14)
 	})
 
 	test('constant folding with exponentiation', () => {
 		const node = optimize(parse('2 ^ 3'))
 		expect(isNumberLiteral(node)).toBe(true)
-		expect((node as NumberLiteral).value).toBe(8)
+		expect((node as NumberLiteral)[1]).toBe(8)
 	})
 
 	test('constant folding unary minus', () => {
 		const node = optimize(parse('-5'))
 		expect(isNumberLiteral(node)).toBe(true)
-		expect((node as NumberLiteral).value).toBe(-5)
+		expect((node as NumberLiteral)[1]).toBe(-5)
 	})
 
 	test('constant folding nested unary and binary', () => {
 		const node = optimize(parse('-(2 + 3)'))
 		expect(isNumberLiteral(node)).toBe(true)
-		expect((node as NumberLiteral).value).toBe(-5)
+		expect((node as NumberLiteral)[1]).toBe(-5)
 	})
 
 	test('does not fold with variables', () => {
@@ -63,20 +62,20 @@ describe('Optimizer', () => {
 		// Should remain a binary operation since x is not a literal
 		expect(isBinaryOp(node)).toBe(true)
 		const binaryNode = node as BinaryOp
-		expect(binaryNode.operator).toBe('+')
-		expect(binaryNode.left.type).toBe('Identifier')
+		expect(binaryNode[2]).toBe('+')
+		expect(isIdentifier(binaryNode[1])).toBe(true)
 		// Right side should be optimized
-		expect(isNumberLiteral(binaryNode.right)).toBe(true)
+		expect(isNumberLiteral(binaryNode[3])).toBe(true)
 	})
 
 	test('partial folding in assignments', () => {
 		const node = optimize(parse('x = 2 + 3'))
 		expect(isAssignment(node)).toBe(true)
 		const assignNode = node as Assignment
-		expect(assignNode.name).toBe('x')
+		expect(assignNode[1]).toBe('x')
 		// Value should be folded to 5
-		expect(isNumberLiteral(assignNode.value)).toBe(true)
-		expect((assignNode.value as NumberLiteral).value).toBe(5)
+		expect(isNumberLiteral(assignNode[2])).toBe(true)
+		expect((assignNode[2] as NumberLiteral)[1]).toBe(5)
 	})
 
 	test('multiple statements with folding', () => {
@@ -85,34 +84,34 @@ describe('Optimizer', () => {
 		// RHS expressions are also folded (2 * 3 -> 6)
 		expect(isProgram(node)).toBe(true)
 		const programNode = node as Program
-		expect(programNode.statements.length).toBe(1)
+		expect(programNode[1].length).toBe(1)
 		// Only statement: y = 6 (folded)
-		const stmt1 = programNode.statements[0]!
+		const stmt1 = programNode[1][0]!
 		expect(isAssignment(stmt1)).toBe(true)
-		expect((stmt1 as Assignment).name).toBe('y')
-		expect(isNumberLiteral((stmt1 as Assignment).value)).toBe(true)
-		expect(((stmt1 as Assignment).value as NumberLiteral).value).toBe(6)
+		expect((stmt1 as Assignment)[1]).toBe('y')
+		expect(isNumberLiteral((stmt1 as Assignment)[2])).toBe(true)
+		expect(((stmt1 as Assignment)[2] as NumberLiteral)[1]).toBe(6)
 	})
 
 	test('scientific notation folding', () => {
 		const node = optimize(parse('1e6 + 2e6'))
 		expect(isNumberLiteral(node)).toBe(true)
-		expect((node as NumberLiteral).value).toBe(3000000)
+		expect((node as NumberLiteral)[1]).toBe(3000000)
 	})
 
 	test('manual optimize() function', () => {
 		const unoptimized = parse('10 * 5')
 		const optimized = optimize(unoptimized)
 		expect(isNumberLiteral(optimized)).toBe(true)
-		expect((optimized as NumberLiteral).value).toBe(50)
+		expect((optimized as NumberLiteral)[1]).toBe(50)
 	})
 
 	test('execution result same with or without optimization', () => {
 		const source = '2 + 3 * 4 - 1'
 		const unoptimized = evaluate(source)
 		const optimizedAst = optimize(parse(source))
-		const executor = new Interpreter()
-		const optimized = executor.evaluate(optimizedAst)
+		// executor removed
+		const optimized = evaluate(optimizedAst)
 		expect(optimized).toBe(unoptimized)
 		expect(optimized).toBe(13)
 	})
@@ -130,15 +129,15 @@ describe('Optimizer', () => {
 		const node = optimize(parse('MAX(2 + 3, 4 * 5)'))
 		expect(isFunctionCall(node)).toBe(true)
 		const funcNode = node as FunctionCall
-		expect(funcNode.arguments.length).toBe(2)
+		expect(funcNode[2].length).toBe(2)
 		// First argument should be folded to 5
-		const firstArg = funcNode.arguments[0]!
+		const firstArg = funcNode[2][0]!
 		expect(isNumberLiteral(firstArg)).toBe(true)
-		expect((firstArg as NumberLiteral).value).toBe(5)
+		expect((firstArg as NumberLiteral)[1]).toBe(5)
 		// Second argument should be folded to 20
-		const secondArg = funcNode.arguments[1]!
+		const secondArg = funcNode[2][1]!
 		expect(isNumberLiteral(secondArg)).toBe(true)
-		expect((secondArg as NumberLiteral).value).toBe(20)
+		expect((secondArg as NumberLiteral)[1]).toBe(20)
 	})
 
 	test('nested function calls with constant folding', () => {
@@ -146,22 +145,22 @@ describe('Optimizer', () => {
 		const node = optimize(parse('MAX(MIN(10, 5 + 5), 2 ^ 3)'))
 		expect(isFunctionCall(node)).toBe(true)
 		const funcNode = node as FunctionCall
-		expect(funcNode.name).toBe('MAX')
+		expect(funcNode[1]).toBe('MAX')
 		// First arg should be nested function call with optimized args
-		const firstArg = funcNode.arguments[0]!
+		const firstArg = funcNode[2][0]!
 		expect(isFunctionCall(firstArg)).toBe(true)
 		const minFunc = firstArg as FunctionCall
-		expect(minFunc.name).toBe('MIN')
-		const minFirstArg = minFunc.arguments[0]!
-		const minSecondArg = minFunc.arguments[1]!
+		expect(minFunc[1]).toBe('MIN')
+		const minFirstArg = minFunc[2][0]!
+		const minSecondArg = minFunc[2][1]!
 		expect(isNumberLiteral(minFirstArg)).toBe(true)
-		expect((minFirstArg as NumberLiteral).value).toBe(10)
+		expect((minFirstArg as NumberLiteral)[1]).toBe(10)
 		expect(isNumberLiteral(minSecondArg)).toBe(true)
-		expect((minSecondArg as NumberLiteral).value).toBe(10)
+		expect((minSecondArg as NumberLiteral)[1]).toBe(10)
 		// Second arg should be folded to 8
-		const secondArg = funcNode.arguments[1]!
+		const secondArg = funcNode[2][1]!
 		expect(isNumberLiteral(secondArg)).toBe(true)
-		expect((secondArg as NumberLiteral).value).toBe(8)
+		expect((secondArg as NumberLiteral)[1]).toBe(8)
 	})
 
 	test('assignment with deeply nested expression', () => {
@@ -169,9 +168,9 @@ describe('Optimizer', () => {
 		const node = optimize(parse('x = -(3 + 4) * 2'))
 		expect(isAssignment(node)).toBe(true)
 		const assignNode = node as Assignment
-		expect(assignNode.name).toBe('x')
-		expect(isNumberLiteral(assignNode.value)).toBe(true)
-		expect((assignNode.value as NumberLiteral).value).toBe(-14)
+		expect(assignNode[1]).toBe('x')
+		expect(isNumberLiteral(assignNode[2])).toBe(true)
+		expect((assignNode[2] as NumberLiteral)[1]).toBe(-14)
 	})
 
 	test('function call with nested unary and binary ops', () => {
@@ -179,10 +178,10 @@ describe('Optimizer', () => {
 		const node = optimize(parse('ABS(-(2 + 3) * 4)'))
 		expect(isFunctionCall(node)).toBe(true)
 		const funcNode = node as FunctionCall
-		expect(funcNode.name).toBe('ABS')
-		const arg = funcNode.arguments[0]!
+		expect(funcNode[1]).toBe('ABS')
+		const arg = funcNode[2][0]!
 		expect(isNumberLiteral(arg)).toBe(true)
-		expect((arg as NumberLiteral).value).toBe(-20)
+		expect((arg as NumberLiteral)[1]).toBe(-20)
 	})
 
 	test('program with multiple complex statements', () => {
@@ -195,30 +194,30 @@ describe('Optimizer', () => {
 		// - 'a' assignment RHS is folded to 5, and a is used, so it's kept
 		// - 'b' assignment RHS is folded to -20, but b is unused, so it's eliminated
 		// - Function call arguments are folded where possible
-		expect(programNode.statements.length).toBe(2)
+		expect(programNode[1].length).toBe(2)
 
 		// First assignment: a = 5 (folded, kept because used in MAX)
-		const stmt1 = programNode.statements[0]!
+		const stmt1 = programNode[1][0]!
 		expect(isAssignment(stmt1)).toBe(true)
 		const assign1 = stmt1 as Assignment
-		expect(assign1.name).toBe('a')
-		expect(isNumberLiteral(assign1.value)).toBe(true)
-		expect((assign1.value as NumberLiteral).value).toBe(5)
+		expect(assign1[1]).toBe('a')
+		expect(isNumberLiteral(assign1[2])).toBe(true)
+		expect((assign1[2] as NumberLiteral)[1]).toBe(5)
 
 		// b is eliminated because it's unused
 
 		// Second statement: function call with second arg folded to 20
-		const stmt2 = programNode.statements[1]!
+		const stmt2 = programNode[1][1]!
 		expect(isFunctionCall(stmt2)).toBe(true)
 		const funcCall = stmt2 as FunctionCall
-		expect(funcCall.name).toBe('MAX')
+		expect(funcCall[1]).toBe('MAX')
 		// First arg is identifier 'a' (not propagated, but variable is kept)
-		const arg1 = funcCall.arguments[0]!
+		const arg1 = funcCall[2][0]!
 		expect(isIdentifier(arg1)).toBe(true)
 		// Second arg should be folded to 20
-		const arg2 = funcCall.arguments[1]!
+		const arg2 = funcCall[2][1]!
 		expect(isNumberLiteral(arg2)).toBe(true)
-		expect((arg2 as NumberLiteral).value).toBe(20)
+		expect((arg2 as NumberLiteral)[1]).toBe(20)
 	})
 
 	test('variables not propagated (might be overridden by context)', () => {
@@ -228,13 +227,13 @@ describe('Optimizer', () => {
 		// However, x is used in the expression, so it's not eliminated
 		expect(isProgram(node)).toBe(true)
 		const programNode = node as Program
-		expect(programNode.statements.length).toBe(2)
+		expect(programNode[1].length).toBe(2)
 		// Assignment remains because x is used
-		const stmt0 = programNode.statements[0]!
+		const stmt0 = programNode[1][0]!
 		expect(isAssignment(stmt0)).toBe(true)
-		expect((stmt0 as Assignment).name).toBe('x')
+		expect((stmt0 as Assignment)[1]).toBe('x')
 		// Expression remains with identifier
-		const stmt1 = programNode.statements[1]!
+		const stmt1 = programNode[1][1]!
 		expect(isBinaryOp(stmt1)).toBe(true)
 	})
 
@@ -287,15 +286,15 @@ describe('Optimizer', () => {
 		// x is used in the second statement, so both statements are kept
 		expect(isProgram(node)).toBe(true)
 		const programNode = node as Program
-		expect(programNode.statements.length).toBe(2)
+		expect(programNode[1].length).toBe(2)
 
 		// First statement should still be an assignment
-		const stmt1 = programNode.statements[0]!
+		const stmt1 = programNode[1][0]!
 		expect(isAssignment(stmt1)).toBe(true)
-		expect((stmt1 as Assignment).name).toBe('x')
+		expect((stmt1 as Assignment)[1]).toBe('x')
 
 		// Second statement references x, which cannot be inlined
-		const stmt2 = programNode.statements[1]!
+		const stmt2 = programNode[1][1]!
 		expect(isBinaryOp(stmt2)).toBe(true)
 	})
 
@@ -307,7 +306,7 @@ describe('Optimizer', () => {
 		const programNode = node as Program
 		// DCE keeps: a (used by c), b (used by c), c (used as return), c (return value)
 		// All assignments are used transitively
-		expect(programNode.statements.length).toBe(4)
+		expect(programNode[1].length).toBe(4)
 
 		// Verify that we still reference external variable in b's assignment
 		const json = JSON.stringify(node)
@@ -322,7 +321,7 @@ describe('Optimizer', () => {
 		const programNode = node as Program
 		// Cannot fully fold because NOW() is a function call
 		// All variables are used: x and y are both referenced in x + y
-		expect(programNode.statements.length).toBe(3)
+		expect(programNode[1].length).toBe(3)
 
 		// Verify NOW() function call is preserved
 		const json = JSON.stringify(node)
@@ -336,12 +335,12 @@ describe('Optimizer', () => {
 		expect(isProgram(node)).toBe(true)
 		const programNode = node as Program
 		// Cannot propagate x because it's reassigned
-		expect(programNode.statements.length).toBe(3)
+		expect(programNode[1].length).toBe(3)
 
 		// All three statements should remain
-		const stmt1 = programNode.statements[0]!
-		const stmt2 = programNode.statements[1]!
-		const stmt3 = programNode.statements[2]!
+		const stmt1 = programNode[1][0]!
+		const stmt2 = programNode[1][1]!
+		const stmt3 = programNode[1][2]!
 		expect(isAssignment(stmt1)).toBe(true)
 		expect(isAssignment(stmt2)).toBe(true)
 		expect(isIdentifier(stmt3)).toBe(true)
@@ -355,9 +354,9 @@ describe('Optimizer', () => {
 		expect(isProgram(node)).toBe(true)
 		const programNode = node as Program
 		// 5 statements: a=2, b=3, c=4, result=..., result
-		expect(programNode.statements.length).toBe(5)
+		expect(programNode[1].length).toBe(5)
 		// But we can verify execution still works
-		const result = new Interpreter().evaluate(node)
+		const result = evaluate(node)
 		expect(result).toBe(22) // 2 * 3 + 4^2 = 22
 	})
 
@@ -367,8 +366,8 @@ describe('Optimizer', () => {
 		const unoptimized = parse(source)
 		const optimized = optimize(unoptimized)
 
-		const result1 = new Interpreter().evaluate(unoptimized)
-		const result2 = new Interpreter().evaluate(optimized)
+		const result1 = evaluate(unoptimized)
+		const result2 = evaluate(optimized)
 
 		expect(result1).toBe(result2)
 		expect(result1).toBe(60)
@@ -400,26 +399,26 @@ describe('Optimizer', () => {
 		const ast1 = parse('1 ? 100 : 50')
 		const optimized1 = optimize(ast1)
 		expect(isNumberLiteral(optimized1)).toBe(true)
-		expect((optimized1 as NumberLiteral).value).toBe(100)
+		expect((optimized1 as NumberLiteral)[1]).toBe(100)
 	})
 
 	test('constant folding for ternary (false condition)', () => {
 		const ast1 = parse('0 ? 100 : 50')
 		const optimized1 = optimize(ast1)
 		expect(isNumberLiteral(optimized1)).toBe(true)
-		expect((optimized1 as NumberLiteral).value).toBe(50)
+		expect((optimized1 as NumberLiteral)[1]).toBe(50)
 	})
 
 	test('ternary with constant comparison', () => {
 		const ast1 = parse('5 > 3 ? 100 : 50')
 		const optimized1 = optimize(ast1)
 		expect(isNumberLiteral(optimized1)).toBe(true)
-		expect((optimized1 as NumberLiteral).value).toBe(100)
+		expect((optimized1 as NumberLiteral)[1]).toBe(100)
 
 		const ast2 = parse('5 < 3 ? 100 : 50')
 		const optimized2 = optimize(ast2)
 		expect(isNumberLiteral(optimized2)).toBe(true)
-		expect((optimized2 as NumberLiteral).value).toBe(50)
+		expect((optimized2 as NumberLiteral)[1]).toBe(50)
 	})
 
 	test('complex ternary optimization', () => {
@@ -437,7 +436,7 @@ describe('Optimizer', () => {
 		const ast1 = parse('1 ? 1 ? 100 : 200 : 300')
 		const optimized1 = optimize(ast1)
 		expect(isNumberLiteral(optimized1)).toBe(true)
-		expect((optimized1 as NumberLiteral).value).toBe(100)
+		expect((optimized1 as NumberLiteral)[1]).toBe(100)
 	})
 
 	test('constant folding for comparison operators', () => {
@@ -445,12 +444,12 @@ describe('Optimizer', () => {
 		const ast1 = parse('5 == 5')
 		const optimized1 = optimize(ast1)
 		expect(isNumberLiteral(optimized1)).toBe(true)
-		expect((optimized1 as NumberLiteral).value).toBe(1)
+		expect((optimized1 as NumberLiteral)[1]).toBe(1)
 
 		const ast2 = parse('10 < 5')
 		const optimized2 = optimize(ast2)
 		expect(isNumberLiteral(optimized2)).toBe(true)
-		expect((optimized2 as NumberLiteral).value).toBe(0)
+		expect((optimized2 as NumberLiteral)[1]).toBe(0)
 
 		// But variables are NOT propagated
 		const ast3 = parse('x = 10; y = 5; z = x > y; z')
@@ -487,8 +486,9 @@ describe('Optimizer', () => {
 		const optimized = optimize(ast1)
 		// Should still be a unary op because x is a variable, not a literal
 		expect(isUnaryOp(optimized)).toBe(true)
-		const unaryNode = optimized as { argument: unknown }
-		expect(isIdentifier(unaryNode.argument as ASTNode)).toBe(true)
+		if (isUnaryOp(optimized)) {
+			expect(isIdentifier(optimized[2])).toBe(true)
+		}
 	})
 
 	test('constant folding for logical NOT', () => {
@@ -496,19 +496,19 @@ describe('Optimizer', () => {
 		const ast1 = parse('!0')
 		const optimized1 = optimize(ast1)
 		expect(isNumberLiteral(optimized1)).toBe(true)
-		expect((optimized1 as NumberLiteral).value).toBe(1)
+		expect((optimized1 as NumberLiteral)[1]).toBe(1)
 
 		// !5 should fold to 0
 		const ast2 = parse('!5')
 		const optimized2 = optimize(ast2)
 		expect(isNumberLiteral(optimized2)).toBe(true)
-		expect((optimized2 as NumberLiteral).value).toBe(0)
+		expect((optimized2 as NumberLiteral)[1]).toBe(0)
 
 		// !-10 should fold to 0
 		const ast3 = parse('!-10')
 		const optimized3 = optimize(ast3)
 		expect(isNumberLiteral(optimized3)).toBe(true)
-		expect((optimized3 as NumberLiteral).value).toBe(0)
+		expect((optimized3 as NumberLiteral)[1]).toBe(0)
 	})
 
 	test('constant folding for double NOT', () => {
@@ -516,22 +516,23 @@ describe('Optimizer', () => {
 		const ast1 = parse('!!0')
 		const optimized1 = optimize(ast1)
 		expect(isNumberLiteral(optimized1)).toBe(true)
-		expect((optimized1 as NumberLiteral).value).toBe(0)
+		expect((optimized1 as NumberLiteral)[1]).toBe(0)
 
 		// !!5 should fold to 1
 		const ast2 = parse('!!5')
 		const optimized2 = optimize(ast2)
 		expect(isNumberLiteral(optimized2)).toBe(true)
-		expect((optimized2 as NumberLiteral).value).toBe(1)
+		expect((optimized2 as NumberLiteral)[1]).toBe(1)
 	})
 
 	test('NOT with variable cannot fold', () => {
 		const ast1 = parse('!x')
 		const optimized = optimize(ast1)
 		expect(isUnaryOp(optimized)).toBe(true)
-		const unaryNode = optimized as { operator: string; argument: unknown }
-		expect(unaryNode.operator).toBe('!')
-		expect(isIdentifier(unaryNode.argument as ASTNode)).toBe(true)
+		if (isUnaryOp(optimized)) {
+			expect(optimized[1]).toBe('!')
+			expect(isIdentifier(optimized[2])).toBe(true)
+		}
 	})
 
 	test('NOT with arithmetic folding', () => {
@@ -539,13 +540,13 @@ describe('Optimizer', () => {
 		const ast1 = parse('!(2 + 3)')
 		const optimized1 = optimize(ast1)
 		expect(isNumberLiteral(optimized1)).toBe(true)
-		expect((optimized1 as NumberLiteral).value).toBe(0)
+		expect((optimized1 as NumberLiteral)[1]).toBe(0)
 
 		// !(5 - 5) should fold to !0 then to 1
 		const ast2 = parse('!(5 - 5)')
 		const optimized2 = optimize(ast2)
 		expect(isNumberLiteral(optimized2)).toBe(true)
-		expect((optimized2 as NumberLiteral).value).toBe(1)
+		expect((optimized2 as NumberLiteral)[1]).toBe(1)
 	})
 
 	test('NOT in conditional expression', () => {
@@ -553,13 +554,13 @@ describe('Optimizer', () => {
 		const ast1 = parse('!0 ? 100 : 50')
 		const optimized1 = optimize(ast1)
 		expect(isNumberLiteral(optimized1)).toBe(true)
-		expect((optimized1 as NumberLiteral).value).toBe(100)
+		expect((optimized1 as NumberLiteral)[1]).toBe(100)
 
 		// !5 ? 100 : 50 should fold to 50
 		const ast2 = parse('!5 ? 100 : 50')
 		const optimized2 = optimize(ast2)
 		expect(isNumberLiteral(optimized2)).toBe(true)
-		expect((optimized2 as NumberLiteral).value).toBe(50)
+		expect((optimized2 as NumberLiteral)[1]).toBe(50)
 	})
 
 	test('mixed unary operators', () => {
@@ -567,13 +568,13 @@ describe('Optimizer', () => {
 		const ast1 = parse('-!5')
 		const optimized1 = optimize(ast1)
 		expect(isNumberLiteral(optimized1)).toBe(true)
-		expect((optimized1 as NumberLiteral).value).toBe(-0) // -0 is valid (signed zero)
+		expect((optimized1 as NumberLiteral)[1]).toBe(-0) // -0 is valid (signed zero)
 
 		// !-5 should fold to !(−5) = 0
 		const ast2 = parse('!-5')
 		const optimized2 = optimize(ast2)
 		expect(isNumberLiteral(optimized2)).toBe(true)
-		expect((optimized2 as NumberLiteral).value).toBe(0)
+		expect((optimized2 as NumberLiteral)[1]).toBe(0)
 	})
 })
 
@@ -585,17 +586,17 @@ describe('Dead Code Elimination', () => {
 		expect(isProgram(optimized)).toBe(true)
 		const program = optimized as Program
 		// y is never used, should be eliminated
-		expect(program.statements.length).toBe(2)
+		expect(program[1].length).toBe(2)
 
 		// First statement: x = 10
-		const stmt0 = program.statements[0]!
+		const stmt0 = program[1][0]!
 		expect(isAssignment(stmt0)).toBe(true)
-		expect((stmt0 as Assignment).name).toBe('x')
+		expect((stmt0 as Assignment)[1]).toBe('x')
 
 		// Second statement: z = x * 20 (constant folded to x * 20)
-		const stmt1 = program.statements[1]!
+		const stmt1 = program[1][1]!
 		expect(isAssignment(stmt1)).toBe(true)
-		expect((stmt1 as Assignment).name).toBe('z')
+		expect((stmt1 as Assignment)[1]).toBe('z')
 	})
 
 	test('preserves used variables', () => {
@@ -605,7 +606,7 @@ describe('Dead Code Elimination', () => {
 		expect(isProgram(optimized)).toBe(true)
 		const program = optimized as Program
 		// All variables are used, nothing should be eliminated
-		expect(program.statements.length).toBe(3)
+		expect(program[1].length).toBe(3)
 	})
 
 	test('preserves last statement even if unused', () => {
@@ -615,10 +616,10 @@ describe('Dead Code Elimination', () => {
 		expect(isProgram(optimized)).toBe(true)
 		const program = optimized as Program
 		// x is unused but y is the last statement (return value)
-		expect(program.statements.length).toBe(1)
-		const stmt0 = program.statements[0]!
+		expect(program[1].length).toBe(1)
+		const stmt0 = program[1][0]!
 		expect(isAssignment(stmt0)).toBe(true)
-		expect((stmt0 as Assignment).name).toBe('y')
+		expect((stmt0 as Assignment)[1]).toBe('y')
 	})
 
 	test('removes multiple unused variables', () => {
@@ -628,12 +629,12 @@ describe('Dead Code Elimination', () => {
 		expect(isProgram(optimized)).toBe(true)
 		const program = optimized as Program
 		// b and d are unused, should be eliminated
-		expect(program.statements.length).toBe(3)
+		expect(program[1].length).toBe(3)
 
 		// Remaining: a = 1, c = 3, e = a + c
-		expect((program.statements[0] as Assignment).name).toBe('a')
-		expect((program.statements[1] as Assignment).name).toBe('c')
-		expect((program.statements[2] as Assignment).name).toBe('e')
+		expect((program[1][0] as Assignment)[1]).toBe('a')
+		expect((program[1][1] as Assignment)[1]).toBe('c')
+		expect((program[1][2] as Assignment)[1]).toBe('e')
 	})
 
 	test('handles variable used in function call', () => {
@@ -643,11 +644,11 @@ describe('Dead Code Elimination', () => {
 		expect(isProgram(optimized)).toBe(true)
 		const program = optimized as Program
 		// y is unused, should be eliminated
-		expect(program.statements.length).toBe(3)
+		expect(program[1].length).toBe(3)
 
-		expect((program.statements[0] as Assignment).name).toBe('x')
-		expect((program.statements[1] as Assignment).name).toBe('z')
-		const stmt2 = program.statements[2]!
+		expect((program[1][0] as Assignment)[1]).toBe('x')
+		expect((program[1][1] as Assignment)[1]).toBe('z')
+		const stmt2 = program[1][2]!
 		expect(isFunctionCall(stmt2)).toBe(true)
 	})
 
@@ -658,7 +659,7 @@ describe('Dead Code Elimination', () => {
 		expect(isProgram(optimized)).toBe(true)
 		const program = optimized as Program
 		// All variables are used in the conditional
-		expect(program.statements.length).toBe(4)
+		expect(program[1].length).toBe(4)
 	})
 
 	test('handles variable used in nested expression', () => {
@@ -668,7 +669,7 @@ describe('Dead Code Elimination', () => {
 		expect(isProgram(optimized)).toBe(true)
 		const program = optimized as Program
 		// All variables are used
-		expect(program.statements.length).toBe(4)
+		expect(program[1].length).toBe(4)
 	})
 
 	test('removes variable assigned but only used in dead code', () => {
@@ -678,8 +679,8 @@ describe('Dead Code Elimination', () => {
 		expect(isProgram(optimized)).toBe(true)
 		const program = optimized as Program
 		// x is used by y, but y is never used, so both should be eliminated
-		expect(program.statements.length).toBe(2)
-		expect((program.statements[0] as Assignment).name).toBe('z')
+		expect(program[1].length).toBe(2)
+		expect((program[1][0] as Assignment)[1]).toBe('z')
 	})
 
 	test('execution result unchanged after DCE', () => {
@@ -698,7 +699,7 @@ describe('Dead Code Elimination', () => {
 
 		expect(isProgram(optimized)).toBe(true)
 		const program = optimized as Program
-		expect(program.statements.length).toBe(0)
+		expect(program[1].length).toBe(0)
 	})
 
 	test('handles single statement', () => {
@@ -707,9 +708,9 @@ describe('Dead Code Elimination', () => {
 
 		// Single statement programs are returned as Assignment, not Program
 		expect(isAssignment(optimized)).toBe(true)
-		expect((optimized as Assignment).name).toBe('x')
-		expect(isNumberLiteral((optimized as Assignment).value)).toBe(true)
-		expect(((optimized as Assignment).value as NumberLiteral).value).toBe(42)
+		expect((optimized as Assignment)[1]).toBe('x')
+		expect(isNumberLiteral((optimized as Assignment)[2])).toBe(true)
+		expect(((optimized as Assignment)[2] as NumberLiteral)[1]).toBe(42)
 	})
 
 	test('handles chained variable dependencies', () => {
@@ -720,9 +721,9 @@ describe('Dead Code Elimination', () => {
 		const program = optimized as Program
 		// e is unused, should be eliminated
 		// All others form a dependency chain leading to the return value
-		expect(program.statements.length).toBe(5)
+		expect(program[1].length).toBe(5)
 
-		const names = program.statements.filter(isAssignment).map((s) => s.name)
+		const names = program[1].filter(isAssignment).map((s) => s[1])
 		expect(names).toEqual(['a', 'b', 'c', 'd'])
 	})
 
@@ -734,11 +735,11 @@ describe('Dead Code Elimination', () => {
 		const program = optimized as Program
 		// x is written twice: first write (x=10) is used by y, second write (x=20) is unused
 		// The backwards pass correctly identifies that x=20 is dead and removes it
-		expect(program.statements.length).toBe(3)
+		expect(program[1].length).toBe(3)
 
-		expect((program.statements[0] as Assignment).name).toBe('x')
-		expect((program.statements[0] as Assignment).value).toEqual(ast.number(10))
-		expect((program.statements[1] as Assignment).name).toBe('y')
+		expect((program[1][0] as Assignment)[1]).toBe('x')
+		expect((program[1][0] as Assignment)[2]).toEqual(ast.number(10))
+		expect((program[1][1] as Assignment)[1]).toBe('y')
 		// x = 20 is eliminated (correctly identified as dead code)
 	})
 
@@ -751,16 +752,16 @@ describe('Dead Code Elimination', () => {
 		// y is unused (eliminated)
 		// x = 5 (constant folded)
 		// z = x * 2 (constant folded on RHS where possible)
-		expect(program.statements.length).toBe(3)
+		expect(program[1].length).toBe(3)
 
 		// x's value should be folded to 5
-		const xAssignment = program.statements[0] as Assignment
-		expect(xAssignment.name).toBe('x')
-		expect(isNumberLiteral(xAssignment.value)).toBe(true)
-		expect((xAssignment.value as NumberLiteral).value).toBe(5)
+		const xAssignment = program[1][0] as Assignment
+		expect(xAssignment[1]).toBe('x')
+		expect(isNumberLiteral(xAssignment[2])).toBe(true)
+		expect((xAssignment[2] as NumberLiteral)[1]).toBe(5)
 
 		// y should be eliminated (not present)
-		const names = program.statements.filter(isAssignment).map((s) => s.name)
+		const names = program[1].filter(isAssignment).map((s) => s[1])
 		expect(names).not.toContain('y')
 	})
 
@@ -771,8 +772,8 @@ describe('Dead Code Elimination', () => {
 		expect(isProgram(optimized)).toBe(true)
 		const program = optimized as Program
 		// y is unused, so both x and y should be eliminated
-		expect(program.statements.length).toBe(2)
-		expect((program.statements[0] as Assignment).name).toBe('z')
+		expect(program[1].length).toBe(2)
+		expect((program[1][0] as Assignment)[1]).toBe('z')
 	})
 
 	test('preserves variables used in logical expressions', () => {
@@ -782,7 +783,7 @@ describe('Dead Code Elimination', () => {
 		expect(isProgram(optimized)).toBe(true)
 		const program = optimized as Program
 		// All variables are used in the logical expression
-		expect(program.statements.length).toBe(5)
+		expect(program[1].length).toBe(5)
 	})
 
 	test('handles variables used only in assignment RHS', () => {
@@ -792,7 +793,7 @@ describe('Dead Code Elimination', () => {
 		expect(isProgram(optimized)).toBe(true)
 		const program = optimized as Program
 		// b is unused, so both a and b should be eliminated
-		expect(program.statements.length).toBe(2)
-		expect((program.statements[0] as Assignment).name).toBe('c')
+		expect(program[1].length).toBe(2)
+		expect((program[1][0] as Assignment)[1]).toBe('c')
 	})
 })

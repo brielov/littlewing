@@ -7,27 +7,7 @@ export { extractInputVariables } from './analyzer'
 
 // AST builders
 export * as ast from './ast'
-
-// Code generation
-export { generate } from './codegen'
-
-// Defaults
-export { defaultContext } from './defaults'
-
-// Humanizer
-export { type HumanizeOptions, humanize } from './humanizer'
-
-// Interpreter
-export { evaluate } from './interpreter'
-
-// Optimizer
-export { optimize } from './optimizer'
-
-// Parser
-export { parse } from './parser'
-
-// Type definitions
-export type { ExecutionContext, RuntimeValue } from './types'
+// AST types and type guards
 export {
 	type ASTNode,
 	type Assignment,
@@ -43,13 +23,26 @@ export {
 	isNumberLiteral,
 	isProgram,
 	isUnaryOp,
+	NodeKind,
 	type NumberLiteral,
 	type Operator,
 	type Program,
-	type Token,
-	TokenType,
 	type UnaryOp,
-} from './types'
+} from './ast'
+// Code generation
+export { generate } from './codegen'
+// Humanizer
+export { type HumanizeOptions, humanize } from './humanizer'
+// Interpreter
+export { evaluate } from './interpreter'
+// Optimizer
+export { optimize } from './optimizer'
+// Parser
+export { parse } from './parser'
+// Standard library
+export { datetime, defaultContext, math } from './stdlib'
+// Type definitions
+export type { ExecutionContext, RuntimeValue } from './types'
 
 // Visitor pattern
 export { type Visitor, visit, visitPartial } from './visitor'
