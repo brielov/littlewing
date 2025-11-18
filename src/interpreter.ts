@@ -141,9 +141,13 @@ export function evaluate(
 	const node = typeof input === 'string' ? parse(input) : input
 
 	// Use Map for O(1) variable lookups (faster than object property access)
-	const variables = new Map(Object.entries(context.variables || {}))
-	// Track which variables came from external context
-	const externalVariables = new Set(Object.keys(context.variables || {}))
+	// Extract entries once - used for both Map construction and Set derivation
+	// Using || {} is faster than branching for the common case
+	const entries = Object.entries(context.variables || {})
+	const variables = new Map(entries)
+	// Build Set from entries array to avoid re-iterating the object
+	// entries is [[key, value], ...] so we map to just keys
+	const externalVariables = new Set(entries.map(([key]) => key))
 
 	return evaluateNode(node, context, variables, externalVariables)
 }

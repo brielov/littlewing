@@ -231,7 +231,9 @@ export function visitPartial<T>(
 	const recurse = (n: ASTNode): T => visitPartial(n, visitor, defaultHandler)
 
 	// Use switch for type-safe dispatch - TypeScript narrows node type in each case
-	switch (node[0]) {
+	// Extract node kind once to avoid repeated tuple access
+	const kind = node[0]
+	switch (kind) {
 		case NodeKind.Program:
 			return visitor.Program
 				? visitor.Program(node, recurse)

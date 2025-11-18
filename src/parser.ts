@@ -55,7 +55,7 @@ export function parse(source: string): ASTNode {
 
 	const statements: ASTNode[] = []
 
-	while (peekKind(state) !== TokenKind.Eof) {
+	while (state.currentToken[0] !== TokenKind.Eof) {
 		statements.push(parseExpression(state, 0))
 	}
 
@@ -88,7 +88,8 @@ function parseExpression(state: ParserState, minPrecedence: number): ASTNode {
 	let left = parsePrefix(state)
 
 	while (true) {
-		const precedence = getTokenPrecedence(peekKind(state))
+		const kind = state.currentToken[0]
+		const precedence = getTokenPrecedence(kind)
 
 		// Break if precedence is too low or token is not an infix operator (precedence = 0)
 		if (precedence === 0 || precedence < minPrecedence) {
@@ -114,14 +115,14 @@ function parsePrefix(state: ParserState): ASTNode {
 	// Unary minus
 	if (tokenKind === TokenKind.Minus) {
 		advance(state)
-		const argument = parseExpression(state, getUnaryPrecedence())
+		const argument = parseExpression(state, UNARY_PRECEDENCE)
 		return ast.unaryOp('-', argument)
 	}
 
 	// Logical NOT
 	if (tokenKind === TokenKind.Bang) {
 		advance(state)
-		const argument = parseExpression(state, getUnaryPrecedence())
+		const argument = parseExpression(state, UNARY_PRECEDENCE)
 		return ast.unaryOp('!', argument)
 	}
 
@@ -214,7 +215,7 @@ function parseInfix(
 
 	// Binary operators
 	if (isBinaryOperator(tokenKind)) {
-		const operator = getOperatorFromToken(state.currentToken, state.cursor)
+		const operator = readText(state.cursor, state.currentToken) as Operator
 		advance(state) // consume operator
 		// Right-associative operators (^) use precedence
 		// Left-associative operators (+, -, *, /, %, ==, !=, <, >, <=, >=, &&, ||) use precedence + 1
@@ -236,12 +237,12 @@ function parseInfix(
  * @returns Array of argument AST nodes
  */
 function parseFunctionArguments(state: ParserState): ASTNode[] {
-	const args: ASTNode[] = []
-
 	// Empty argument list
 	if (peekKind(state) === TokenKind.RParen) {
-		return args
+		return []
 	}
+
+	const args: ASTNode[] = []
 
 	// Parse first argument
 	args.push(parseExpression(state, 0))
@@ -256,16 +257,14 @@ function parseFunctionArguments(state: ParserState): ASTNode[] {
 }
 
 /**
- * Get unary operator precedence
- * Returns 7 which is higher than add/sub (6) but lower than exponentiation (8)
+ * Unary operator precedence constant
+ * Value is 7 which is higher than add/sub (6) but lower than exponentiation (8)
  * This means:
  * - Binds tighter than addition: -2 + 3 parses as (-2) + 3 = 1
  * - Binds looser than exponentiation: -2^2 parses as -(2^2) = -4, not (-2)^2 = 4
  * Matches the behavior of Python, JavaScript, and most languages
  */
-function getUnaryPrecedence(): number {
-	return 7
-}
+const UNARY_PRECEDENCE = 7
 
 /**
  * Check if token kind is a binary operator (O(1) Set lookup)
@@ -275,18 +274,6 @@ function getUnaryPrecedence(): number {
  */
 function isBinaryOperator(kind: TokenKind): boolean {
 	return BINARY_OPERATOR_TOKENS.has(kind)
-}
-
-/**
- * Get the operator string from a token
- * Extracts the text representation of an operator token
- *
- * @param token - Token to extract operator from
- * @param cursor - Cursor for reading token text
- * @returns Operator string
- */
-function getOperatorFromToken(token: Token, cursor: Cursor): Operator {
-	return readText(cursor, token) as Operator
 }
 
 /**

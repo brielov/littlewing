@@ -37,7 +37,7 @@ import { visit } from './visitor'
 function eliminateDeadCode(program: Program): Program {
 	const statements = program[1]
 	const liveVars = new Set<string>()
-	const keptStatements: ASTNode[] = []
+	const keptIndices: number[] = []
 
 	// Process statements backwards to handle transitive dependencies in one pass
 	for (let i = statements.length - 1; i >= 0; i--) {
@@ -46,7 +46,7 @@ function eliminateDeadCode(program: Program): Program {
 
 		// Always keep the last statement (it's the return value)
 		if (i === statements.length - 1) {
-			keptStatements.push(stmt)
+			keptIndices.push(i)
 			// Add identifiers from the last statement to live set
 			const identifiers = collectAllIdentifiers(stmt)
 			for (const id of identifiers) {
@@ -62,7 +62,7 @@ function eliminateDeadCode(program: Program): Program {
 			const value = stmt[2]
 			if (liveVars.has(name)) {
 				// Variable is used later, keep the assignment
-				keptStatements.push(stmt)
+				keptIndices.push(i)
 				// Add identifiers from the RHS to live set
 				const identifiers = collectAllIdentifiers(value)
 				for (const id of identifiers) {
@@ -72,7 +72,7 @@ function eliminateDeadCode(program: Program): Program {
 			// If not live, skip this assignment (dead code)
 		} else {
 			// Non-assignment statements are always kept
-			keptStatements.push(stmt)
+			keptIndices.push(i)
 			// Add all identifiers to live set
 			const identifiers = collectAllIdentifiers(stmt)
 			for (const id of identifiers) {
@@ -81,8 +81,20 @@ function eliminateDeadCode(program: Program): Program {
 		}
 	}
 
-	// Reverse the statements since we processed backwards
-	return ast.program(keptStatements.reverse())
+	// Build result array in forward order using kept indices
+	// Avoid array.reverse() by iterating indices backwards
+	const keptStatements: ASTNode[] = []
+	for (let i = keptIndices.length - 1; i >= 0; i--) {
+		const idx = keptIndices[i]
+		if (idx !== undefined) {
+			const stmt = statements[idx]
+			if (stmt) {
+				keptStatements.push(stmt)
+			}
+		}
+	}
+
+	return ast.program(keptStatements)
 }
 
 /**

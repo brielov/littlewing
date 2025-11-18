@@ -4,44 +4,35 @@ import { getOperatorPrecedence } from './utils'
 import { visit } from './visitor'
 
 /**
- * Check if left operand needs parentheses based on operator precedence
- * - For left-associative operators: parens only if strictly lower precedence
- * - For right-associative operators (^): parens if lower or equal precedence
+ * Check if operand needs parentheses based on operator precedence and position
+ * Combined function for both left and right to reduce code duplication
+ * - For left operand with right-associative operators (^): parens if lower or equal precedence
+ * - For left operand with left-associative operators: parens if strictly lower precedence
+ * - For right operand with right-associative operators (^): parens if strictly lower precedence
+ * - For right operand with left-associative operators: parens if lower or equal precedence
  */
-function needsParensLeft(node: ASTNode, operator: Operator): boolean {
+function needsParens(
+	node: ASTNode,
+	operator: Operator,
+	isLeft: boolean,
+): boolean {
 	if (!isBinaryOp(node)) return false
 
 	const nodePrecedence = getOperatorPrecedence(node[2])
 	const operatorPrecedence = getOperatorPrecedence(operator)
+	const isRightAssociative = operator === '^'
 
-	// For right-associative operators (^), need parens if lower or equal precedence
-	if (operator === '^') {
-		return nodePrecedence <= operatorPrecedence
+	// For right-associative operators (^)
+	if (isRightAssociative) {
+		return isLeft
+			? nodePrecedence <= operatorPrecedence
+			: nodePrecedence < operatorPrecedence
 	}
 
-	// For left-associative operators, only need parens if strictly lower precedence
-	return nodePrecedence < operatorPrecedence
-}
-
-/**
- * Check if right operand needs parentheses based on operator precedence and associativity
- * - For right-associative operators (^): parens if strictly lower precedence
- * - For left-associative operators: parens if lower or equal precedence
- */
-function needsParensRight(node: ASTNode, operator: Operator): boolean {
-	if (!isBinaryOp(node)) return false
-
-	const nodePrecedence = getOperatorPrecedence(node[2])
-	const operatorPrecedence = getOperatorPrecedence(operator)
-
-	// For right-associative operators (^), only need parens if strictly lower precedence
-	if (operator === '^') {
-		return nodePrecedence < operatorPrecedence
-	}
-
-	// For left-associative operators (+ - * / %), need parens if lower or equal precedence
-	// This prevents reordering: a - (b - c) is different from a - b - c
-	return nodePrecedence <= operatorPrecedence
+	// For left-associative operators
+	return isLeft
+		? nodePrecedence < operatorPrecedence
+		: nodePrecedence <= operatorPrecedence
 }
 
 /**
@@ -82,12 +73,12 @@ export function generate(node: ASTNode): string {
 			// Special case: UnaryOp on left of ^ needs parentheses
 			// (-2) ^ 2 = 4, but -2 ^ 2 = -4
 			const leftNeedsParens =
-				needsParensLeft(leftNode, operator) ||
+				needsParens(leftNode, operator, true) ||
 				(operator === '^' && isUnaryOp(leftNode))
 			const leftCode = leftNeedsParens ? `(${left})` : left
 
 			// Add parentheses to right side if it's a lower precedence operation
-			const rightNeedsParens = needsParensRight(rightNode, operator)
+			const rightNeedsParens = needsParens(rightNode, operator, false)
 			const rightCode = rightNeedsParens ? `(${right})` : right
 
 			return `${leftCode} ${operator} ${rightCode}`

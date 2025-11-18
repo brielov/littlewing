@@ -275,14 +275,13 @@ function humanizeNode(
  * ```
  */
 export function humanize(node: ASTNode, options: HumanizeOptions = {}): string {
-	const operatorPhrases = {
-		...DEFAULT_OPERATOR_PHRASES,
-		...options.operatorPhrases,
-	}
-	const functionPhrases = {
-		...DEFAULT_FUNCTION_PHRASES,
-		...options.functionPhrases,
-	}
+	// Avoid object spreading overhead when no custom phrases are provided
+	const operatorPhrases = options.operatorPhrases
+		? { ...DEFAULT_OPERATOR_PHRASES, ...options.operatorPhrases }
+		: DEFAULT_OPERATOR_PHRASES
+	const functionPhrases = options.functionPhrases
+		? { ...DEFAULT_FUNCTION_PHRASES, ...options.functionPhrases }
+		: DEFAULT_FUNCTION_PHRASES
 
 	return humanizeNode(node, operatorPhrases, functionPhrases, options)
 }
