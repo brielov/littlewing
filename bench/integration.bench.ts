@@ -86,4 +86,4 @@ group('Integration: With External Variables', () => {
 	})
 })
 
-await run()
+run()

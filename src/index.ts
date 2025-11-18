@@ -35,6 +35,8 @@ export { generate } from './codegen'
 export { type HumanizeOptions, humanize } from './humanizer'
 // Interpreter
 export { evaluate } from './interpreter'
+// JIT Compiler
+export { type CompiledExpression, compile } from './jit'
 // Optimizer
 export { optimize } from './optimizer'
 // Parser

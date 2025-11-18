@@ -22,4 +22,4 @@ group('Optimizer', () => {
 	})
 })
 
-await run()
+run()

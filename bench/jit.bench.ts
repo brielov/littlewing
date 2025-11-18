@@ -1,27 +1,27 @@
 import { bench, group, run } from 'mitata'
-import { defaultContext, evaluate, parse } from '../src'
+import { compile, defaultContext } from '../src'
 import { LARGE_SCRIPT, MEDIUM_SCRIPT, SMALL_SCRIPT } from './fixtures'
 
 // Pre-parse ASTs to isolate interpreter performance
-const smallAST = parse(SMALL_SCRIPT)
-const mediumAST = parse(MEDIUM_SCRIPT)
-const largeAST = parse(LARGE_SCRIPT)
+const smallAST = compile(SMALL_SCRIPT)
+const mediumAST = compile(MEDIUM_SCRIPT)
+const largeAST = compile(LARGE_SCRIPT)
 
-group('Interpreter', () => {
+group('JIT', () => {
 	bench('small script', () => {
-		evaluate(smallAST, defaultContext)
+		smallAST.execute(defaultContext)
 	})
 
 	bench('medium script', () => {
-		evaluate(mediumAST, defaultContext)
+		mediumAST.execute(defaultContext)
 	})
 
 	bench('large script', () => {
-		evaluate(largeAST, defaultContext)
+		largeAST.execute(defaultContext)
 	})
 })
 
-group('Interpreter (with external variables)', () => {
+group('JIT (with external variables)', () => {
 	const context = {
 		...defaultContext,
 		variables: {
@@ -33,15 +33,15 @@ group('Interpreter (with external variables)', () => {
 	}
 
 	bench('small script', () => {
-		evaluate(smallAST, context)
+		smallAST.execute(context)
 	})
 
 	bench('medium script', () => {
-		evaluate(mediumAST, context)
+		mediumAST.execute(context)
 	})
 
 	bench('large script', () => {
-		evaluate(largeAST, context)
+		largeAST.execute(context)
 	})
 })
 

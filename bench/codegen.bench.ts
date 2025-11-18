@@ -21,4 +21,4 @@ group('Code Generation', () => {
 	})
 })
 
-await run()
+run()

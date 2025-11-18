@@ -49,7 +49,7 @@ function eliminateDeadCode(program: Program): Program {
 			keptIndices.push(i)
 			// Add identifiers from the last statement to live set
 			const identifiers = collectAllIdentifiers(stmt)
-			for (const id of identifiers) {
+			for (const id of Array.from(identifiers)) {
 				liveVars.add(id)
 			}
 			continue
@@ -65,7 +65,7 @@ function eliminateDeadCode(program: Program): Program {
 				keptIndices.push(i)
 				// Add identifiers from the RHS to live set
 				const identifiers = collectAllIdentifiers(value)
-				for (const id of identifiers) {
+				for (const id of Array.from(identifiers)) {
 					liveVars.add(id)
 				}
 			}
@@ -75,7 +75,7 @@ function eliminateDeadCode(program: Program): Program {
 			keptIndices.push(i)
 			// Add all identifiers to live set
 			const identifiers = collectAllIdentifiers(stmt)
-			for (const id of identifiers) {
+			for (const id of Array.from(identifiers)) {
 				liveVars.add(id)
 			}
 		}

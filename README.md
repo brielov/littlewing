@@ -25,11 +25,12 @@ evaluate("score = 85; grade = score >= 90 ? 100 : 90", {
 - **Numbers-only** - Every value is a number. Simple, predictable, fast.
 - **Zero dependencies** - 7.8 KB gzipped, perfect for browser bundles
 - **O(n) performance** - Linear time parsing and execution
-- **Safe evaluation** - No eval(), no code generation, no security risks
+- **JIT compiler** - Optional compilation for 3-4x faster repeated execution
+- **Safe evaluation** - Tree-walk interpreter requires no code generation
 - **Timestamp arithmetic** - Built-in date/time functions using numeric timestamps
 - **Extensible** - Add custom functions and variables via context
 - **Type-safe** - Full TypeScript support with strict types
-- **Excellent test coverage** - 502 tests with 99.45% function coverage, 98.57% line coverage
+- **Excellent test coverage** - 607 tests with 99.45% function coverage, 98.57% line coverage
 
 ## Installation
 
@@ -172,6 +173,46 @@ evaluate("ABS(-5)", { functions: { ABS: Math.abs } }); // → 5
 const ast = parse("2 + 2");
 evaluate(ast); // → 4
 evaluate(ast); // → 4 (no re-parsing)
+```
+
+#### `compile(input: string | ASTNode): CompiledExpression`
+
+Compile source code or AST to a JavaScript function for faster repeated execution. Best for hot paths where the same expression is evaluated many times.
+
+```typescript
+import { compile } from "littlewing";
+
+// Compile once
+const expr = compile("x * 2 + y");
+
+// Execute many times with different contexts (5-10x faster than evaluate)
+expr.execute({ variables: { x: 10, y: 5 } }); // → 25
+expr.execute({ variables: { x: 20, y: 3 } }); // → 43
+expr.execute({ variables: { x: 30, y: 1 } }); // → 61
+
+// Inspect generated JavaScript code
+console.log(expr.source); // Shows generated code for debugging
+```
+
+**Performance (repeated execution after compilation):**
+
+- Small scripts: **22.8x faster** (330.62 ns → 14.50 ns per execution)
+- Medium scripts: **12.3x faster** (1.94 µs → 157.66 ns per execution)
+- Large scripts: **99.9x faster** (9.13 µs → 91.39 ns per execution)
+
+**Important:** Compilation has overhead. For one-time execution, use `evaluate()` instead:
+
+- Small: `evaluate()` is 3.7x faster (1.43 µs vs 5.26 µs including compilation)
+- Medium: `evaluate()` is 2.5x faster (7.13 µs vs 17.76 µs including compilation)
+- Large: `evaluate()` is 1.7x faster (42.80 µs vs 71.73 µs including compilation)
+
+**CompiledExpression interface:**
+
+```typescript
+interface CompiledExpression {
+	execute(context?: ExecutionContext): number;
+	source: string; // Generated JavaScript code
+}
 ```
 
 #### `parse(source: string): ASTNode`
@@ -415,7 +456,9 @@ The `defaultContext` includes these built-in functions:
 
 ## Performance Optimization
 
-For expressions that are executed multiple times with different contexts, parse once and reuse the AST:
+### Parse Once, Evaluate Many
+
+For expressions executed multiple times, parse once and reuse the AST:
 
 ```typescript
 import { evaluate, parse } from "littlewing";
@@ -436,6 +479,57 @@ evaluate(formula, {
 
 // This avoids lexing and parsing overhead on every execution
 ```
+
+### JIT Compilation for Maximum Performance
+
+For hot paths where the same expression is evaluated hundreds or thousands of times, use the JIT compiler:
+
+```typescript
+import { compile } from "littlewing";
+
+// Compile once (generates optimized JavaScript function)
+const formula = compile("price * quantity * (1 - discount) * (1 + taxRate)");
+
+// Execute many times with different contexts (5-10x faster than tree-walk interpreter)
+formula.execute({
+	variables: { price: 10, quantity: 5, discount: 0.1, taxRate: 0.08 },
+});
+formula.execute({
+	variables: { price: 20, quantity: 3, discount: 0.15, taxRate: 0.08 },
+});
+formula.execute({
+	variables: { price: 15, quantity: 10, discount: 0.2, taxRate: 0.08 },
+});
+```
+
+**When to use JIT:**
+
+- ✅ Same expression evaluated 10+ times with different variables
+- ✅ Large scripts (>50 lines)
+- ✅ Performance-critical loops
+- ✅ Long-running applications that amortize compilation cost
+
+**When to use tree-walk interpreter:**
+
+- ✅ One-time or infrequent evaluation
+- ✅ Small scripts (<10 lines)
+- ✅ Compilation time matters more than execution speed
+
+**Performance comparison:**
+
+Execution time only (after compilation):
+
+- Small scripts: JIT is **22.8x faster** (330.62 ns → 14.50 ns per execution)
+- Medium scripts: JIT is **12.3x faster** (1.94 µs → 157.66 ns per execution)
+- Large scripts: JIT is **99.9x faster** (9.13 µs → 91.39 ns per execution)
+
+Full pipeline (including compilation overhead):
+
+- Small scripts: `evaluate()` is **3.7x faster** (1.43 µs vs 5.26 µs)
+- Medium scripts: `evaluate()` is **2.5x faster** (7.13 µs vs 17.76 µs)
+- Large scripts: `evaluate()` is **1.7x faster** (42.80 µs vs 71.73 µs)
+
+See [JIT_IMPLEMENTATION.md](./JIT_IMPLEMENTATION.md) for detailed performance analysis and usage patterns.
 
 ## Use Cases
 

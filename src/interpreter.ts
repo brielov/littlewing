@@ -96,13 +96,19 @@ function evaluateNode(
 		// Tuple: [kind, name, value]
 		// External variables (from context) take precedence over script assignments
 		// This allows scripts to define defaults that can be overridden at runtime
+		//
+		// IMPORTANT: We MUST evaluate the RHS for side effects even when external
+		// variable exists (e.g., `x = NOW()` should call NOW() for side effects)
 		Assignment: (n, recurse) => {
 			const name = n[1]
 			const valueNode = n[2]
 
+			// Always evaluate RHS for side effects (function calls, etc.)
+			const value = recurse(valueNode)
+
 			// Check if this variable was provided externally
 			if (externalVariables.has(name)) {
-				// External variable exists - return it without evaluating the assignment
+				// External variable exists - return it (ignore evaluated value)
 				const externalValue = variables.get(name)
 				// externalVariables.has guarantees this exists
 				if (externalValue !== undefined) {
@@ -110,8 +116,7 @@ function evaluateNode(
 				}
 			}
 
-			// No external variable - evaluate and assign normally
-			const value = recurse(valueNode)
+			// No external variable - use the evaluated value
 			variables.set(name, value)
 			return value
 		},

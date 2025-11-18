@@ -45,10 +45,23 @@ describe('External Variables', () => {
 		).toBe(0)
 	})
 
-	test('external variable does not evaluate assignment expression', () => {
-		// Right side should not be evaluated when external variable exists
-		const formula = 'price = undefinedVar * 2; price'
-		expect(evaluate(formula, { variables: { price: 100 } })).toBe(100)
+	test('external variable evaluates assignment expression for side effects', () => {
+		// Right side MUST be evaluated for side effects (e.g., function calls)
+		// but the external value takes precedence for the assignment result
+		let callCount = 0
+		const formula = 'price = COUNTER(); price'
+		const context = {
+			functions: {
+				COUNTER: () => {
+					callCount++
+					return callCount
+				},
+			},
+			variables: { price: 100 },
+		}
+		const result = evaluate(formula, context)
+		expect(result).toBe(100) // External value takes precedence
+		expect(callCount).toBe(1) // But COUNTER() was called for side effects
 	})
 
 	test('mix of external and internal assignments', () => {

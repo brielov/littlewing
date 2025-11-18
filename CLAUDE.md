@@ -11,13 +11,14 @@ Key characteristics:
 - **Numbers-only type system** - Pure arithmetic with single `RuntimeValue = number` type
 - **Timestamp-based date handling** - Dates represented as millisecond timestamps (numbers)
 - **O(n) algorithms** - Lexer, parser, interpreter all run in linear time
+- **JIT compiler** - Optional JavaScript code generation for 3-4x faster repeated execution
 - **Zero dependencies** - Small bundle, no external requirements
 - **100% ESM** - No Node.js APIs, optimized for browsers
-- **502 tests** - Comprehensive test coverage with 99.45% function coverage, 98.57% line coverage
+- **607 tests** - Comprehensive test coverage with 99.45% function coverage, 98.57% line coverage
 
 ## Architecture
 
-The codebase follows a **three-stage compilation pipeline**:
+The codebase follows a **three-stage compilation pipeline** with two execution modes:
 
 1. **Lexer** (`src/lexer.ts`) - Tokenizes source code into a token stream
    - Single-pass O(n) tokenization
@@ -33,11 +34,21 @@ The codebase follows a **three-stage compilation pipeline**:
    - Supports operator precedence: unary > exponentiation > mult/div/mod > add/sub > comparison > logical AND > logical OR > ternary > assignment
    - Handles variable assignments, function calls with variadic arguments, and ternary conditionals
 
-3. **Interpreter** (`src/interpreter.ts`) - Tree-walk interpreter
+3. **Execution** - Two modes available:
+
+   **Tree-Walk Interpreter** (`src/interpreter.ts`) - Default execution mode
    - Evaluates AST nodes using the visitor pattern
    - Maintains variable state in a Map
    - **No runtime type checking** - All operations work on numbers
    - Supports custom functions and variables via `ExecutionContext`
+   - Best for: one-time evaluation, small scripts, untrusted input
+
+   **JIT Compiler** (`src/jit.ts`) - Optional high-performance mode
+   - Compiles AST to JavaScript functions using `new Function()`
+   - Generates optimized code for repeated execution
+   - 1.2-3.9x faster for medium/large scripts after amortization
+   - Best for: hot paths, repeated execution (10+ times), large scripts
+   - See `JIT_IMPLEMENTATION.md` for detailed docs
 
 ### Key Types and Contracts
 
@@ -55,7 +66,8 @@ Type guards (`isNumberLiteral`, `isBinaryOp`, etc.) enable safe pattern matching
 
 **Functional API:**
 
-- `evaluate(source | ast, context?)` - Evaluate code directly, returns number
+- `evaluate(source | ast, context?)` - Evaluate code directly using tree-walk interpreter, returns number
+- `compile(source | ast)` - Compile to JavaScript function for repeated execution, returns `CompiledExpression`
 - `parse(source)` - Parse without evaluating, returns AST
 - `generate(ast)` - Convert AST back to source code
 - `humanize(ast, options?)` - Convert AST to English text (with optional HTML output)
@@ -122,7 +134,8 @@ src/
 ├── types.ts          # Type definitions and type guards
 ├── lexer.ts          # Tokenization (source → tokens)
 ├── parser.ts         # Parsing (tokens → AST)
-├── interpreter.ts    # Evaluation (AST + context → result)
+├── interpreter.ts    # Tree-walk evaluation (AST + context → result)
+├── jit.ts            # JIT compiler (AST → JavaScript function)
 ├── optimizer.ts      # AST optimization (constant folding + DCE)
 ├── visitor.ts        # Visitor pattern for AST traversal
 ├── ast.ts            # AST builder functions
@@ -137,6 +150,7 @@ test/
 ├── lexer.test.ts           # Lexer tests
 ├── parser.test.ts          # Parser tests
 ├── interpreter.test.ts     # Interpreter tests
+├── jit.test.ts             # JIT compiler tests
 ├── optimizer.test.ts       # Optimizer tests
 ├── visitor.test.ts         # Visitor pattern tests
 ├── codegen.test.ts         # Code generation tests
@@ -149,6 +163,17 @@ test/
 ├── operators.test.ts       # Operator tests
 ├── external-variables.test.ts  # Context override tests
 └── precedence.test.ts      # Precedence tests
+
+bench/
+├── lexer.bench.ts          # Lexer benchmarks
+├── parser.bench.ts         # Parser benchmarks
+├── interpreter.bench.ts    # Interpreter benchmarks
+├── jit.bench.ts            # JIT compiler benchmarks
+├── optimizer.bench.ts      # Optimizer benchmarks
+├── codegen.bench.ts        # Code generation benchmarks
+├── integration.bench.ts    # Integration benchmarks
+├── fixtures.ts             # Shared benchmark fixtures
+└── run-all.ts              # Run all benchmarks
 ```
 
 ## Key Development Notes

@@ -16,4 +16,4 @@ group('Parser', () => {
 	})
 })
 
-await run()
+run()

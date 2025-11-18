@@ -27,4 +27,4 @@ group('Lexer', () => {
 	})
 })
 
-await run()
+run()
