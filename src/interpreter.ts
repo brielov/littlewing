@@ -134,15 +134,14 @@ function evaluateNode(
 }
 
 /**
- * Evaluate source code or AST with given context
- * @param input - Either a source code string or an AST node
- * @param context - Optional execution context with variables and functions
- * @returns The evaluated result
+ * Shared setup for evaluate and evaluateScope.
+ * Parses input if needed, builds the variables map and external variables set,
+ * runs the interpreter, and returns both the final value and the runtime scope.
  */
-export function evaluate(
+function run(
 	input: string | ASTNode,
 	context: ExecutionContext = {},
-): RuntimeValue {
+): { value: RuntimeValue; variables: Map<string, number> } {
 	const node = typeof input === 'string' ? parse(input) : input
 
 	// Use Map for O(1) variable lookups (faster than object property access)
@@ -154,5 +153,44 @@ export function evaluate(
 	// entries is [[key, value], ...] so we map to just keys
 	const externalVariables = new Set(entries.map(([key]) => key))
 
-	return evaluateNode(node, context, variables, externalVariables)
+	const value = evaluateNode(node, context, variables, externalVariables)
+	return { value, variables }
+}
+
+/**
+ * Evaluate source code or AST with given context
+ * @param input - Either a source code string or an AST node
+ * @param context - Optional execution context with variables and functions
+ * @returns The evaluated result
+ */
+export function evaluate(
+	input: string | ASTNode,
+	context: ExecutionContext = {},
+): RuntimeValue {
+	return run(input, context).value
+}
+
+/**
+ * Evaluate source code or AST and return the full variable scope.
+ *
+ * Runs the same interpreter as `evaluate()` but instead of returning
+ * the last expression value, returns a record of all variables that
+ * exist in scope after execution (both script-assigned and context-provided).
+ *
+ * @param input - Either a source code string or an AST node
+ * @param context - Optional execution context with variables and functions
+ * @returns Record of all variable names to their values after execution
+ *
+ * @example
+ * ```typescript
+ * const scope = evaluateScope('x = 10; y = x * 2')
+ * // scope === { x: 10, y: 20 }
+ * ```
+ */
+export function evaluateScope(
+	input: string | ASTNode,
+	context: ExecutionContext = {},
+): Record<string, number> {
+	const { variables } = run(input, context)
+	return Object.fromEntries(variables)
 }

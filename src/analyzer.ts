@@ -1,6 +1,7 @@
 import type { ASTNode } from './ast'
 import { isAssignment, isProgram } from './ast'
 import { collectAllIdentifiers } from './utils'
+import { visitPartial } from './visitor'
 
 /**
  * Extracts input variables from an AST.
@@ -43,6 +44,52 @@ export function extractInputVariables(ast: ASTNode): string[] {
 	}
 
 	return Array.from(inputVars)
+}
+
+/**
+ * Extracts the names of all assigned variables from an AST.
+ *
+ * Walks the AST and collects the left-hand side name from every
+ * `Assignment` node. Returns deduplicated names in definition order.
+ *
+ * @param ast - The AST to analyze (can be a single statement or Program node)
+ * @returns Array of assigned variable names in definition order
+ *
+ * @example
+ * ```typescript
+ * const node = parse('totalTime = hours * 60; hoursRecovered = saved / 60')
+ * extractAssignedVariables(node) // ['totalTime', 'hoursRecovered']
+ * ```
+ */
+export function extractAssignedVariables(ast: ASTNode): string[] {
+	const seen = new Set<string>()
+	const names: string[] = []
+
+	visitPartial(
+		ast,
+		{
+			// Tuple: [kind, statements]
+			Program: (n, recurse) => {
+				for (const statement of n[1]) {
+					recurse(statement)
+				}
+			},
+			// Tuple: [kind, name, value]
+			Assignment: (n, recurse) => {
+				const name = n[1]
+				if (!seen.has(name)) {
+					seen.add(name)
+					names.push(name)
+				}
+				// Recurse into the value in case of nested assignments
+				recurse(n[2])
+			},
+		},
+		// Default handler: no-op for all other node types
+		() => {},
+	)
+
+	return names
 }
 
 /**

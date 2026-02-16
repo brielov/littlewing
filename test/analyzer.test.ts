@@ -1,5 +1,8 @@
 import { describe, expect, test } from 'bun:test'
-import { extractInputVariables } from '../src/analyzer'
+import {
+	extractAssignedVariables,
+	extractInputVariables,
+} from '../src/analyzer'
 import { parse } from '../src/parser'
 
 describe('extractInputVariables', () => {
@@ -227,5 +230,72 @@ describe('extractInputVariables', () => {
 			const inputs = extractInputVariables(ast)
 			expect(inputs).toEqual(['z', 'a', 'm'])
 		})
+	})
+})
+
+describe('extractAssignedVariables', () => {
+	test('extracts single assignment', () => {
+		const ast = parse('x = 10')
+		expect(extractAssignedVariables(ast)).toEqual(['x'])
+	})
+
+	test('extracts multiple assignments', () => {
+		const ast = parse('x = 10; y = 20; z = 30')
+		expect(extractAssignedVariables(ast)).toEqual(['x', 'y', 'z'])
+	})
+
+	test('deduplicates reassigned variables', () => {
+		const ast = parse('x = 10; x = 20')
+		expect(extractAssignedVariables(ast)).toEqual(['x'])
+	})
+
+	test('preserves definition order', () => {
+		const ast = parse('z = 1; a = 2; m = 3')
+		expect(extractAssignedVariables(ast)).toEqual(['z', 'a', 'm'])
+	})
+
+	test('returns empty array when no assignments exist', () => {
+		const ast = parse('2 + 3')
+		expect(extractAssignedVariables(ast)).toEqual([])
+	})
+
+	test('includes computed assignments', () => {
+		const ast = parse('x = 10; y = x * 2')
+		expect(extractAssignedVariables(ast)).toEqual(['x', 'y'])
+	})
+
+	test('extracts from realistic BVA efficiency formula', () => {
+		const ast = parse(`
+			totalTime = hoursPerWeek * 52
+			hoursRecovered = totalTime * efficiencyGain
+			valueRecovered = hoursRecovered * hourlyRate
+		`)
+		expect(extractAssignedVariables(ast)).toEqual([
+			'totalTime',
+			'hoursRecovered',
+			'valueRecovered',
+		])
+	})
+
+	test('extracts from formula with function calls', () => {
+		const ast = parse(
+			'start = NOW(); duration = 24 * 7; end_date = ADD_DAYS(start, duration)',
+		)
+		expect(extractAssignedVariables(ast)).toEqual([
+			'start',
+			'duration',
+			'end_date',
+		])
+	})
+
+	test('extracts from formula with conditionals', () => {
+		const ast = parse('x = 10; y = x > 5 ? 100 : 50')
+		expect(extractAssignedVariables(ast)).toEqual(['x', 'y'])
+	})
+
+	test('handles single non-program node', () => {
+		// parse('x = 42') returns an Assignment node directly (not a Program)
+		const ast = parse('x = 42')
+		expect(extractAssignedVariables(ast)).toEqual(['x'])
 	})
 })

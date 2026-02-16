@@ -3,7 +3,7 @@
  */
 
 // Analyzer
-export { extractInputVariables } from './analyzer'
+export { extractAssignedVariables, extractInputVariables } from './analyzer'
 
 // AST builders
 export * as ast from './ast'
@@ -34,7 +34,7 @@ export { generate } from './codegen'
 // Humanizer
 export { type HumanizeOptions, humanize } from './humanizer'
 // Interpreter
-export { evaluate } from './interpreter'
+export { evaluate, evaluateScope } from './interpreter'
 // JIT Compiler
 export { type CompiledExpression, compile } from './jit'
 // Optimizer

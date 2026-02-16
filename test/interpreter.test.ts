@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test'
 import * as ast from '../src/ast'
-import { evaluate } from '../src/interpreter'
+import { evaluate, evaluateScope } from '../src/interpreter'
 import { parse } from '../src/parser'
 
 describe('Interpreter', () => {
@@ -287,5 +287,65 @@ describe('Logical NOT operator', () => {
 		// !2 ^ 2 should be !(2 ^ 2) = !4 = 0
 		const result = evaluate('!2 ^ 2')
 		expect(result).toBe(0)
+	})
+})
+
+describe('evaluateScope', () => {
+	test('returns all assigned variables', () => {
+		const scope = evaluateScope('x = 10; y = 20')
+		expect(scope).toEqual({ x: 10, y: 20 })
+	})
+
+	test('returns computed variables', () => {
+		const scope = evaluateScope('x = 10; y = x * 2')
+		expect(scope).toEqual({ x: 10, y: 20 })
+	})
+
+	test('includes context variables in scope', () => {
+		const scope = evaluateScope('y = x * 2', { variables: { x: 5 } })
+		expect(scope).toEqual({ x: 5, y: 10 })
+	})
+
+	test('context variables override script assignments', () => {
+		const scope = evaluateScope('x = 10; y = x * 2', { variables: { x: 100 } })
+		expect(scope).toEqual({ x: 100, y: 200 })
+	})
+
+	test('returns empty object for expression without assignments', () => {
+		const scope = evaluateScope('2 + 3')
+		expect(scope).toEqual({})
+	})
+
+	test('works with function calls', () => {
+		const scope = evaluateScope('x = ABS(-5); y = MAX(x, 10)', {
+			functions: { ABS: Math.abs, MAX: Math.max },
+		})
+		expect(scope).toEqual({ x: 5, y: 10 })
+	})
+
+	test('works with realistic BVA formula', () => {
+		const scope = evaluateScope(
+			`
+			totalTime = hoursPerWeek * 52
+			hoursRecovered = totalTime * efficiencyGain
+			valueRecovered = hoursRecovered * hourlyRate
+			`,
+			{
+				variables: {
+					hoursPerWeek: 40,
+					efficiencyGain: 0.1,
+					hourlyRate: 50,
+				},
+			},
+		)
+		expect(scope.totalTime).toBe(2080)
+		expect(scope.hoursRecovered).toBe(208)
+		expect(scope.valueRecovered).toBe(10400)
+	})
+
+	test('accepts AST input', () => {
+		const node = parse('x = 5; y = x + 1')
+		const scope = evaluateScope(node)
+		expect(scope).toEqual({ x: 5, y: 6 })
 	})
 })
