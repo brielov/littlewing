@@ -23,7 +23,7 @@ Key characteristics:
 
 The codebase follows a **three-stage compilation pipeline**:
 
-1. **Lexer** (`src/lexer.ts`) - Tokenizes source code into a token stream
+1. **Lexer** (`packages/littlewing/src/lexer.ts`) - Tokenizes source code into a token stream
    - Single-pass O(n) tokenization
    - Handles numbers (integers and standard decimals like `0.5`), identifiers, operators, punctuation
    - Handles string literals with escape sequences (`\"`, `\\`, `\n`, `\t`)
@@ -32,7 +32,7 @@ The codebase follows a **three-stage compilation pipeline**:
    - Skips whitespace, semicolons, and single-line comments (`//`) automatically
    - `true` and `false` are parsed as identifiers and handled in the parser
 
-2. **Parser** (`src/parser.ts`) - Builds an Abstract Syntax Tree (AST)
+2. **Parser** (`packages/littlewing/src/parser.ts`) - Builds an Abstract Syntax Tree (AST)
    - Pratt parsing (top-down operator precedence climbing)
    - Supports: unary > exponentiation > mult/div/mod > add/sub > range > comparison > logical AND > logical OR > assignment
    - Postfix bracket indexing (`arr[0]`, `str[1]`) with chaining support (`a[0][1]`, `f()[0]`)
@@ -41,7 +41,7 @@ The codebase follows a **three-stage compilation pipeline**:
    - Handles string literals, boolean literals (`true`/`false` in prefix position), array literals (`[...]`)
    - `true`/`false` cannot be used as assignment targets
 
-3. **Interpreter** (`src/interpreter.ts`) - Tree-walk evaluation
+3. **Interpreter** (`packages/littlewing/src/interpreter.ts`) - Tree-walk evaluation
    - Evaluates AST nodes using the visitor pattern
    - Maintains variable state in a `Map<string, RuntimeValue>`
    - Short-circuit evaluation for `&&` and `||` (both require boolean operands)
@@ -55,10 +55,10 @@ The codebase follows a **three-stage compilation pipeline**:
 
 ### Key Types and Contracts
 
-- **RuntimeValue** (`src/types.ts`) - `number | string | boolean | Temporal.PlainDate | Temporal.PlainTime | Temporal.PlainDateTime | readonly RuntimeValue[]`
-- **ASTNode** (`src/ast.ts`) - Discriminated union of 14 node types:
+- **RuntimeValue** (`packages/littlewing/src/types.ts`) - `number | string | boolean | Temporal.PlainDate | Temporal.PlainTime | Temporal.PlainDateTime | readonly RuntimeValue[]`
+- **ASTNode** (`packages/littlewing/src/ast.ts`) - Discriminated union of 14 node types:
   - Program, NumberLiteral, StringLiteral, BooleanLiteral, ArrayLiteral, Identifier, BinaryOp, UnaryOp, FunctionCall, Assignment, IfExpression, ForExpression, IndexAccess, RangeExpression
-- **ExecutionContext** (`src/types.ts`) - Provides global `functions` and `variables`
+- **ExecutionContext** (`packages/littlewing/src/types.ts`) - Provides global `functions` and `variables`
   - Functions: `(...args: RuntimeValue[]) => RuntimeValue`
   - Variables: `Record<string, RuntimeValue>`
 
@@ -126,76 +126,74 @@ Type guards (`isNumberLiteral`, `isStringLiteral`, `isBooleanLiteral`, `isArrayL
 ## Development Commands
 
 ```bash
-# Build the project
-bun run build
+# Root-level commands (run from repo root)
+bun run build           # Build the library
+bun run test            # Run all library tests
+bun run lint            # Lint all packages
+bun run lint:fix        # Auto-fix lint issues
+bun run fmt             # Format all files
+bun run fmt:check       # Check formatting
 
-# Watch mode during development
-bun run dev
+# Library-specific commands
+bun run --cwd packages/littlewing dev            # Watch mode
+bun run --cwd packages/littlewing test:watch      # Tests in watch mode
+bun run --cwd packages/littlewing test:coverage   # Coverage report
+bun run --cwd packages/littlewing release         # Bump version, commit, push, tag
 
-# Run all tests
-bun test
-
-# Run tests in watch mode
-bun test --watch
-
-# Run tests with coverage report
-bun test --coverage
-
-# Lint and format check
-bun run lint
-
-# Auto-fix linting and formatting issues
-bun run lint:fix
-
-# Type check without emitting
-bun run type-check
-
-# Release a new version (bumps version, commits, pushes, creates tag)
-bun release
+# Playground
+bun run --cwd packages/playground dev      # Start Vite dev server
+bun run --cwd packages/playground build    # Production build
+bun run --cwd packages/playground preview  # Preview production build
 ```
 
 ## Project Structure
 
-```
-src/
-├── index.ts          # Public API exports
-├── types.ts          # RuntimeValue, ExecutionContext
-├── lexer.ts          # Tokenization (source → tokens)
-├── parser.ts         # Parsing (tokens → AST)
-├── interpreter.ts    # Tree-walk evaluation (AST + context → result)
-├── optimizer.ts      # AST optimization (constant folding + DCE)
-├── visitor.ts        # Visitor pattern for AST traversal
-├── ast.ts            # AST node types, type guards, builder functions
-├── codegen.ts        # Code generation (AST → source)
-├── analyzer.ts       # Static analysis utilities
-├── utils.ts          # Shared utilities (operators, type assertions, equality)
-└── stdlib/
-    ├── index.ts          # Combines all stdlib modules into defaultContext
-    ├── core.ts           # STR, NUM, TYPE
-    ├── math.ts           # Math functions (14)
-    ├── string.ts         # String functions (8)
-    ├── array.ts          # Array functions (8)
-    ├── datetime.ts       # Date functions using Temporal.PlainDate/PlainDateTime (24)
-    ├── time.ts           # Time functions using Temporal.PlainTime/PlainDateTime (13)
-    └── datetimefull.ts   # DateTime construction/conversion functions (7)
+This is a **Bun workspaces monorepo** with two packages:
 
-test/
-├── lexer.test.ts           # Lexer tests (numbers, strings, operators, brackets)
-├── parser.test.ts          # Parser tests (all literal types, precedence)
-├── interpreter.test.ts     # Interpreter tests (evaluation, type errors)
-├── optimizer.test.ts       # Optimizer tests (constant folding, propagation, DCE)
-├── visitor.test.ts         # Visitor pattern tests
-├── codegen.test.ts         # Code generation tests (all types round-trip)
-├── analyzer.test.ts        # Analyzer tests
-├── ast.test.ts             # AST builder tests (all 14 node types)
-├── defaults.test.ts        # Default context tests (all stdlib functions)
-├── date-utils.test.ts      # Date utility tests (Temporal.PlainDate, PlainDateTime)
-├── time.test.ts            # Time function tests (Temporal.PlainTime)
-├── datetime-full.test.ts   # DateTime function tests (Temporal.PlainDateTime)
-├── integration.test.ts     # Integration tests (full pipeline)
-├── operators.test.ts       # Operator tests (all operators, all types)
-├── external-variables.test.ts  # Context override tests
-└── precedence.test.ts      # Precedence tests
+```
+/
+├── package.json              # Workspace root (private)
+├── bunfig.toml               # [install] linker = "hoisted"
+├── tsconfig.json             # Project references only
+├── .oxlintrc.json            # Shared lint config
+├── .oxfmtrc.json             # Shared format config
+├── packages/
+│   ├── littlewing/           # Publishable library
+│   │   ├── package.json
+│   │   ├── tsconfig.json
+│   │   ├── bunfig.toml       # [test] preload only
+│   │   ├── bunup.config.ts
+│   │   ├── src/
+│   │   │   ├── index.ts          # Public API exports
+│   │   │   ├── types.ts          # RuntimeValue, ExecutionContext
+│   │   │   ├── lexer.ts          # Tokenization (source → tokens)
+│   │   │   ├── parser.ts         # Parsing (tokens → AST)
+│   │   │   ├── interpreter.ts    # Tree-walk evaluation (AST + context → result)
+│   │   │   ├── optimizer.ts      # AST optimization (constant folding + DCE)
+│   │   │   ├── visitor.ts        # Visitor pattern for AST traversal
+│   │   │   ├── ast.ts            # AST node types, type guards, builder functions
+│   │   │   ├── codegen.ts        # Code generation (AST → source)
+│   │   │   ├── analyzer.ts       # Static analysis utilities
+│   │   │   ├── utils.ts          # Shared utilities (operators, type assertions, equality)
+│   │   │   └── stdlib/
+│   │   │       ├── index.ts          # Combines all stdlib modules into defaultContext
+│   │   │       ├── core.ts           # STR, NUM, TYPE
+│   │   │       ├── math.ts           # Math functions (14)
+│   │   │       ├── string.ts         # String functions (8)
+│   │   │       ├── array.ts          # Array functions (8)
+│   │   │       ├── datetime.ts       # Date functions (24)
+│   │   │       ├── time.ts           # Time functions (13)
+│   │   │       └── datetimefull.ts   # DateTime functions (7)
+│   │   └── test/                 # 16 test files, 737 tests
+│   └── playground/           # Private web app
+│       ├── package.json
+│       ├── tsconfig.json
+│       ├── vite.config.ts    # React + Tailwind + source alias
+│       ├── index.html
+│       └── src/
+│           ├── main.tsx
+│           ├── App.tsx
+│           └── index.css
 ```
 
 ## Key Development Notes
@@ -210,7 +208,7 @@ test/
 
 ### Visitor Pattern
 
-The codebase uses a centralized visitor pattern for AST traversal, implemented in `src/visitor.ts`.
+The codebase uses a centralized visitor pattern for AST traversal, implemented in `packages/littlewing/src/visitor.ts`.
 
 **Two visitor functions:**
 
@@ -252,7 +250,7 @@ const count = visit(ast, {
 
 ### Optimization
 
-The optimizer (`src/optimizer.ts`) implements constant folding, constant propagation, and dead code elimination:
+The optimizer (`packages/littlewing/src/optimizer.ts`) implements constant folding, constant propagation, and dead code elimination:
 
 - **Constant folding** - Evaluates pure expressions at compile time (numbers, strings, booleans)
 - **Cross-type folding** - `1 == "1"` folds to `false`, `"a" + "b"` folds to `"ab"`
@@ -266,7 +264,7 @@ The optimizer (`src/optimizer.ts`) implements constant folding, constant propaga
 Tests use Bun's built-in test framework:
 
 - **737 tests** across 16 test files
-- Run a single test file: `bun test test/optimizer.test.ts`
+- Run a single test file: `bun test packages/littlewing/test/optimizer.test.ts`
 
 ### Code Style
 
@@ -279,30 +277,30 @@ Tests use Bun's built-in test framework:
 
 **Adding a new stdlib function:**
 
-1. Implement in the appropriate `src/stdlib/*.ts` module
+1. Implement in the appropriate `packages/littlewing/src/stdlib/*.ts` module
 2. Use assertion helpers (`assertNumber`, `assertString`, `assertArray`, `assertDate`, `assertBoolean`) for type safety
 3. Use UPPERCASE naming convention
-4. Add tests in `test/defaults.test.ts`
+4. Add tests in `packages/littlewing/test/defaults.test.ts`
 5. Export is automatic via the stdlib `index.ts` spread
 
 **Adding a new AST node type:**
 
-1. Add `NodeKind` variant in `src/ast.ts`
-2. Add interface type definition, type guard, and builder function in `src/ast.ts`
+1. Add `NodeKind` variant in `packages/littlewing/src/ast.ts`
+2. Add interface type definition, type guard, and builder function in `packages/littlewing/src/ast.ts`
 3. Expand `ASTNode` union and update `getNodeName`
-4. Add handler to `Visitor<T>` in `src/visitor.ts`
+4. Add handler to `Visitor<T>` in `packages/littlewing/src/visitor.ts`
 5. Add case to `visitPartial` switch
 6. Update all visitor consumers: interpreter, optimizer, codegen
-7. Update `collectAllIdentifiers` in `src/utils.ts`
-8. Add parser support in `src/parser.ts`
+7. Update `collectAllIdentifiers` in `packages/littlewing/src/utils.ts`
+8. Add parser support in `packages/littlewing/src/parser.ts`
 
 **Adding a new binary operator:**
 
-1. Add token type to `TokenKind` in `src/lexer.ts`
+1. Add token type to `TokenKind` in `packages/littlewing/src/lexer.ts`
 2. Handle tokenization in `nextToken`
 3. Add precedence in parser's `getTokenPrecedence`
-4. Add to `Operator` type in `src/ast.ts`
-5. Add to `evaluateBinaryOperation()` in `src/utils.ts`
+4. Add to `Operator` type in `packages/littlewing/src/ast.ts`
+5. Add to `evaluateBinaryOperation()` in `packages/littlewing/src/utils.ts`
 6. Add tests
 
 ## AST Node Types Reference
@@ -410,6 +408,6 @@ Date functions use `Temporal.PlainDate` (most also accept `Temporal.PlainDateTim
 
 - ESM-only distribution
 - TypeScript declaration files generated
-- Main entry point: `dist/index.js`
-- Type definitions: `dist/index.d.ts`
+- Main entry point: `packages/littlewing/dist/index.js`
+- Type definitions: `packages/littlewing/dist/index.d.ts`
 - Optimized for tree-shaking
