@@ -196,16 +196,6 @@ test/
 ├── operators.test.ts       # Operator tests (all operators, all types)
 ├── external-variables.test.ts  # Context override tests
 └── precedence.test.ts      # Precedence tests
-
-bench/
-├── lexer.bench.ts          # Lexer benchmarks
-├── parser.bench.ts         # Parser benchmarks
-├── interpreter.bench.ts    # Interpreter benchmarks
-├── optimizer.bench.ts      # Optimizer benchmarks
-├── codegen.bench.ts        # Code generation benchmarks
-├── integration.bench.ts    # Integration benchmarks
-├── fixtures.ts             # Shared benchmark fixtures
-└── run-all.ts              # Run all benchmarks
 ```
 
 ## Key Development Notes
