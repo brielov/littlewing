@@ -77,8 +77,7 @@ export function visitPartial<T>(
 ): T {
 	const recurse = (n: ASTNode): T => visitPartial(n, visitor, defaultHandler)
 
-	const kind = node[0]
-	switch (kind) {
+	switch (node.kind) {
 		case NodeKind.Program:
 			return visitor.Program
 				? visitor.Program(node, recurse)

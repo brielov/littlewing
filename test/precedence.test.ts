@@ -9,15 +9,14 @@ describe('Precedence', () => {
 		const ast1 = parse('5 > 3 && 10 > 8')
 		expect(isBinaryOp(ast1)).toBe(true)
 		if (isBinaryOp(ast1)) {
-			// Tuple: [kind, left, operator, right]
-			expect(ast1[2]).toBe('&&')
-			expect(isBinaryOp(ast1[1])).toBe(true)
-			expect(isBinaryOp(ast1[3])).toBe(true)
-			if (isBinaryOp(ast1[1])) {
-				expect(ast1[1][2]).toBe('>')
+			expect(ast1.operator).toBe('&&')
+			expect(isBinaryOp(ast1.left)).toBe(true)
+			expect(isBinaryOp(ast1.right)).toBe(true)
+			if (isBinaryOp(ast1.left)) {
+				expect(ast1.left.operator).toBe('>')
 			}
-			if (isBinaryOp(ast1[3])) {
-				expect(ast1[3][2]).toBe('>')
+			if (isBinaryOp(ast1.right)) {
+				expect(ast1.right.operator).toBe('>')
 			}
 		}
 	})
@@ -28,11 +27,10 @@ describe('Precedence', () => {
 		const ast1 = parse('1 && 1 ? 100 : 50')
 		expect(isConditionalExpression(ast1)).toBe(true)
 		if (isConditionalExpression(ast1)) {
-			// Tuple: [kind, condition, consequent, alternate]
-			const condition = ast1[1]
+			const condition = ast1.condition
 			expect(isBinaryOp(condition)).toBe(true)
 			if (isBinaryOp(condition)) {
-				expect(condition[2]).toBe('&&')
+				expect(condition.operator).toBe('&&')
 			}
 		}
 	})
@@ -43,11 +41,10 @@ describe('Precedence', () => {
 		const ast1 = parse('x = 1 && 0')
 		expect(isAssignment(ast1)).toBe(true)
 		if (isAssignment(ast1)) {
-			// Tuple: [kind, name, value]
-			const value = ast1[2]
+			const value = ast1.value
 			expect(isBinaryOp(value)).toBe(true)
 			if (isBinaryOp(value)) {
-				expect(value[2]).toBe('&&')
+				expect(value.operator).toBe('&&')
 			}
 		}
 	})

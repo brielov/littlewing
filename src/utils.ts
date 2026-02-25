@@ -301,7 +301,7 @@ export function collectAllIdentifiers(node: ASTNode): Set<string> {
 
 	visit<void>(node, {
 		Program: (n, recurse) => {
-			for (const stmt of n[1]) {
+			for (const stmt of n.statements) {
 				recurse(stmt)
 			}
 		},
@@ -309,32 +309,32 @@ export function collectAllIdentifiers(node: ASTNode): Set<string> {
 		StringLiteral: () => {},
 		BooleanLiteral: () => {},
 		ArrayLiteral: (n, recurse) => {
-			for (const elem of n[1]) {
+			for (const elem of n.elements) {
 				recurse(elem)
 			}
 		},
 		Identifier: (n) => {
-			identifiers.add(n[1])
+			identifiers.add(n.name)
 		},
 		BinaryOp: (n, recurse) => {
-			recurse(n[1])
-			recurse(n[3])
+			recurse(n.left)
+			recurse(n.right)
 		},
 		UnaryOp: (n, recurse) => {
-			recurse(n[2])
+			recurse(n.argument)
 		},
 		FunctionCall: (n, recurse) => {
-			for (const arg of n[2]) {
+			for (const arg of n.args) {
 				recurse(arg)
 			}
 		},
 		Assignment: (n, recurse) => {
-			recurse(n[2])
+			recurse(n.value)
 		},
 		ConditionalExpression: (n, recurse) => {
-			recurse(n[1])
-			recurse(n[2])
-			recurse(n[3])
+			recurse(n.condition)
+			recurse(n.consequent)
+			recurse(n.alternate)
 		},
 	})
 

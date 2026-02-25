@@ -219,24 +219,24 @@ The codebase uses a centralized visitor pattern for AST traversal, implemented i
 import { visit } from "littlewing";
 
 const count = visit(ast, {
-  Program: (n, recurse) => n[1].reduce((sum, s) => sum + recurse(s), 0),
+  Program: (n, recurse) => n.statements.reduce((sum, s) => sum + recurse(s), 0),
   NumberLiteral: () => 1,
   StringLiteral: () => 1,
   BooleanLiteral: () => 1,
-  ArrayLiteral: (n, recurse) => 1 + n[1].reduce((sum, el) => sum + recurse(el), 0),
+  ArrayLiteral: (n, recurse) => 1 + n.elements.reduce((sum, el) => sum + recurse(el), 0),
   Identifier: () => 1,
-  BinaryOp: (n, recurse) => 1 + recurse(n[1]) + recurse(n[3]),
-  UnaryOp: (n, recurse) => 1 + recurse(n[2]),
-  FunctionCall: (n, recurse) => 1 + n[2].reduce((sum, arg) => sum + recurse(arg), 0),
-  Assignment: (n, recurse) => 1 + recurse(n[2]),
-  ConditionalExpression: (n, recurse) => 1 + recurse(n[1]) + recurse(n[2]) + recurse(n[3]),
+  BinaryOp: (n, recurse) => 1 + recurse(n.left) + recurse(n.right),
+  UnaryOp: (n, recurse) => 1 + recurse(n.argument),
+  FunctionCall: (n, recurse) => 1 + n.args.reduce((sum, arg) => sum + recurse(arg), 0),
+  Assignment: (n, recurse) => 1 + recurse(n.value),
+  ConditionalExpression: (n, recurse) => 1 + recurse(n.condition) + recurse(n.consequent) + recurse(n.alternate),
 });
 ```
 
-**Important: Tuple-based AST structure:**
+**Important: Object-based AST structure:**
 
-- Nodes are readonly tuples: `[NodeKind, ...fields]`
-- Access fields by index: `n[1]`, `n[2]`, etc.
+- Nodes are readonly objects with a `kind` discriminator
+- Access fields by name: `n.left`, `n.operator`, `n.right`, etc.
 - Use type guards for safe type narrowing: `if (isBinaryOp(node))`
 
 ### Optimization
@@ -276,7 +276,7 @@ Tests use Bun's built-in test framework:
 **Adding a new AST node type:**
 
 1. Add `NodeKind` variant in `src/ast.ts`
-2. Add tuple type definition, type guard, and builder function in `src/ast.ts`
+2. Add interface type definition, type guard, and builder function in `src/ast.ts`
 3. Expand `ASTNode` union and update `getNodeName`
 4. Add handler to `Visitor<T>` in `src/visitor.ts`
 5. Add case to `visitPartial` switch
@@ -296,19 +296,19 @@ Tests use Bun's built-in test framework:
 ## AST Node Types Reference
 
 ```typescript
-// 11 tuple-based AST node types (readonly tuples)
+// 11 readonly object-based AST node types
 
-type Program = readonly [kind: NodeKind.Program, statements: readonly ASTNode[]]
-type NumberLiteral = readonly [kind: NodeKind.NumberLiteral, value: number]
-type StringLiteral = readonly [kind: NodeKind.StringLiteral, value: string]
-type BooleanLiteral = readonly [kind: NodeKind.BooleanLiteral, value: boolean]
-type ArrayLiteral = readonly [kind: NodeKind.ArrayLiteral, elements: readonly ASTNode[]]
-type Identifier = readonly [kind: NodeKind.Identifier, name: string]
-type BinaryOp = readonly [kind: NodeKind.BinaryOp, left: ASTNode, operator: Operator, right: ASTNode]
-type UnaryOp = readonly [kind: NodeKind.UnaryOp, operator: '-' | '!', argument: ASTNode]
-type FunctionCall = readonly [kind: NodeKind.FunctionCall, name: string, arguments: readonly ASTNode[]]
-type Assignment = readonly [kind: NodeKind.Assignment, name: string, value: ASTNode]
-type ConditionalExpression = readonly [kind: NodeKind.ConditionalExpression, condition: ASTNode, consequent: ASTNode, alternate: ASTNode]
+interface Program { readonly kind: NodeKind.Program; readonly statements: readonly ASTNode[] }
+interface NumberLiteral { readonly kind: NodeKind.NumberLiteral; readonly value: number }
+interface StringLiteral { readonly kind: NodeKind.StringLiteral; readonly value: string }
+interface BooleanLiteral { readonly kind: NodeKind.BooleanLiteral; readonly value: boolean }
+interface ArrayLiteral { readonly kind: NodeKind.ArrayLiteral; readonly elements: readonly ASTNode[] }
+interface Identifier { readonly kind: NodeKind.Identifier; readonly name: string }
+interface BinaryOp { readonly kind: NodeKind.BinaryOp; readonly left: ASTNode; readonly operator: Operator; readonly right: ASTNode }
+interface UnaryOp { readonly kind: NodeKind.UnaryOp; readonly operator: '-' | '!'; readonly argument: ASTNode }
+interface FunctionCall { readonly kind: NodeKind.FunctionCall; readonly name: string; readonly args: readonly ASTNode[] }
+interface Assignment { readonly kind: NodeKind.Assignment; readonly name: string; readonly value: ASTNode }
+interface ConditionalExpression { readonly kind: NodeKind.ConditionalExpression; readonly condition: ASTNode; readonly consequent: ASTNode; readonly alternate: ASTNode }
 ```
 
 ## Built-in Functions Summary

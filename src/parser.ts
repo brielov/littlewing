@@ -189,10 +189,10 @@ function parseInfix(
 
 	// Assignment (right-associative)
 	if (tokenKind === TokenKind.Eq) {
-		if (left[0] !== NodeKind.Identifier) {
+		if (left.kind !== NodeKind.Identifier) {
 			throw new Error('Invalid assignment target')
 		}
-		const identName = left[1]
+		const identName = left.name
 		advance(state)
 		const value = parseExpression(state, precedence)
 		return ast.assign(identName, value)

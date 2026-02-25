@@ -21,20 +21,20 @@ function evaluateNode(
 	return visit(node, {
 		Program: (n, recurse) => {
 			let result: RuntimeValue = 0
-			for (const statement of n[1]) {
+			for (const statement of n.statements) {
 				result = recurse(statement)
 			}
 			return result
 		},
 
-		NumberLiteral: (n) => n[1],
+		NumberLiteral: (n) => n.value,
 
-		StringLiteral: (n) => n[1],
+		StringLiteral: (n) => n.value,
 
-		BooleanLiteral: (n) => n[1],
+		BooleanLiteral: (n) => n.value,
 
 		ArrayLiteral: (n, recurse) => {
-			const elements = n[1].map(recurse)
+			const elements = n.elements.map(recurse)
 			// Validate homogeneity
 			if (elements.length > 0) {
 				const firstType = typeOf(elements[0] as RuntimeValue)
@@ -51,93 +51,85 @@ function evaluateNode(
 		},
 
 		Identifier: (n) => {
-			const name = n[1]
-			const value = variables.get(name)
+			const value = variables.get(n.name)
 			if (value === undefined) {
-				throw new Error(`Undefined variable: ${name}`)
+				throw new Error(`Undefined variable: ${n.name}`)
 			}
 			return value
 		},
 
 		BinaryOp: (n, recurse) => {
-			const operator = n[2]
-
 			// Short-circuit && and ||
-			if (operator === '&&') {
-				const left = recurse(n[1])
+			if (n.operator === '&&') {
+				const left = recurse(n.left)
 				assertBoolean(left, "Operator '&&'", 'left')
 				if (!left) return false
-				const right = recurse(n[3])
+				const right = recurse(n.right)
 				assertBoolean(right, "Operator '&&'", 'right')
 				return right
 			}
 
-			if (operator === '||') {
-				const left = recurse(n[1])
+			if (n.operator === '||') {
+				const left = recurse(n.left)
 				assertBoolean(left, "Operator '||'", 'left')
 				if (left) return true
-				const right = recurse(n[3])
+				const right = recurse(n.right)
 				assertBoolean(right, "Operator '||'", 'right')
 				return right
 			}
 
-			const left = recurse(n[1])
-			const right = recurse(n[3])
-			return evaluateBinaryOperation(operator, left, right)
+			const left = recurse(n.left)
+			const right = recurse(n.right)
+			return evaluateBinaryOperation(n.operator, left, right)
 		},
 
 		UnaryOp: (n, recurse) => {
-			const operator = n[1]
-			const arg = recurse(n[2])
+			const arg = recurse(n.argument)
 
-			if (operator === '-') {
+			if (n.operator === '-') {
 				assertNumber(arg, "Operator '-' (unary)")
 				return -arg
 			}
 
-			if (operator === '!') {
+			if (n.operator === '!') {
 				assertBoolean(arg, "Operator '!'")
 				return !arg
 			}
 
-			throw new Error(`Unknown unary operator: ${operator}`)
+			throw new Error(`Unknown unary operator: ${n.operator}`)
 		},
 
 		FunctionCall: (n, recurse) => {
-			const name = n[1]
-			const args = n[2]
-			const fn = context.functions?.[name]
+			const fn = context.functions?.[n.name]
 			if (fn === undefined) {
-				throw new Error(`Undefined function: ${name}`)
+				throw new Error(`Undefined function: ${n.name}`)
 			}
 			if (typeof fn !== 'function') {
-				throw new Error(`${name} is not a function`)
+				throw new Error(`${n.name} is not a function`)
 			}
 
-			const evaluatedArgs = args.map(recurse)
+			const evaluatedArgs = n.args.map(recurse)
 			return fn(...evaluatedArgs)
 		},
 
 		Assignment: (n, recurse) => {
-			const name = n[1]
-			const valueNode = n[2]
-			const value = recurse(valueNode)
+			const value = recurse(n.value)
 
-			if (externalVariables.has(name)) {
-				const externalValue = variables.get(name)
+			if (externalVariables.has(n.name)) {
+				const externalValue = variables.get(n.name)
 				if (externalValue !== undefined) {
 					return externalValue
 				}
 			}
 
-			variables.set(name, value)
+			variables.set(n.name, value)
 			return value
 		},
 
 		ConditionalExpression: (n, recurse) => {
-			const condition = recurse(n[1])
+			const condition = recurse(n.condition)
 			assertBoolean(condition, 'Ternary condition')
-			return condition ? recurse(n[2]) : recurse(n[3])
+			return condition ? recurse(n.consequent) : recurse(n.alternate)
 		},
 	})
 }

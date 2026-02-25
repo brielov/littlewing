@@ -10,6 +10,7 @@ import {
 	divide,
 	functionCall,
 	identifier,
+	isBinaryOp,
 	isNumberLiteral,
 	multiply,
 	NodeKind,
@@ -29,7 +30,7 @@ describe('visit', () => {
 			const node = number(42)
 			const result = visit(node, {
 				Program: () => 0,
-				NumberLiteral: ([, value]) => value,
+				NumberLiteral: (n) => n.value,
 				StringLiteral: () => 0,
 				BooleanLiteral: () => 0,
 				ArrayLiteral: () => 0,
@@ -51,7 +52,7 @@ describe('visit', () => {
 				StringLiteral: () => '',
 				BooleanLiteral: () => '',
 				ArrayLiteral: () => '',
-				Identifier: ([, name]) => name,
+				Identifier: (n) => n.name,
 				BinaryOp: () => '',
 				UnaryOp: () => '',
 				FunctionCall: () => '',
@@ -65,13 +66,12 @@ describe('visit', () => {
 			const node = add(number(2), number(3))
 			const result = visit(node, {
 				Program: () => 0,
-				NumberLiteral: ([, value]) => value,
+				NumberLiteral: (n) => n.value,
 				StringLiteral: () => 0,
 				BooleanLiteral: () => 0,
 				ArrayLiteral: () => 0,
 				Identifier: () => 0,
-				BinaryOp: ([, left, _, right], recurse) =>
-					recurse(left) + recurse(right),
+				BinaryOp: (n, recurse) => recurse(n.left) + recurse(n.right),
 				UnaryOp: () => 0,
 				FunctionCall: () => 0,
 				Assignment: () => 0,
@@ -84,13 +84,13 @@ describe('visit', () => {
 			const node = negate(number(5))
 			const result = visit(node, {
 				Program: () => 0,
-				NumberLiteral: ([, value]) => value,
+				NumberLiteral: (n) => n.value,
 				StringLiteral: () => 0,
 				BooleanLiteral: () => 0,
 				ArrayLiteral: () => 0,
 				Identifier: () => 0,
 				BinaryOp: () => 0,
-				UnaryOp: ([, , arg], recurse) => -recurse(arg),
+				UnaryOp: (n, recurse) => -recurse(n.argument),
 				FunctionCall: () => 0,
 				Assignment: () => 0,
 				ConditionalExpression: () => 0,
@@ -102,16 +102,16 @@ describe('visit', () => {
 			const node = functionCall('sum', [number(1), number(2)])
 			const result = visit<string>(node, {
 				Program: () => '',
-				NumberLiteral: ([, value]) => String(value),
-				StringLiteral: ([, value]) => `"${value}"`,
-				BooleanLiteral: ([, value]) => String(value),
+				NumberLiteral: (n) => String(n.value),
+				StringLiteral: (n) => `"${n.value}"`,
+				BooleanLiteral: (n) => String(n.value),
 				ArrayLiteral: () => '[]',
 				Identifier: () => '',
 				BinaryOp: () => '',
 				UnaryOp: () => '',
-				FunctionCall: ([, name, args], recurse) => {
-					const argsStr = args.map(recurse).join(',')
-					return `${name}(${argsStr})`
+				FunctionCall: (n, recurse) => {
+					const argsStr = n.args.map(recurse).join(',')
+					return `${n.name}(${argsStr})`
 				},
 				Assignment: () => '',
 				ConditionalExpression: () => '',
@@ -123,15 +123,15 @@ describe('visit', () => {
 			const node = assign('x', number(10))
 			const result = visit(node, {
 				Program: () => '',
-				NumberLiteral: ([, value]) => String(value),
-				StringLiteral: ([, value]) => `"${value}"`,
-				BooleanLiteral: ([, value]) => String(value),
+				NumberLiteral: (n) => String(n.value),
+				StringLiteral: (n) => `"${n.value}"`,
+				BooleanLiteral: (n) => String(n.value),
 				ArrayLiteral: () => '[]',
 				Identifier: () => '',
 				BinaryOp: () => '',
 				UnaryOp: () => '',
 				FunctionCall: () => '',
-				Assignment: ([, name, value], recurse) => `${name}=${recurse(value)}`,
+				Assignment: (n, recurse) => `${n.name}=${recurse(n.value)}`,
 				ConditionalExpression: () => '',
 			})
 			expect(result).toBe('x=10')
@@ -141,20 +141,19 @@ describe('visit', () => {
 			const node = conditional(boolean(true), number(100), number(200))
 			const result = visit(node, {
 				Program: () => 0,
-				NumberLiteral: ([, value]) => value,
+				NumberLiteral: (n) => n.value,
 				StringLiteral: () => 0,
-				BooleanLiteral: ([, value]) => (value ? 1 : 0),
+				BooleanLiteral: (n) => (n.value ? 1 : 0),
 				ArrayLiteral: () => 0,
 				Identifier: () => 0,
 				BinaryOp: () => 0,
 				UnaryOp: () => 0,
 				FunctionCall: () => 0,
 				Assignment: () => 0,
-				ConditionalExpression: (
-					[, condition, consequent, alternate],
-					recurse,
-				) =>
-					recurse(condition) !== 0 ? recurse(consequent) : recurse(alternate),
+				ConditionalExpression: (n, recurse) =>
+					recurse(n.condition) !== 0
+						? recurse(n.consequent)
+						: recurse(n.alternate),
 			})
 			expect(result).toBe(100)
 		})
@@ -162,9 +161,9 @@ describe('visit', () => {
 		test('visits Program node', () => {
 			const node = program([number(1), number(2), number(3)])
 			const result = visit(node, {
-				Program: ([, statements], recurse) =>
-					statements.map(recurse).reduce((a, b) => a + b, 0),
-				NumberLiteral: ([, value]) => value,
+				Program: (n, recurse) =>
+					n.statements.map(recurse).reduce((a, b) => a + b, 0),
+				NumberLiteral: (n) => n.value,
 				StringLiteral: () => 0,
 				BooleanLiteral: () => 0,
 				ArrayLiteral: () => 0,
@@ -183,7 +182,7 @@ describe('visit', () => {
 			const result = visit(node, {
 				Program: () => '',
 				NumberLiteral: () => '',
-				StringLiteral: ([, value]) => value,
+				StringLiteral: (n) => n.value,
 				BooleanLiteral: () => '',
 				ArrayLiteral: () => '',
 				Identifier: () => '',
@@ -202,7 +201,7 @@ describe('visit', () => {
 				Program: () => false,
 				NumberLiteral: () => false,
 				StringLiteral: () => false,
-				BooleanLiteral: ([, value]) => value,
+				BooleanLiteral: (n) => n.value,
 				ArrayLiteral: () => false,
 				Identifier: () => false,
 				BinaryOp: () => false,
@@ -218,11 +217,11 @@ describe('visit', () => {
 			const node = array([number(1), number(2), number(3)])
 			const result = visit(node, {
 				Program: () => 0,
-				NumberLiteral: ([, value]) => value,
+				NumberLiteral: (n) => n.value,
 				StringLiteral: () => 0,
 				BooleanLiteral: () => 0,
-				ArrayLiteral: ([, elements], recurse) =>
-					elements.reduce((sum, el) => sum + recurse(el), 0),
+				ArrayLiteral: (n, recurse) =>
+					n.elements.reduce((sum, el) => sum + recurse(el), 0),
 				Identifier: () => 0,
 				BinaryOp: () => 0,
 				UnaryOp: () => 0,
@@ -240,16 +239,16 @@ describe('visit', () => {
 			const node = multiply(add(number(2), number(3)), number(4))
 			const result = visit(node, {
 				Program: () => 0,
-				NumberLiteral: ([, value]) => value,
+				NumberLiteral: (n) => n.value,
 				StringLiteral: () => 0,
 				BooleanLiteral: () => 0,
 				ArrayLiteral: () => 0,
 				Identifier: () => 0,
-				BinaryOp: ([, left, operator, right], recurse) => {
-					const leftVal = recurse(left)
-					const rightVal = recurse(right)
-					if (operator === '+') return leftVal + rightVal
-					if (operator === '*') return leftVal * rightVal
+				BinaryOp: (n, recurse) => {
+					const leftVal = recurse(n.left)
+					const rightVal = recurse(n.right)
+					if (n.operator === '+') return leftVal + rightVal
+					if (n.operator === '*') return leftVal * rightVal
 					return 0
 				},
 				UnaryOp: () => 0,
@@ -268,16 +267,16 @@ describe('visit', () => {
 			)
 			const result = visit(node, {
 				Program: () => 0,
-				NumberLiteral: ([, value]) => value,
+				NumberLiteral: (n) => n.value,
 				StringLiteral: () => 0,
 				BooleanLiteral: () => 0,
 				ArrayLiteral: () => 0,
 				Identifier: () => 0,
-				BinaryOp: ([, left, operator, right], recurse) => {
-					const leftVal = recurse(left)
-					const rightVal = recurse(right)
-					if (operator === '+') return leftVal + rightVal
-					if (operator === '*') return leftVal * rightVal
+				BinaryOp: (n, recurse) => {
+					const leftVal = recurse(n.left)
+					const rightVal = recurse(n.right)
+					if (n.operator === '+') return leftVal + rightVal
+					if (n.operator === '*') return leftVal * rightVal
 					return 0
 				},
 				UnaryOp: () => 0,
@@ -297,29 +296,29 @@ describe('visit', () => {
 
 			const variables = new Map<string, number>()
 			const result = visit(node, {
-				Program: ([, statements], recurse) => {
+				Program: (n, recurse) => {
 					let lastResult = 0
-					for (const stmt of statements) {
+					for (const stmt of n.statements) {
 						lastResult = recurse(stmt)
 					}
 					return lastResult
 				},
-				NumberLiteral: ([, value]) => value,
+				NumberLiteral: (n) => n.value,
 				StringLiteral: () => 0,
 				BooleanLiteral: () => 0,
 				ArrayLiteral: () => 0,
-				Identifier: ([, name]) => variables.get(name) ?? 0,
-				BinaryOp: ([, left, operator, right], recurse) => {
-					if (operator === '+') {
-						return recurse(left) + recurse(right)
+				Identifier: (n) => variables.get(n.name) ?? 0,
+				BinaryOp: (n, recurse) => {
+					if (n.operator === '+') {
+						return recurse(n.left) + recurse(n.right)
 					}
 					return 0
 				},
 				UnaryOp: () => 0,
 				FunctionCall: () => 0,
-				Assignment: ([, name, value], recurse) => {
-					const val = recurse(value)
-					variables.set(name, val)
+				Assignment: (n, recurse) => {
+					const val = recurse(n.value)
+					variables.set(n.name, val)
 					return val
 				},
 				ConditionalExpression: () => 0,
@@ -335,40 +334,35 @@ describe('visit', () => {
 		test('transforms AST by doubling all numbers', () => {
 			const node = add(number(2), number(3))
 			const transformed = visit<ASTNode>(node, {
-				Program: ([, statements], recurse) => program(statements.map(recurse)),
-				NumberLiteral: ([, value]) => number(value * 2),
+				Program: (n, recurse) => program(n.statements.map(recurse)),
+				NumberLiteral: (n) => number(n.value * 2),
 				StringLiteral: (n) => n,
 				BooleanLiteral: (n) => n,
-				ArrayLiteral: ([, elements], recurse) => array(elements.map(recurse)),
+				ArrayLiteral: (n, recurse) => array(n.elements.map(recurse)),
 				Identifier: (n) => n,
-				BinaryOp: ([, left, operator, right], recurse) =>
-					binaryOp(recurse(left), operator, recurse(right)),
-				UnaryOp: ([, operator, argument], recurse) =>
-					unaryOp(operator, recurse(argument)),
-				FunctionCall: ([, name, args], recurse) =>
-					functionCall(name, args.map(recurse)),
-				Assignment: ([, name, value], recurse) => assign(name, recurse(value)),
-				ConditionalExpression: (
-					[, condition, consequent, alternate],
-					recurse,
-				) =>
+				BinaryOp: (n, recurse) =>
+					binaryOp(recurse(n.left), n.operator, recurse(n.right)),
+				UnaryOp: (n, recurse) => unaryOp(n.operator, recurse(n.argument)),
+				FunctionCall: (n, recurse) => functionCall(n.name, n.args.map(recurse)),
+				Assignment: (n, recurse) => assign(n.name, recurse(n.value)),
+				ConditionalExpression: (n, recurse) =>
 					conditional(
-						recurse(condition),
-						recurse(consequent),
-						recurse(alternate),
+						recurse(n.condition),
+						recurse(n.consequent),
+						recurse(n.alternate),
 					),
 			})
 
-			expect(transformed[0]).toBe(NodeKind.BinaryOp)
-			if (transformed[0] === NodeKind.BinaryOp) {
-				expect(isNumberLiteral(transformed[1])).toBe(true)
-				expect(isNumberLiteral(transformed[3])).toBe(true)
+			expect(transformed.kind).toBe(NodeKind.BinaryOp)
+			if (isBinaryOp(transformed)) {
+				expect(isNumberLiteral(transformed.left)).toBe(true)
+				expect(isNumberLiteral(transformed.right)).toBe(true)
 				if (
-					isNumberLiteral(transformed[1]) &&
-					isNumberLiteral(transformed[3])
+					isNumberLiteral(transformed.left) &&
+					isNumberLiteral(transformed.right)
 				) {
-					expect(transformed[1][1]).toBe(4)
-					expect(transformed[3][1]).toBe(6)
+					expect(transformed.left.value).toBe(4)
+					expect(transformed.right.value).toBe(6)
 				}
 			}
 		})
@@ -376,41 +370,36 @@ describe('visit', () => {
 		test('transforms AST by constant folding', () => {
 			const node = add(number(2), number(3))
 			const folded = visit<ASTNode>(node, {
-				Program: ([, statements], recurse) => program(statements.map(recurse)),
+				Program: (n, recurse) => program(n.statements.map(recurse)),
 				NumberLiteral: (n) => n,
 				StringLiteral: (n) => n,
 				BooleanLiteral: (n) => n,
-				ArrayLiteral: ([, elements], recurse) => array(elements.map(recurse)),
+				ArrayLiteral: (n, recurse) => array(n.elements.map(recurse)),
 				Identifier: (n) => n,
-				BinaryOp: ([, left, operator, right], recurse) => {
-					const leftNode = recurse(left)
-					const rightNode = recurse(right)
+				BinaryOp: (n, recurse) => {
+					const leftNode = recurse(n.left)
+					const rightNode = recurse(n.right)
 					if (isNumberLiteral(leftNode) && isNumberLiteral(rightNode)) {
-						if (operator === '+') {
-							return number(leftNode[1] + rightNode[1])
+						if (n.operator === '+') {
+							return number(leftNode.value + rightNode.value)
 						}
 					}
-					return binaryOp(leftNode, operator, rightNode)
+					return binaryOp(leftNode, n.operator, rightNode)
 				},
-				UnaryOp: ([, operator, argument], recurse) =>
-					unaryOp(operator, recurse(argument)),
-				FunctionCall: ([, name, args], recurse) =>
-					functionCall(name, args.map(recurse)),
-				Assignment: ([, name, value], recurse) => assign(name, recurse(value)),
-				ConditionalExpression: (
-					[, condition, consequent, alternate],
-					recurse,
-				) =>
+				UnaryOp: (n, recurse) => unaryOp(n.operator, recurse(n.argument)),
+				FunctionCall: (n, recurse) => functionCall(n.name, n.args.map(recurse)),
+				Assignment: (n, recurse) => assign(n.name, recurse(n.value)),
+				ConditionalExpression: (n, recurse) =>
 					conditional(
-						recurse(condition),
-						recurse(consequent),
-						recurse(alternate),
+						recurse(n.condition),
+						recurse(n.consequent),
+						recurse(n.alternate),
 					),
 			})
 
 			expect(isNumberLiteral(folded)).toBe(true)
 			if (isNumberLiteral(folded)) {
-				expect(folded[1]).toBe(5)
+				expect(folded.value).toBe(5)
 			}
 		})
 	})
@@ -419,24 +408,24 @@ describe('visit', () => {
 		test('counts total nodes in AST', () => {
 			const node = add(number(2), multiply(number(3), number(4)))
 			const count = visit(node, {
-				Program: ([, statements], recurse) =>
-					1 + statements.reduce((sum, stmt) => sum + recurse(stmt), 0),
+				Program: (n, recurse) =>
+					1 + n.statements.reduce((sum, stmt) => sum + recurse(stmt), 0),
 				NumberLiteral: () => 1,
 				StringLiteral: () => 1,
 				BooleanLiteral: () => 1,
-				ArrayLiteral: ([, elements], recurse) =>
-					1 + elements.reduce((sum, el) => sum + recurse(el), 0),
+				ArrayLiteral: (n, recurse) =>
+					1 + n.elements.reduce((sum, el) => sum + recurse(el), 0),
 				Identifier: () => 1,
-				BinaryOp: ([, left, , right], recurse) =>
-					1 + recurse(left) + recurse(right),
-				UnaryOp: ([, , argument], recurse) => 1 + recurse(argument),
-				FunctionCall: ([, , args], recurse) =>
-					1 + args.reduce((sum, arg) => sum + recurse(arg), 0),
-				Assignment: ([, , value], recurse) => 1 + recurse(value),
-				ConditionalExpression: (
-					[, condition, consequent, alternate],
-					recurse,
-				) => 1 + recurse(condition) + recurse(consequent) + recurse(alternate),
+				BinaryOp: (n, recurse) => 1 + recurse(n.left) + recurse(n.right),
+				UnaryOp: (n, recurse) => 1 + recurse(n.argument),
+				FunctionCall: (n, recurse) =>
+					1 + n.args.reduce((sum, arg) => sum + recurse(arg), 0),
+				Assignment: (n, recurse) => 1 + recurse(n.value),
+				ConditionalExpression: (n, recurse) =>
+					1 +
+					recurse(n.condition) +
+					recurse(n.consequent) +
+					recurse(n.alternate),
 			})
 			expect(count).toBe(5) // 1 add + 1 mul + 3 numbers
 		})
@@ -446,45 +435,42 @@ describe('visit', () => {
 			const variables: string[] = []
 
 			visit(node, {
-				Program: ([, statements], recurse) => {
-					statements.forEach(recurse)
+				Program: (n, recurse) => {
+					n.statements.forEach(recurse)
 					return undefined
 				},
 				NumberLiteral: () => undefined,
 				StringLiteral: () => undefined,
 				BooleanLiteral: () => undefined,
-				ArrayLiteral: ([, elements], recurse) => {
-					elements.forEach(recurse)
+				ArrayLiteral: (n, recurse) => {
+					n.elements.forEach(recurse)
 					return undefined
 				},
-				Identifier: ([, name]) => {
-					variables.push(name)
+				Identifier: (n) => {
+					variables.push(n.name)
 					return undefined
 				},
-				BinaryOp: ([, left, , right], recurse) => {
-					recurse(left)
-					recurse(right)
+				BinaryOp: (n, recurse) => {
+					recurse(n.left)
+					recurse(n.right)
 					return undefined
 				},
-				UnaryOp: ([, , argument], recurse) => {
-					recurse(argument)
+				UnaryOp: (n, recurse) => {
+					recurse(n.argument)
 					return undefined
 				},
-				FunctionCall: ([, , args], recurse) => {
-					args.forEach(recurse)
+				FunctionCall: (n, recurse) => {
+					n.args.forEach(recurse)
 					return undefined
 				},
-				Assignment: ([, , value], recurse) => {
-					recurse(value)
+				Assignment: (n, recurse) => {
+					recurse(n.value)
 					return undefined
 				},
-				ConditionalExpression: (
-					[, condition, consequent, alternate],
-					recurse,
-				) => {
-					recurse(condition)
-					recurse(consequent)
-					recurse(alternate)
+				ConditionalExpression: (n, recurse) => {
+					recurse(n.condition)
+					recurse(n.consequent)
+					recurse(n.alternate)
 					return undefined
 				},
 			})
@@ -500,26 +486,25 @@ describe('visit', () => {
 			)
 
 			const depth = visit(node, {
-				Program: ([, statements], recurse) =>
-					1 + Math.max(...statements.map(recurse), 0),
+				Program: (n, recurse) => 1 + Math.max(...n.statements.map(recurse), 0),
 				NumberLiteral: () => 1,
 				StringLiteral: () => 1,
 				BooleanLiteral: () => 1,
-				ArrayLiteral: ([, elements], recurse) =>
-					1 + Math.max(...elements.map(recurse), 0),
+				ArrayLiteral: (n, recurse) =>
+					1 + Math.max(...n.elements.map(recurse), 0),
 				Identifier: () => 1,
-				BinaryOp: ([, left, , right], recurse) =>
-					1 + Math.max(recurse(left), recurse(right)),
-				UnaryOp: ([, , argument], recurse) => 1 + recurse(argument),
-				FunctionCall: ([, , args], recurse) =>
-					1 + Math.max(...args.map(recurse), 0),
-				Assignment: ([, , value], recurse) => 1 + recurse(value),
-				ConditionalExpression: (
-					[, condition, consequent, alternate],
-					recurse,
-				) =>
+				BinaryOp: (n, recurse) =>
+					1 + Math.max(recurse(n.left), recurse(n.right)),
+				UnaryOp: (n, recurse) => 1 + recurse(n.argument),
+				FunctionCall: (n, recurse) => 1 + Math.max(...n.args.map(recurse), 0),
+				Assignment: (n, recurse) => 1 + recurse(n.value),
+				ConditionalExpression: (n, recurse) =>
 					1 +
-					Math.max(recurse(condition), recurse(consequent), recurse(alternate)),
+					Math.max(
+						recurse(n.condition),
+						recurse(n.consequent),
+						recurse(n.alternate),
+					),
 			})
 
 			expect(depth).toBe(4) // add -> divide -> subtract -> number
@@ -532,51 +517,48 @@ describe('visit', () => {
 			const visited: string[] = []
 
 			visit(node, {
-				Program: ([, statements], recurse) => {
+				Program: (n, recurse) => {
 					visited.push('Program')
-					statements.forEach(recurse)
+					n.statements.forEach(recurse)
 				},
-				NumberLiteral: ([, value]) => {
-					visited.push(`Number:${value}`)
+				NumberLiteral: (n) => {
+					visited.push(`Number:${n.value}`)
 				},
-				StringLiteral: ([, value]) => {
-					visited.push(`String:${value}`)
+				StringLiteral: (n) => {
+					visited.push(`String:${n.value}`)
 				},
-				BooleanLiteral: ([, value]) => {
-					visited.push(`Boolean:${value}`)
+				BooleanLiteral: (n) => {
+					visited.push(`Boolean:${n.value}`)
 				},
-				ArrayLiteral: ([, elements], recurse) => {
+				ArrayLiteral: (n, recurse) => {
 					visited.push('Array')
-					elements.forEach(recurse)
+					n.elements.forEach(recurse)
 				},
-				Identifier: ([, name]) => {
-					visited.push(`Identifier:${name}`)
+				Identifier: (n) => {
+					visited.push(`Identifier:${n.name}`)
 				},
-				BinaryOp: ([, left, operator, right], recurse) => {
-					visited.push(`BinaryOp:${operator}`)
-					recurse(left)
-					recurse(right)
+				BinaryOp: (n, recurse) => {
+					visited.push(`BinaryOp:${n.operator}`)
+					recurse(n.left)
+					recurse(n.right)
 				},
-				UnaryOp: ([, operator, argument], recurse) => {
-					visited.push(`UnaryOp:${operator}`)
-					recurse(argument)
+				UnaryOp: (n, recurse) => {
+					visited.push(`UnaryOp:${n.operator}`)
+					recurse(n.argument)
 				},
-				FunctionCall: ([, name, args], recurse) => {
-					visited.push(`FunctionCall:${name}`)
-					args.forEach(recurse)
+				FunctionCall: (n, recurse) => {
+					visited.push(`FunctionCall:${n.name}`)
+					n.args.forEach(recurse)
 				},
-				Assignment: ([, name, value], recurse) => {
-					visited.push(`Assignment:${name}`)
-					recurse(value)
+				Assignment: (n, recurse) => {
+					visited.push(`Assignment:${n.name}`)
+					recurse(n.value)
 				},
-				ConditionalExpression: (
-					[, condition, consequent, alternate],
-					recurse,
-				) => {
+				ConditionalExpression: (n, recurse) => {
 					visited.push('ConditionalExpression')
-					recurse(condition)
-					recurse(consequent)
-					recurse(alternate)
+					recurse(n.condition)
+					recurse(n.consequent)
+					recurse(n.alternate)
 				},
 			})
 
@@ -593,20 +575,20 @@ describe('visitPartial', () => {
 		visitPartial(
 			node,
 			{
-				Identifier: ([, name]) => {
-					variables.push(name)
+				Identifier: (n) => {
+					variables.push(n.name)
 					return undefined
 				},
 			},
 			(n, recurse) => {
 				// Default: recurse into children
-				if (n[0] === NodeKind.Program) {
-					n[1].forEach(recurse)
-				} else if (n[0] === NodeKind.BinaryOp) {
-					recurse(n[1])
-					recurse(n[3])
-				} else if (n[0] === NodeKind.Assignment) {
-					recurse(n[2])
+				if (n.kind === NodeKind.Program) {
+					for (const stmt of n.statements) recurse(stmt)
+				} else if (n.kind === NodeKind.BinaryOp) {
+					recurse(n.left)
+					recurse(n.right)
+				} else if (n.kind === NodeKind.Assignment) {
+					recurse(n.value)
 				}
 				return undefined
 			},
@@ -620,7 +602,7 @@ describe('visitPartial', () => {
 		const result = visitPartial(
 			node,
 			{
-				NumberLiteral: ([, value]) => value,
+				NumberLiteral: (n) => n.value,
 			},
 			() => 0, // Default: return 0
 		)
@@ -634,24 +616,27 @@ describe('visitPartial', () => {
 		const transformed = visitPartial<ASTNode>(
 			node,
 			{
-				NumberLiteral: ([, value]) => number(value * 10),
+				NumberLiteral: (n) => number(n.value * 10),
 			},
 			(n, recurse) => {
 				// Default: reconstruct node with recursed children
-				if (n[0] === NodeKind.BinaryOp) {
-					return binaryOp(recurse(n[1]), n[2], recurse(n[3]))
+				if (n.kind === NodeKind.BinaryOp) {
+					return binaryOp(recurse(n.left), n.operator, recurse(n.right))
 				}
 				return n
 			},
 		)
 
-		expect(transformed[0]).toBe(NodeKind.BinaryOp)
-		if (transformed[0] === NodeKind.BinaryOp) {
-			expect(isNumberLiteral(transformed[1])).toBe(true)
-			expect(isNumberLiteral(transformed[3])).toBe(true)
-			if (isNumberLiteral(transformed[1]) && isNumberLiteral(transformed[3])) {
-				expect(transformed[1][1]).toBe(20)
-				expect(transformed[3][1]).toBe(30)
+		expect(transformed.kind).toBe(NodeKind.BinaryOp)
+		if (isBinaryOp(transformed)) {
+			expect(isNumberLiteral(transformed.left)).toBe(true)
+			expect(isNumberLiteral(transformed.right)).toBe(true)
+			if (
+				isNumberLiteral(transformed.left) &&
+				isNumberLiteral(transformed.right)
+			) {
+				expect(transformed.left.value).toBe(20)
+				expect(transformed.right.value).toBe(30)
 			}
 		}
 	})
@@ -674,19 +659,19 @@ describe('visitPartial', () => {
 		visitPartial(
 			node,
 			{
-				FunctionCall: ([, name, args], recurse) => {
-					functionNames.push(name)
-					args.forEach(recurse) // Still recurse to find nested calls
+				FunctionCall: (n, recurse) => {
+					functionNames.push(n.name)
+					n.args.forEach(recurse) // Still recurse to find nested calls
 					return undefined
 				},
 			},
 			(n, recurse) => {
 				// Default: recurse into all children
-				if (n[0] === NodeKind.Program) {
-					n[1].forEach(recurse)
-				} else if (n[0] === NodeKind.BinaryOp) {
-					recurse(n[1])
-					recurse(n[3])
+				if (n.kind === NodeKind.Program) {
+					for (const stmt of n.statements) recurse(stmt)
+				} else if (n.kind === NodeKind.BinaryOp) {
+					recurse(n.left)
+					recurse(n.right)
 				}
 				return undefined
 			},
@@ -704,28 +689,23 @@ describe('visitor examples from real use cases', () => {
 			to: string,
 		): ASTNode => {
 			return visit(node, {
-				Program: ([, statements], recurse) => program(statements.map(recurse)),
+				Program: (n, recurse) => program(n.statements.map(recurse)),
 				NumberLiteral: (n) => n,
 				StringLiteral: (n) => n,
 				BooleanLiteral: (n) => n,
-				ArrayLiteral: ([, elements], recurse) => array(elements.map(recurse)),
-				Identifier: ([, name]) =>
-					name === from ? identifier(to) : identifier(name),
-				BinaryOp: ([, left, operator, right], recurse) =>
-					binaryOp(recurse(left), operator, recurse(right)),
-				UnaryOp: ([, operator, argument], recurse) =>
-					unaryOp(operator, recurse(argument)),
-				FunctionCall: ([, name, args], recurse) =>
-					functionCall(name, args.map(recurse)),
-				Assignment: ([, name, value], recurse) => assign(name, recurse(value)),
-				ConditionalExpression: (
-					[, condition, consequent, alternate],
-					recurse,
-				) =>
+				ArrayLiteral: (n, recurse) => array(n.elements.map(recurse)),
+				Identifier: (n) =>
+					n.name === from ? identifier(to) : identifier(n.name),
+				BinaryOp: (n, recurse) =>
+					binaryOp(recurse(n.left), n.operator, recurse(n.right)),
+				UnaryOp: (n, recurse) => unaryOp(n.operator, recurse(n.argument)),
+				FunctionCall: (n, recurse) => functionCall(n.name, n.args.map(recurse)),
+				Assignment: (n, recurse) => assign(n.name, recurse(n.value)),
+				ConditionalExpression: (n, recurse) =>
 					conditional(
-						recurse(condition),
-						recurse(consequent),
-						recurse(alternate),
+						recurse(n.condition),
+						recurse(n.consequent),
+						recurse(n.alternate),
 					),
 			})
 		}
@@ -738,17 +718,18 @@ describe('visitor examples from real use cases', () => {
 		visitPartial(
 			renamed,
 			{
-				Identifier: ([, name]) => {
-					if (name === 'foo') foundFoo = true
+				Identifier: (n) => {
+					if (n.name === 'foo') foundFoo = true
 					return undefined
 				},
 			},
 			(n, recurse) => {
-				if (n[0] === NodeKind.Program) n[1].forEach(recurse)
-				else if (n[0] === NodeKind.BinaryOp) {
-					recurse(n[1])
-					recurse(n[3])
-				} else if (n[0] === NodeKind.Assignment) recurse(n[2])
+				if (n.kind === NodeKind.Program)
+					for (const stmt of n.statements) recurse(stmt)
+				else if (n.kind === NodeKind.BinaryOp) {
+					recurse(n.left)
+					recurse(n.right)
+				} else if (n.kind === NodeKind.Assignment) recurse(n.value)
 				return undefined
 			},
 		)
@@ -762,29 +743,29 @@ describe('visitor examples from real use cases', () => {
 			visitPartial(
 				node,
 				{
-					Identifier: ([, name]) => {
-						vars.push(name)
+					Identifier: (n) => {
+						vars.push(n.name)
 						return undefined
 					},
 				},
 				(n, recurse) => {
-					if (n[0] === NodeKind.Program) {
-						n[1].forEach(recurse)
-					} else if (n[0] === NodeKind.BinaryOp) {
-						recurse(n[1])
-						recurse(n[3])
-					} else if (n[0] === NodeKind.UnaryOp) {
-						recurse(n[2])
-					} else if (n[0] === NodeKind.FunctionCall) {
-						n[2].forEach(recurse)
-					} else if (n[0] === NodeKind.Assignment) {
-						recurse(n[2])
-					} else if (n[0] === NodeKind.ConditionalExpression) {
-						recurse(n[1])
-						recurse(n[2])
-						recurse(n[3])
-					} else if (n[0] === NodeKind.ArrayLiteral) {
-						n[1].forEach(recurse)
+					if (n.kind === NodeKind.Program) {
+						for (const stmt of n.statements) recurse(stmt)
+					} else if (n.kind === NodeKind.BinaryOp) {
+						recurse(n.left)
+						recurse(n.right)
+					} else if (n.kind === NodeKind.UnaryOp) {
+						recurse(n.argument)
+					} else if (n.kind === NodeKind.FunctionCall) {
+						n.args.forEach(recurse)
+					} else if (n.kind === NodeKind.Assignment) {
+						recurse(n.value)
+					} else if (n.kind === NodeKind.ConditionalExpression) {
+						recurse(n.condition)
+						recurse(n.consequent)
+						recurse(n.alternate)
+					} else if (n.kind === NodeKind.ArrayLiteral) {
+						n.elements.forEach(recurse)
 					}
 					return undefined
 				},

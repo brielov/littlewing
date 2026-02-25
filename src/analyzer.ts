@@ -27,18 +27,12 @@ import { visitPartial } from './visitor'
 export function extractInputVariables(ast: ASTNode): string[] {
 	const inputVars = new Set<string>()
 
-	// Handle both single statements and Program nodes
-	// Tuple: [kind, statements]
-	const statements = isProgram(ast) ? ast[1] : [ast]
+	const statements = isProgram(ast) ? ast.statements : [ast]
 
 	for (const statement of statements) {
-		// Tuple: [kind, name, value]
 		if (isAssignment(statement)) {
-			const name = statement[1]
-			const value = statement[2]
-			// Check if the assignment value contains any variable references
-			if (!containsVariableReference(value)) {
-				inputVars.add(name)
+			if (!containsVariableReference(statement.value)) {
+				inputVars.add(statement.name)
 			}
 		}
 	}
@@ -68,21 +62,18 @@ export function extractAssignedVariables(ast: ASTNode): string[] {
 	visitPartial(
 		ast,
 		{
-			// Tuple: [kind, statements]
 			Program: (n, recurse) => {
-				for (const statement of n[1]) {
+				for (const statement of n.statements) {
 					recurse(statement)
 				}
 			},
-			// Tuple: [kind, name, value]
 			Assignment: (n, recurse) => {
-				const name = n[1]
-				if (!seen.has(name)) {
-					seen.add(name)
-					names.push(name)
+				if (!seen.has(n.name)) {
+					seen.add(n.name)
+					names.push(n.name)
 				}
 				// Recurse into the value in case of nested assignments
-				recurse(n[2])
+				recurse(n.value)
 			},
 		},
 		// Default handler: no-op for all other node types
