@@ -14,7 +14,7 @@ z = x + y
 	})
 
 	test('timestamp calculation', () => {
-		const code = `t = NOW()`
+		const code = 't = NOW()'
 		const now = 1704067200000
 		const result = evaluate(code, {
 			functions: { NOW: () => now },
@@ -23,7 +23,7 @@ z = x + y
 	})
 
 	test('variable arithmetic', () => {
-		const code = `p = i - 10`
+		const code = 'p = i - 10'
 		const result = evaluate(code, {
 			variables: { i: 25 },
 		})
@@ -78,38 +78,51 @@ amount = principal * (1 + rate) ^ years
 	test('NOT operator in real-world conditions', () => {
 		const checkEligibility = 'age >= 18 && !isBlocked'
 		const result1 = evaluate(checkEligibility, {
-			variables: { age: 25, isBlocked: 0 },
+			variables: { age: 25, isBlocked: false },
 		})
-		expect(result1).toBe(1) // eligible
+		expect(result1).toBe(true)
 
 		const result2 = evaluate(checkEligibility, {
-			variables: { age: 25, isBlocked: 1 },
+			variables: { age: 25, isBlocked: true },
 		})
-		expect(result2).toBe(0) // not eligible (blocked)
+		expect(result2).toBe(false)
 	})
 
 	test('NOT in discount calculation', () => {
 		const formula = 'price * (!isPremium ? 1 : 0.8)'
 		const result1 = evaluate(formula, {
-			variables: { price: 100, isPremium: 0 },
+			variables: { price: 100, isPremium: false },
 		})
-		expect(result1).toBe(100) // no discount
+		expect(result1).toBe(100)
 
 		const result2 = evaluate(formula, {
-			variables: { price: 100, isPremium: 1 },
+			variables: { price: 100, isPremium: true },
 		})
-		expect(result2).toBe(80) // 20% discount
+		expect(result2).toBe(80)
 	})
 
 	test('NOT with validation logic', () => {
 		const validation = 'score >= 60 && !(score > 100)'
 		const result1 = evaluate(validation, { variables: { score: 75 } })
-		expect(result1).toBe(1) // valid score
+		expect(result1).toBe(true)
 
 		const result2 = evaluate(validation, { variables: { score: 150 } })
-		expect(result2).toBe(0) // invalid (over 100)
+		expect(result2).toBe(false)
 
 		const result3 = evaluate(validation, { variables: { score: 50 } })
-		expect(result3).toBe(0) // invalid (below 60)
+		expect(result3).toBe(false)
+	})
+
+	test('string operations', () => {
+		expect(evaluate('"hello" + " " + "world"')).toBe('hello world')
+	})
+
+	test('array operations', () => {
+		expect(evaluate('[1, 2] + [3, 4]')).toEqual([1, 2, 3, 4])
+	})
+
+	test('multi-type with default context', () => {
+		const result = evaluate('STR_LEN("hello")', defaultContext)
+		expect(result).toBe(5)
 	})
 })

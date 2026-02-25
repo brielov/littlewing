@@ -39,13 +39,12 @@ interest = principal * ((1 + rate) ^ years - 1)
 total = principal + interest
 
 // Apply early payment discount based on date
-today = NOW()
+today = TODAY()
 dueDate = ADD_DAYS(today, 30)
 paymentDate = ADD_DAYS(today, 15)
 
 // Calculate discount
-isEarlyPayment = paymentDate < dueDate ? 1 : 0
-earlyDiscount = isEarlyPayment * total * 0.02
+earlyDiscount = paymentDate < dueDate ? total * 0.02 : 0
 discountedTotal = total - earlyDiscount
 
 // Apply tax calculation
@@ -59,8 +58,7 @@ monthlyPayment = finalAmount / months
 
 // Business day adjustment
 weekday = GET_WEEKDAY(paymentDate)
-isWeekend = IS_WEEKEND(paymentDate)
-businessDayAdjustment = isWeekend * 2
+businessDayAdjustment = IS_WEEKEND(paymentDate) ? 2 : 0
 adjustedPaymentDate = ADD_DAYS(paymentDate, businessDayAdjustment)
 
 // Final result
@@ -99,7 +97,7 @@ scenario3Days = term * 365
 scenario3Amount = scenario3Principal * ((1 + scenario3Rate) ^ scenario3Days)
 
 // Date-based calculations
-startDate = NOW()
+startDate = TODAY()
 endDate = ADD_YEARS(startDate, term)
 totalDays = DIFFERENCE_IN_DAYS(endDate, startDate)
 totalMonths = DIFFERENCE_IN_MONTHS(endDate, startDate)

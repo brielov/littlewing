@@ -534,4 +534,97 @@ describe('Parser', () => {
 		const node = parse('   1 + 2')
 		expectBinaryOp(node, '+')
 	})
+
+	// String literal tests
+	test('parse string literal', () => {
+		const node = parse('"hello"')
+		expectKind(node, NodeKind.StringLiteral)
+		expect(node[1]).toBe('hello')
+	})
+
+	test('parse string with escapes', () => {
+		const node = parse('"hello\\nworld"')
+		expectKind(node, NodeKind.StringLiteral)
+		expect(node[1]).toBe('hello\nworld')
+	})
+
+	test('parse empty string', () => {
+		const node = parse('""')
+		expectKind(node, NodeKind.StringLiteral)
+		expect(node[1]).toBe('')
+	})
+
+	test('parse string concatenation', () => {
+		const node = parse('"hello" + " world"')
+		expectBinaryOp(node, '+')
+		expectKind(node[1], NodeKind.StringLiteral)
+		expectKind(node[3], NodeKind.StringLiteral)
+	})
+
+	// Boolean literal tests
+	test('parse true literal', () => {
+		const node = parse('true')
+		expectKind(node, NodeKind.BooleanLiteral)
+		expect(node[1]).toBe(true)
+	})
+
+	test('parse false literal', () => {
+		const node = parse('false')
+		expectKind(node, NodeKind.BooleanLiteral)
+		expect(node[1]).toBe(false)
+	})
+
+	test('parse boolean in ternary condition', () => {
+		const node = parse('true ? 1 : 0')
+		expectKind(node, NodeKind.ConditionalExpression)
+		expectKind(node[1], NodeKind.BooleanLiteral)
+	})
+
+	test('assignment to true throws error', () => {
+		expect(() => parse('true = 5')).toThrow()
+	})
+
+	test('assignment to false throws error', () => {
+		expect(() => parse('false = 5')).toThrow()
+	})
+
+	// Array literal tests
+	test('parse empty array', () => {
+		const node = parse('[]')
+		expectKind(node, NodeKind.ArrayLiteral)
+		expect(node[1].length).toBe(0)
+	})
+
+	test('parse array with numbers', () => {
+		const node = parse('[1, 2, 3]')
+		expectKind(node, NodeKind.ArrayLiteral)
+		expect(node[1].length).toBe(3)
+		expectNumber(node[1][0]!, 1)
+		expectNumber(node[1][1]!, 2)
+		expectNumber(node[1][2]!, 3)
+	})
+
+	test('parse array with strings', () => {
+		const node = parse('["a", "b"]')
+		expectKind(node, NodeKind.ArrayLiteral)
+		expect(node[1].length).toBe(2)
+		expectKind(node[1][0]!, NodeKind.StringLiteral)
+		expectKind(node[1][1]!, NodeKind.StringLiteral)
+	})
+
+	test('parse array with expressions', () => {
+		const node = parse('[1 + 2, 3 * 4]')
+		expectKind(node, NodeKind.ArrayLiteral)
+		expect(node[1].length).toBe(2)
+		expectBinaryOp(node[1][0]!, '+')
+		expectBinaryOp(node[1][1]!, '*')
+	})
+
+	test('parse nested arrays', () => {
+		const node = parse('[[1, 2], [3, 4]]')
+		expectKind(node, NodeKind.ArrayLiteral)
+		expect(node[1].length).toBe(2)
+		expectKind(node[1][0]!, NodeKind.ArrayLiteral)
+		expectKind(node[1][1]!, NodeKind.ArrayLiteral)
+	})
 })

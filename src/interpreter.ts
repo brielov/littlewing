@@ -1,45 +1,55 @@
 import type { ASTNode } from './ast'
 import { parse } from './parser'
 import type { ExecutionContext, RuntimeValue } from './types'
-import { evaluateBinaryOperation } from './utils'
+import {
+	assertBoolean,
+	assertNumber,
+	evaluateBinaryOperation,
+	typeOf,
+} from './utils'
 import { visit } from './visitor'
 
 /**
  * Evaluate an AST node with given context
- * Uses a tree-walk interpreter with O(n) execution time where n is the number of AST nodes
- *
- * @param node - The AST node to evaluate
- * @param context - Execution context with variables and functions
- * @param variables - Mutable map of runtime variables (used for assignments)
- * @param externalVariables - Set of variable names from external context (immutable)
- * @returns The evaluated result
  */
 function evaluateNode(
 	node: ASTNode,
 	context: ExecutionContext,
-	variables: Map<string, number>,
+	variables: Map<string, RuntimeValue>,
 	externalVariables: Set<string>,
 ): RuntimeValue {
 	return visit(node, {
-		// Execute a program (multiple statements)
-		// Tuple: [kind, statements]
 		Program: (n, recurse) => {
-			let result = 0
-			const statements = n[1]
-			for (const statement of statements) {
+			let result: RuntimeValue = 0
+			for (const statement of n[1]) {
 				result = recurse(statement)
 			}
 			return result
 		},
 
-		// Execute a number literal
-		// Tuple: [kind, value]
-		NumberLiteral: (n) => {
-			return n[1]
+		NumberLiteral: (n) => n[1],
+
+		StringLiteral: (n) => n[1],
+
+		BooleanLiteral: (n) => n[1],
+
+		ArrayLiteral: (n, recurse) => {
+			const elements = n[1].map(recurse)
+			// Validate homogeneity
+			if (elements.length > 0) {
+				const firstType = typeOf(elements[0] as RuntimeValue)
+				for (let i = 1; i < elements.length; i++) {
+					const elemType = typeOf(elements[i] as RuntimeValue)
+					if (elemType !== firstType) {
+						throw new TypeError(
+							`Heterogeneous array: expected ${firstType}, got ${elemType} at index ${i}`,
+						)
+					}
+				}
+			}
+			return elements
 		},
 
-		// Execute an identifier (variable reference)
-		// Tuple: [kind, name]
 		Identifier: (n) => {
 			const name = n[1]
 			const value = variables.get(name)
@@ -49,34 +59,50 @@ function evaluateNode(
 			return value
 		},
 
-		// Execute a binary operation
-		// Tuple: [kind, left, operator, right]
 		BinaryOp: (n, recurse) => {
-			const left = recurse(n[1])
 			const operator = n[2]
+
+			// Short-circuit && and ||
+			if (operator === '&&') {
+				const left = recurse(n[1])
+				assertBoolean(left, "Operator '&&'", 'left')
+				if (!left) return false
+				const right = recurse(n[3])
+				assertBoolean(right, "Operator '&&'", 'right')
+				return right
+			}
+
+			if (operator === '||') {
+				const left = recurse(n[1])
+				assertBoolean(left, "Operator '||'", 'left')
+				if (left) return true
+				const right = recurse(n[3])
+				assertBoolean(right, "Operator '||'", 'right')
+				return right
+			}
+
+			const left = recurse(n[1])
 			const right = recurse(n[3])
 			return evaluateBinaryOperation(operator, left, right)
 		},
 
-		// Execute a unary operation
-		// Tuple: [kind, operator, argument]
 		UnaryOp: (n, recurse) => {
 			const operator = n[1]
 			const arg = recurse(n[2])
 
 			if (operator === '-') {
+				assertNumber(arg, "Operator '-' (unary)")
 				return -arg
 			}
 
 			if (operator === '!') {
-				return arg === 0 ? 1 : 0
+				assertBoolean(arg, "Operator '!'")
+				return !arg
 			}
 
 			throw new Error(`Unknown unary operator: ${operator}`)
 		},
 
-		// Execute a function call
-		// Tuple: [kind, name, arguments]
 		FunctionCall: (n, recurse) => {
 			const name = n[1]
 			const args = n[2]
@@ -92,65 +118,40 @@ function evaluateNode(
 			return fn(...evaluatedArgs)
 		},
 
-		// Execute a variable assignment
-		// Tuple: [kind, name, value]
-		// External variables (from context) take precedence over script assignments
-		// This allows scripts to define defaults that can be overridden at runtime
-		//
-		// IMPORTANT: We MUST evaluate the RHS for side effects even when external
-		// variable exists (e.g., `x = NOW()` should call NOW() for side effects)
 		Assignment: (n, recurse) => {
 			const name = n[1]
 			const valueNode = n[2]
-
-			// Always evaluate RHS for side effects (function calls, etc.)
 			const value = recurse(valueNode)
 
-			// Check if this variable was provided externally
 			if (externalVariables.has(name)) {
-				// External variable exists - return it (ignore evaluated value)
 				const externalValue = variables.get(name)
-				// externalVariables.has guarantees this exists
 				if (externalValue !== undefined) {
 					return externalValue
 				}
 			}
 
-			// No external variable - use the evaluated value
 			variables.set(name, value)
 			return value
 		},
 
-		// Execute a conditional expression (ternary operator)
-		// Tuple: [kind, condition, consequent, alternate]
-		// Returns consequent if condition !== 0, otherwise returns alternate
 		ConditionalExpression: (n, recurse) => {
 			const condition = recurse(n[1])
-			const consequent = n[2]
-			const alternate = n[3]
-			return condition !== 0 ? recurse(consequent) : recurse(alternate)
+			assertBoolean(condition, 'Ternary condition')
+			return condition ? recurse(n[2]) : recurse(n[3])
 		},
 	})
 }
 
 /**
  * Shared setup for evaluate and evaluateScope.
- * Parses input if needed, builds the variables map and external variables set,
- * runs the interpreter, and returns both the final value and the runtime scope.
  */
 function run(
 	input: string | ASTNode,
 	context: ExecutionContext = {},
-): { value: RuntimeValue; variables: Map<string, number> } {
+): { value: RuntimeValue; variables: Map<string, RuntimeValue> } {
 	const node = typeof input === 'string' ? parse(input) : input
-
-	// Use Map for O(1) variable lookups (faster than object property access)
-	// Extract entries once - used for both Map construction and Set derivation
-	// Using || {} is faster than branching for the common case
 	const entries = Object.entries(context.variables || {})
 	const variables = new Map(entries)
-	// Build Set from entries array to avoid re-iterating the object
-	// entries is [[key, value], ...] so we map to just keys
 	const externalVariables = new Set(entries.map(([key]) => key))
 
 	const value = evaluateNode(node, context, variables, externalVariables)
@@ -159,9 +160,6 @@ function run(
 
 /**
  * Evaluate source code or AST with given context
- * @param input - Either a source code string or an AST node
- * @param context - Optional execution context with variables and functions
- * @returns The evaluated result
  */
 export function evaluate(
 	input: string | ASTNode,
@@ -172,25 +170,11 @@ export function evaluate(
 
 /**
  * Evaluate source code or AST and return the full variable scope.
- *
- * Runs the same interpreter as `evaluate()` but instead of returning
- * the last expression value, returns a record of all variables that
- * exist in scope after execution (both script-assigned and context-provided).
- *
- * @param input - Either a source code string or an AST node
- * @param context - Optional execution context with variables and functions
- * @returns Record of all variable names to their values after execution
- *
- * @example
- * ```typescript
- * const scope = evaluateScope('x = 10; y = x * 2')
- * // scope === { x: 10, y: 20 }
- * ```
  */
 export function evaluateScope(
 	input: string | ASTNode,
 	context: ExecutionContext = {},
-): Record<string, number> {
+): Record<string, RuntimeValue> {
 	const { variables } = run(input, context)
 	return Object.fromEntries(variables)
 }

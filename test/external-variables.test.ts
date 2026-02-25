@@ -3,7 +3,6 @@ import { evaluate } from '../src/interpreter'
 
 describe('External Variables', () => {
 	test('external variables override internal assignments', () => {
-		// External variable should override the assignment
 		expect(evaluate('price = 100', { variables: { price: 50 } })).toBe(50)
 		expect(evaluate('price = 100; price', { variables: { price: 50 } })).toBe(
 			50,
@@ -11,13 +10,11 @@ describe('External Variables', () => {
 	})
 
 	test('assignments without external variables work normally', () => {
-		// Without external variable, assignment works as usual
 		expect(evaluate('price = 100')).toBe(100)
 		expect(evaluate('price = 100; price')).toBe(100)
 	})
 
 	test('external variables allow script defaults', () => {
-		// Real-world use case: formula with defaults that can be overridden
 		const formula = `
 			price = 100
 			tax = 0.1
@@ -26,10 +23,7 @@ describe('External Variables', () => {
 			total
 		`
 
-		// Use all defaults
 		expect(evaluate(formula)).toBeCloseTo(110)
-
-		// Override some values
 		expect(evaluate(formula, { variables: { price: 200 } })).toBeCloseTo(220)
 		expect(evaluate(formula, { variables: { discount: 0.2 } })).toBeCloseTo(88)
 		expect(
@@ -38,7 +32,6 @@ describe('External Variables', () => {
 	})
 
 	test('external variables preserve zero and falsy values', () => {
-		// Zero should be preserved as an external value
 		expect(evaluate('discount = 0.2', { variables: { discount: 0 } })).toBe(0)
 		expect(
 			evaluate('discount = 0.2; discount', { variables: { discount: 0 } }),
@@ -46,8 +39,6 @@ describe('External Variables', () => {
 	})
 
 	test('external variable evaluates assignment expression for side effects', () => {
-		// Right side MUST be evaluated for side effects (e.g., function calls)
-		// but the external value takes precedence for the assignment result
 		let callCount = 0
 		const formula = 'price = COUNTER(); price'
 		const context = {
@@ -60,8 +51,8 @@ describe('External Variables', () => {
 			variables: { price: 100 },
 		}
 		const result = evaluate(formula, context)
-		expect(result).toBe(100) // External value takes precedence
-		expect(callCount).toBe(1) // But COUNTER() was called for side effects
+		expect(result).toBe(100)
+		expect(callCount).toBe(1)
 	})
 
 	test('mix of external and internal assignments', () => {
@@ -71,7 +62,6 @@ describe('External Variables', () => {
 			result = base * multiplier
 			result
 		`
-		// Override only 'base', 'multiplier' uses internal default
 		expect(evaluate(formula, { variables: { base: 50 } })).toBe(100)
 	})
 
@@ -87,17 +77,22 @@ describe('External Variables', () => {
 			total
 		`
 
-		// Default values
 		expect(evaluate(pricingScript)).toBeCloseTo(118.8)
 
-		// Bulk order with external quantity
 		expect(
 			evaluate(pricingScript, { variables: { quantity: 10 } }),
 		).toBeCloseTo(982.8)
 
-		// Custom pricing
 		expect(
 			evaluate(pricingScript, { variables: { basePrice: 50, shipping: 5 } }),
 		).toBeCloseTo(59.4)
+	})
+
+	test('external variables can be any RuntimeValue type', () => {
+		expect(evaluate('name', { variables: { name: 'Alice' } })).toBe('Alice')
+		expect(evaluate('flag', { variables: { flag: true } })).toBe(true)
+		expect(evaluate('items', { variables: { items: [1, 2, 3] } })).toEqual([
+			1, 2, 3,
+		])
 	})
 })

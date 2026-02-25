@@ -2,6 +2,7 @@ import { describe, expect, test } from 'bun:test'
 import {
 	createCursor,
 	nextToken,
+	readStringValue,
 	readText,
 	type Token,
 	TokenKind,
@@ -267,5 +268,95 @@ describe('Lexer', () => {
 
 	test('single | throws error', () => {
 		expect(() => tokenize('5 | 3')).toThrow("Unexpected character '|'")
+	})
+
+	test('tokenize string literal', () => {
+		const source = '"hello"'
+		const cursor = createCursor(source)
+		const tokens = tokenize(source)
+
+		expectToken(tokens[0], TokenKind.String)
+		expect(readText(cursor, tokens[0]!)).toBe('"hello"')
+	})
+
+	test('tokenize string with escapes', () => {
+		const source = '"hello\\nworld"'
+		const cursor = createCursor(source)
+		const tokens = tokenize(source)
+
+		expectToken(tokens[0], TokenKind.String)
+		expect(readText(cursor, tokens[0]!)).toBe('"hello\\nworld"')
+	})
+
+	test('tokenize empty string', () => {
+		const source = '""'
+		const cursor = createCursor(source)
+		const tokens = tokenize(source)
+
+		expectToken(tokens[0], TokenKind.String)
+		expect(readText(cursor, tokens[0]!)).toBe('""')
+	})
+
+	test('error on unterminated string', () => {
+		expect(() => tokenize('"hello')).toThrow('Unterminated string')
+	})
+
+	test('tokenize string with escaped quote', () => {
+		const source = '"say \\"hi\\""'
+		const tokens = tokenize(source)
+
+		expectToken(tokens[0], TokenKind.String)
+	})
+
+	test('tokenize bracket tokens', () => {
+		const tokens = tokenize('[ ]')
+		expectToken(tokens[0], TokenKind.LBracket)
+		expectToken(tokens[1], TokenKind.RBracket)
+	})
+
+	test('tokenize array literal', () => {
+		const source = '[1, 2, 3]'
+		const cursor = createCursor(source)
+		const tokens = tokenize(source)
+
+		expectToken(tokens[0], TokenKind.LBracket)
+		expectTokenNumber(cursor, tokens[1], TokenKind.Number, 1)
+		expectToken(tokens[2], TokenKind.Comma)
+		expectTokenNumber(cursor, tokens[3], TokenKind.Number, 2)
+		expectToken(tokens[4], TokenKind.Comma)
+		expectTokenNumber(cursor, tokens[5], TokenKind.Number, 3)
+		expectToken(tokens[6], TokenKind.RBracket)
+	})
+
+	test('readStringValue extracts unescaped content', () => {
+		const source = '"hello world"'
+		const cursor = createCursor(source)
+		const tokens = tokenize(source)
+		const value = readStringValue(cursor, tokens[0]!)
+		expect(value).toBe('hello world')
+	})
+
+	test('readStringValue resolves escape sequences', () => {
+		const source = '"line1\\nline2\\ttab"'
+		const cursor = createCursor(source)
+		const tokens = tokenize(source)
+		const value = readStringValue(cursor, tokens[0]!)
+		expect(value).toBe('line1\nline2\ttab')
+	})
+
+	test('readStringValue resolves escaped quotes', () => {
+		const source = '"say \\"hi\\""'
+		const cursor = createCursor(source)
+		const tokens = tokenize(source)
+		const value = readStringValue(cursor, tokens[0]!)
+		expect(value).toBe('say "hi"')
+	})
+
+	test('readStringValue resolves escaped backslash', () => {
+		const source = '"path\\\\to\\\\file"'
+		const cursor = createCursor(source)
+		const tokens = tokenize(source)
+		const value = readStringValue(cursor, tokens[0]!)
+		expect(value).toBe('path\\to\\file')
 	})
 })

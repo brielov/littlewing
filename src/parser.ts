@@ -4,6 +4,7 @@ import {
 	type Cursor,
 	createCursor,
 	nextToken,
+	readStringValue,
 	readText,
 	type Token,
 	TokenKind,
@@ -30,9 +31,6 @@ const BINARY_OPERATOR_TOKENS = new Set([
 	TokenKind.Or,
 ])
 
-/**
- * Parser state object (mutable cursor for efficient iteration)
- */
 interface ParserState {
 	cursor: Cursor
 	currentToken: Token
@@ -40,11 +38,6 @@ interface ParserState {
 
 /**
  * Parse source code string into AST
- * Implements Pratt parsing (top-down operator precedence)
- * Uses lazy lexing - calls lexer on-demand instead of receiving all tokens upfront
- *
- * @param source - The source code to parse
- * @returns Parsed AST
  */
 export function parse(source: string): ASTNode {
 	const cursor = createCursor(source)
@@ -63,8 +56,6 @@ export function parse(source: string): ASTNode {
 		throw new Error('Empty program')
 	}
 
-	// If single statement, return it directly
-	// If multiple, wrap in Program node
 	if (statements.length === 1) {
 		const singleStatement = statements[0]
 		if (singleStatement === undefined) {
@@ -76,14 +67,6 @@ export function parse(source: string): ASTNode {
 	return ast.program(statements)
 }
 
-/**
- * Parse an expression with Pratt parsing (precedence climbing)
- * This is the core of the parser - coordinates prefix and infix parsing
- *
- * @param state - Parser state
- * @param minPrecedence - Minimum precedence for operators to bind
- * @returns Parsed expression AST node
- */
 function parseExpression(state: ParserState, minPrecedence: number): ASTNode {
 	let left = parsePrefix(state)
 
@@ -91,7 +74,6 @@ function parseExpression(state: ParserState, minPrecedence: number): ASTNode {
 		const kind = state.currentToken[0]
 		const precedence = getTokenPrecedence(kind)
 
-		// Break if precedence is too low or token is not an infix operator (precedence = 0)
 		if (precedence === 0 || precedence < minPrecedence) {
 			break
 		}
@@ -102,13 +84,6 @@ function parseExpression(state: ParserState, minPrecedence: number): ASTNode {
 	return left
 }
 
-/**
- * Parse prefix expressions (NUD - Null Denotation)
- * Handles unary operators, literals, identifiers, grouping, and function calls
- *
- * @param state - Parser state
- * @returns Parsed prefix expression AST node
- */
 function parsePrefix(state: ParserState): ASTNode {
 	const tokenKind = peekKind(state)
 
@@ -137,6 +112,24 @@ function parsePrefix(state: ParserState): ASTNode {
 		return expr
 	}
 
+	// Array literal
+	if (tokenKind === TokenKind.LBracket) {
+		advance(state) // consume [
+		const elements: ASTNode[] = []
+		if (peekKind(state) !== TokenKind.RBracket) {
+			elements.push(parseExpression(state, 0))
+			while (peekKind(state) === TokenKind.Comma) {
+				advance(state) // consume comma
+				elements.push(parseExpression(state, 0))
+			}
+		}
+		if (peekKind(state) !== TokenKind.RBracket) {
+			throw new Error('Expected closing bracket')
+		}
+		advance(state) // consume ]
+		return ast.array(elements)
+	}
+
 	// Number literal
 	if (tokenKind === TokenKind.Number) {
 		const token = state.currentToken
@@ -145,11 +138,27 @@ function parsePrefix(state: ParserState): ASTNode {
 		return ast.number(value)
 	}
 
-	// Identifier or function call
+	// String literal
+	if (tokenKind === TokenKind.String) {
+		const token = state.currentToken
+		advance(state)
+		const value = readStringValue(state.cursor, token)
+		return ast.string(value)
+	}
+
+	// Identifier, boolean literal, or function call
 	if (tokenKind === TokenKind.Identifier) {
 		const token = state.currentToken
 		const name = readText(state.cursor, token)
 		advance(state)
+
+		// Boolean literals
+		if (name === 'true') {
+			return ast.boolean(true)
+		}
+		if (name === 'false') {
+			return ast.boolean(false)
+		}
 
 		// Check for function call
 		if (peekKind(state) === TokenKind.LParen) {
@@ -171,15 +180,6 @@ function parsePrefix(state: ParserState): ASTNode {
 	throw new Error(`Unexpected token: ${tokenText}`)
 }
 
-/**
- * Parse infix expressions (LED - Left Denotation)
- * Handles binary operators, assignment, and ternary conditional
- *
- * @param state - Parser state
- * @param left - Left-hand side expression already parsed
- * @param precedence - Precedence of the current operator
- * @returns Parsed infix expression AST node
- */
 function parseInfix(
 	state: ParserState,
 	left: ASTNode,
@@ -192,23 +192,20 @@ function parseInfix(
 		if (left[0] !== NodeKind.Identifier) {
 			throw new Error('Invalid assignment target')
 		}
-		const identName = left[1] // Extract name from Identifier tuple
-		advance(state) // consume =
-		// Use precedence (not precedence + 1) for right-associativity
-		// This allows: x = y = 5 and x = 5 > 3 ? 100 : 50
+		const identName = left[1]
+		advance(state)
 		const value = parseExpression(state, precedence)
 		return ast.assign(identName, value)
 	}
 
 	// Ternary conditional expression (right-associative)
 	if (tokenKind === TokenKind.Question) {
-		advance(state) // consume ?
+		advance(state)
 		const consequent = parseExpression(state, 0)
 		if (peekKind(state) !== TokenKind.Colon) {
 			throw new Error('Expected : in ternary expression')
 		}
-		advance(state) // consume :
-		// Use precedence for right-associativity
+		advance(state)
 		const alternate = parseExpression(state, precedence)
 		return ast.conditional(left, consequent, alternate)
 	}
@@ -216,9 +213,7 @@ function parseInfix(
 	// Binary operators
 	if (isBinaryOperator(tokenKind)) {
 		const operator = readText(state.cursor, state.currentToken) as Operator
-		advance(state) // consume operator
-		// Right-associative operators (^) use precedence
-		// Left-associative operators (+, -, *, /, %, ==, !=, <, >, <=, >=, &&, ||) use precedence + 1
+		advance(state)
 		const isRightAssociative = operator === '^'
 		const right = parseExpression(
 			state,
@@ -230,67 +225,32 @@ function parseInfix(
 	throw new Error('Unexpected token in infix position')
 }
 
-/**
- * Parse function call arguments
- *
- * @param state - Parser state
- * @returns Array of argument AST nodes
- */
 function parseFunctionArguments(state: ParserState): ASTNode[] {
-	// Empty argument list
 	if (peekKind(state) === TokenKind.RParen) {
 		return []
 	}
 
 	const args: ASTNode[] = []
-
-	// Parse first argument
 	args.push(parseExpression(state, 0))
 
-	// Parse remaining arguments
 	while (peekKind(state) === TokenKind.Comma) {
-		advance(state) // consume comma
+		advance(state)
 		args.push(parseExpression(state, 0))
 	}
 
 	return args
 }
 
-/**
- * Unary operator precedence constant
- * Value is 7 which is higher than add/sub (6) but lower than exponentiation (8)
- * This means:
- * - Binds tighter than addition: -2 + 3 parses as (-2) + 3 = 1
- * - Binds looser than exponentiation: -2^2 parses as -(2^2) = -4, not (-2)^2 = 4
- * Matches the behavior of Python, JavaScript, and most languages
- */
 const UNARY_PRECEDENCE = 7
 
-/**
- * Check if token kind is a binary operator (O(1) Set lookup)
- *
- * @param kind - Token kind to check
- * @returns True if the token is a binary operator
- */
 function isBinaryOperator(kind: TokenKind): boolean {
 	return BINARY_OPERATOR_TOKENS.has(kind)
 }
 
-/**
- * Get current token kind without advancing
- *
- * @param state - Parser state
- * @returns Current token kind
- */
 function peekKind(state: ParserState): TokenKind {
 	return state.currentToken[0]
 }
 
-/**
- * Advance to next token by calling lexer
- *
- * @param state - Parser state
- */
 function advance(state: ParserState): void {
 	state.currentToken = nextToken(state.cursor)
 }

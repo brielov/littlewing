@@ -1,7 +1,6 @@
 import './codegen.bench'
 import './integration.bench'
 import './interpreter.bench'
-import './jit.bench'
 import './lexer.bench'
 import './optimizer.bench'
 import './parser.bench'

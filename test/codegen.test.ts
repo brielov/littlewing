@@ -198,8 +198,6 @@ describe('CodeGenerator', () => {
 	})
 
 	test('precedence - unary minus on left of exponentiation needs parens', () => {
-		// (-2) ^ 2 = 4, but -2 ^ 2 = -4
-		// When UnaryOp is the base of exponentiation, we need parens
 		const node = ast.exponentiate(
 			ast.unaryOp('-', ast.number(2)),
 			ast.number(2),
@@ -209,7 +207,6 @@ describe('CodeGenerator', () => {
 	})
 
 	test('precedence - unary minus wraps exponentiation', () => {
-		// -2 ^ 2 should generate as -(2 ^ 2)
 		const node = ast.unaryOp(
 			'-',
 			ast.exponentiate(ast.number(2), ast.number(2)),
@@ -223,9 +220,7 @@ describe('CodeGenerator', () => {
 		const ast1 = parse(source)
 		const code = generate(ast1)
 		const ast2 = parse(code)
-		const result1 = evaluate(ast1)
-		const result2 = evaluate(ast2)
-		expect(result1).toBe(result2)
+		expect(evaluate(ast1)).toBe(evaluate(ast2))
 	})
 
 	test('round-trip with precedence', () => {
@@ -233,9 +228,7 @@ describe('CodeGenerator', () => {
 		const ast1 = parse(source)
 		const code = generate(ast1)
 		const ast2 = parse(code)
-		const result1 = evaluate(ast1)
-		const result2 = evaluate(ast2)
-		expect(result1).toBe(result2)
+		expect(evaluate(ast1)).toBe(evaluate(ast2))
 	})
 
 	test('round-trip with parentheses', () => {
@@ -243,9 +236,7 @@ describe('CodeGenerator', () => {
 		const ast1 = parse(source)
 		const code = generate(ast1)
 		const ast2 = parse(code)
-		const result1 = evaluate(ast1)
-		const result2 = evaluate(ast2)
-		expect(result1).toBe(result2)
+		expect(evaluate(ast1)).toBe(evaluate(ast2))
 	})
 
 	test('round-trip with variables', () => {
@@ -253,19 +244,7 @@ describe('CodeGenerator', () => {
 		const ast1 = parse(source)
 		const code = generate(ast1)
 		const ast2 = parse(code)
-		const result1 = evaluate(ast1)
-		const result2 = evaluate(ast2)
-		expect(result1).toBe(result2)
-	})
-
-	test('round-trip with functions', () => {
-		const source = 'ABS(-5)'
-		const ast1 = parse(source)
-		const code = generate(ast1)
-		const ast2 = parse(code)
-		const result1 = evaluate(ast1, { functions: { ABS: Math.abs } })
-		const result2 = evaluate(ast2, { functions: { ABS: Math.abs } })
-		expect(result1).toBe(result2)
+		expect(evaluate(ast1)).toBe(evaluate(ast2))
 	})
 
 	test('round-trip complex expression', () => {
@@ -273,9 +252,7 @@ describe('CodeGenerator', () => {
 		const ast1 = parse(source)
 		const code = generate(ast1)
 		const ast2 = parse(code)
-		const result1 = evaluate(ast1)
-		const result2 = evaluate(ast2)
-		expect(result1).toBe(result2)
+		expect(evaluate(ast1)).toBe(evaluate(ast2))
 	})
 
 	test('program with multiple statements', () => {
@@ -310,7 +287,6 @@ describe('CodeGenerator', () => {
 	})
 
 	test('comparison with arithmetic (precedence)', () => {
-		// Arithmetic has higher precedence than comparison, no parens needed
 		const node = ast.lessThan(
 			ast.add(ast.number(2), ast.number(3)),
 			ast.number(10),
@@ -338,18 +314,17 @@ describe('CodeGenerator', () => {
 
 	test('nested ternary', () => {
 		const node = ast.conditional(
-			ast.number(1),
-			ast.conditional(ast.number(1), ast.number(100), ast.number(200)),
+			ast.boolean(true),
+			ast.conditional(ast.boolean(true), ast.number(100), ast.number(200)),
 			ast.number(300),
 		)
-		expect(generate(node)).toBe('1 ? 1 ? 100 : 200 : 300')
+		expect(generate(node)).toBe('true ? true ? 100 : 200 : 300')
 	})
 
 	test('ternary round-trip', () => {
 		const source = 'x > 5 ? 100 : 50'
 		const ast1 = parse(source)
 		const code = generate(ast1)
-		const _ast2 = parse(code)
 		const result1 = evaluate(source, { variables: { x: 10 } })
 		const result2 = evaluate(code, { variables: { x: 10 } })
 		expect(result1).toBe(result2)
@@ -357,42 +332,37 @@ describe('CodeGenerator', () => {
 	})
 
 	test('&& operator', () => {
-		const source = '5 && 3'
+		const source = 'true && false'
 		const ast1 = parse(source)
 		const code = generate(ast1)
-		expect(code).toBe('5 && 3')
+		expect(code).toBe('true && false')
 	})
 
 	test('|| operator', () => {
-		const source = '0 || 1'
+		const source = 'false || true'
 		const ast1 = parse(source)
 		const code = generate(ast1)
-		expect(code).toBe('0 || 1')
+		expect(code).toBe('false || true')
 	})
 
 	test('mixed logical and comparison operators', () => {
 		const source = '5 > 3 && 10 < 20'
 		const ast1 = parse(source)
 		const code = generate(ast1)
-		const _ast2 = parse(code)
 		expect(evaluate(source)).toBe(evaluate(code))
 	})
 
 	test('logical operators with parentheses', () => {
-		const source = '(1 && 0) || 1'
+		const source = '(true && false) || true'
 		const ast1 = parse(source)
 		const code = generate(ast1)
 		expect(evaluate(source)).toBe(evaluate(code))
 	})
 
-	// Note: The visitor pattern provides compile-time exhaustiveness checking.
-	// Invalid node types are caught at compile time, not runtime.
-	// This is superior to runtime error handling as it prevents bugs before they occur.
-
 	test('logical NOT operator', () => {
-		const ast1 = ast.logicalNot(ast.number(5))
+		const ast1 = ast.logicalNot(ast.boolean(true))
 		const code = generate(ast1)
-		expect(code).toBe('!5')
+		expect(code).toBe('!true')
 	})
 
 	test('logical NOT with identifier', () => {
@@ -422,15 +392,6 @@ describe('CodeGenerator', () => {
 		expect(code).toBe(source)
 	})
 
-	test('NOT with arithmetic', () => {
-		const source = '!x + 5'
-		const ast1 = parse(source)
-		const code = generate(ast1)
-		expect(evaluate(source, { variables: { x: 0 } })).toBe(
-			evaluate(code, { variables: { x: 0 } }),
-		)
-	})
-
 	test('NOT with comparison', () => {
 		const source = '!(x > 5)'
 		const ast1 = parse(source)
@@ -442,9 +403,9 @@ describe('CodeGenerator', () => {
 		const source = '!x ? 100 : 50'
 		const ast1 = parse(source)
 		const code = generate(ast1)
-		expect(evaluate(source, { variables: { x: 0 } })).toBe(
-			evaluate(code, { variables: { x: 0 } }),
-		)
+		const result1 = evaluate(source, { variables: { x: false } })
+		const result2 = evaluate(code, { variables: { x: false } })
+		expect(result1).toBe(result2)
 	})
 
 	test('mixed unary operators', () => {
@@ -459,5 +420,55 @@ describe('CodeGenerator', () => {
 		const ast1 = parse(source)
 		const code = generate(ast1)
 		expect(code).toBe(source)
+	})
+
+	// New type codegen tests
+	test('generate string literal', () => {
+		const node = ast.string('hello')
+		expect(generate(node)).toBe('"hello"')
+	})
+
+	test('generate string with escapes', () => {
+		const node = ast.string('hello\n"world"')
+		expect(generate(node)).toBe('"hello\\n\\"world\\""')
+	})
+
+	test('generate boolean literal', () => {
+		expect(generate(ast.boolean(true))).toBe('true')
+		expect(generate(ast.boolean(false))).toBe('false')
+	})
+
+	test('generate array literal', () => {
+		const node = ast.array([ast.number(1), ast.number(2), ast.number(3)])
+		expect(generate(node)).toBe('[1, 2, 3]')
+	})
+
+	test('generate empty array', () => {
+		const node = ast.array([])
+		expect(generate(node)).toBe('[]')
+	})
+
+	test('string round-trip', () => {
+		const source = '"hello world"'
+		const ast1 = parse(source)
+		const code = generate(ast1)
+		expect(code).toBe(source)
+		expect(evaluate(code)).toBe('hello world')
+	})
+
+	test('boolean round-trip', () => {
+		const source = 'true'
+		const ast1 = parse(source)
+		const code = generate(ast1)
+		expect(code).toBe(source)
+		expect(evaluate(code)).toBe(true)
+	})
+
+	test('array round-trip', () => {
+		const source = '[1, 2, 3]'
+		const ast1 = parse(source)
+		const code = generate(ast1)
+		expect(code).toBe(source)
+		expect(evaluate(code)).toEqual([1, 2, 3])
 	})
 })

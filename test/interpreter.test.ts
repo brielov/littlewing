@@ -44,25 +44,20 @@ describe('Interpreter', () => {
 	})
 
 	test('execute exponentiation precedence', () => {
-		// Exponentiation has higher precedence than multiplication
-		expect(evaluate('2 * 3 ^ 2')).toBe(18) // 2 * 9, not 6 ^ 2
-		expect(evaluate('2 ^ 3 * 4')).toBe(32) // 8 * 4, not 2 ^ 12
+		expect(evaluate('2 * 3 ^ 2')).toBe(18) // 2 * 9
+		expect(evaluate('2 ^ 3 * 4')).toBe(32) // 8 * 4
 		expect(evaluate('(2 + 3) ^ 2')).toBe(25) // 5 ^ 2
 	})
 
 	test('execute exponentiation associativity (right-associative)', () => {
-		// Exponentiation is right-associative: a ^ b ^ c = a ^ (b ^ c)
-		expect(evaluate('2 ^ 3 ^ 2')).toBe(512) // 2 ^ (3 ^ 2) = 2 ^ 9 = 512
-		expect(evaluate('2 ^ 2 ^ 3')).toBe(256) // 2 ^ (2 ^ 3) = 2 ^ 8 = 256
-		expect(evaluate('4 ^ 3 ^ 2')).toBe(262144) // 4 ^ (3 ^ 2) = 4 ^ 9 = 262144
+		expect(evaluate('2 ^ 3 ^ 2')).toBe(512) // 2 ^ (3 ^ 2)
+		expect(evaluate('2 ^ 2 ^ 3')).toBe(256) // 2 ^ (2 ^ 3)
+		expect(evaluate('4 ^ 3 ^ 2')).toBe(262144) // 4 ^ (3 ^ 2)
 
-		// Verify it's NOT left-associative
-		// If it were left-associative: (2 ^ 3) ^ 2 = 8 ^ 2 = 64 (wrong!)
 		expect(evaluate('2 ^ 3 ^ 2')).not.toBe(64)
 
-		// With parentheses to force left-associativity
-		expect(evaluate('(2 ^ 3) ^ 2')).toBe(64) // (2 ^ 3) ^ 2 = 8 ^ 2 = 64
-		expect(evaluate('(2 ^ 2) ^ 3')).toBe(64) // (2 ^ 2) ^ 3 = 4 ^ 3 = 64
+		expect(evaluate('(2 ^ 3) ^ 2')).toBe(64)
+		expect(evaluate('(2 ^ 2) ^ 3')).toBe(64)
 	})
 
 	test('execute parentheses', () => {
@@ -76,33 +71,28 @@ describe('Interpreter', () => {
 	})
 
 	test('execute unary minus precedence', () => {
-		// Unary minus binds tighter than addition/subtraction
-		expect(evaluate('5 + -3')).toBe(2) // 5 + (-3) = 2
-		expect(evaluate('10 - -5')).toBe(15) // 10 - (-5) = 15
-		expect(evaluate('-2 + 3')).toBe(1) // (-2) + 3 = 1
+		expect(evaluate('5 + -3')).toBe(2)
+		expect(evaluate('10 - -5')).toBe(15)
+		expect(evaluate('-2 + 3')).toBe(1)
 
-		// Unary minus binds tighter than multiplication/division
-		expect(evaluate('2 * -3')).toBe(-6) // 2 * (-3) = -6
-		expect(evaluate('-10 / 2')).toBe(-5) // (-10) / 2 = -5
-		expect(evaluate('-2 * -3')).toBe(6) // (-2) * (-3) = 6
+		expect(evaluate('2 * -3')).toBe(-6)
+		expect(evaluate('-10 / 2')).toBe(-5)
+		expect(evaluate('-2 * -3')).toBe(6)
 
-		// Unary minus binds LOOSER than exponentiation (Python/Ruby/JS style)
-		expect(evaluate('-2 ^ 2')).toBe(-4) // -(2 ^ 2) = -4, NOT (-2)^2 = 4
-		expect(evaluate('-2 ^ 3')).toBe(-8) // -(2 ^ 3) = -8
-		expect(evaluate('-3 ^ 2')).toBe(-9) // -(3 ^ 2) = -9
+		// Unary minus binds LOOSER than exponentiation
+		expect(evaluate('-2 ^ 2')).toBe(-4) // -(2 ^ 2) = -4
+		expect(evaluate('-2 ^ 3')).toBe(-8)
+		expect(evaluate('-3 ^ 2')).toBe(-9)
 
-		// With parentheses, behavior changes
-		expect(evaluate('(-2) ^ 2')).toBe(4) // (-2) ^ 2 = 4
-		expect(evaluate('(-2) ^ 3')).toBe(-8) // (-2) ^ 3 = -8
-		expect(evaluate('(-3) ^ 2')).toBe(9) // (-3) ^ 2 = 9
+		expect(evaluate('(-2) ^ 2')).toBe(4)
+		expect(evaluate('(-2) ^ 3')).toBe(-8)
+		expect(evaluate('(-3) ^ 2')).toBe(9)
 
-		// Complex expression with unary minus
-		expect(evaluate('-2 ^ 2 + 3 * 4')).toBe(8) // -(2^2) + (3*4) = -4 + 12 = 8
-		expect(evaluate('10 - 3 * 2 ^ 2 + 1')).toBe(-1) // 10 - (3*(2^2)) + 1 = 10 - 12 + 1 = -1
+		expect(evaluate('-2 ^ 2 + 3 * 4')).toBe(8)
+		expect(evaluate('10 - 3 * 2 ^ 2 + 1')).toBe(-1)
 
-		// Double unary minus
-		expect(evaluate('--5')).toBe(5) // -(-5) = 5
-		expect(evaluate('---5')).toBe(-5) // -(-(-5)) = -5
+		expect(evaluate('--5')).toBe(5)
+		expect(evaluate('---5')).toBe(-5)
 	})
 
 	test('execute all operators', () => {
@@ -138,7 +128,12 @@ describe('Interpreter', () => {
 
 	test('execute function call with arguments', () => {
 		const result = evaluate('ABS(-5)', {
-			functions: { ABS: Math.abs },
+			functions: {
+				ABS: (x) => {
+					if (typeof x !== 'number') throw new TypeError('expected number')
+					return Math.abs(x)
+				},
+			},
 		})
 		expect(result).toBe(5)
 	})
@@ -176,6 +171,38 @@ describe('Interpreter', () => {
 	test('floating point arithmetic', () => {
 		expect(evaluate('0.1 + 0.2')).toBeCloseTo(0.3)
 		expect(evaluate('3.14 * 2')).toBeCloseTo(6.28)
+	})
+})
+
+describe('Multi-type expressions', () => {
+	test('string literals', () => {
+		expect(evaluate('"hello"')).toBe('hello')
+		expect(evaluate('"hello" + " world"')).toBe('hello world')
+	})
+
+	test('boolean literals', () => {
+		expect(evaluate('true')).toBe(true)
+		expect(evaluate('false')).toBe(false)
+	})
+
+	test('array literals', () => {
+		expect(evaluate('[1, 2, 3]')).toEqual([1, 2, 3])
+		expect(evaluate('["a", "b"]')).toEqual(['a', 'b'])
+		expect(evaluate('[]')).toEqual([])
+	})
+
+	test('array concatenation', () => {
+		expect(evaluate('[1, 2] + [3, 4]')).toEqual([1, 2, 3, 4])
+	})
+
+	test('heterogeneous array throws TypeError', () => {
+		expect(() => evaluate('[1, "two"]')).toThrow(TypeError)
+	})
+
+	test('type errors for invalid operations', () => {
+		expect(() => evaluate('"hello" - "world"')).toThrow(TypeError)
+		expect(() => evaluate('"hello" * 2')).toThrow(TypeError)
+		expect(() => evaluate('true + false')).toThrow(TypeError)
 	})
 })
 
@@ -219,74 +246,42 @@ describe('evaluate() function accepts string or AST', () => {
 })
 
 describe('Logical NOT operator', () => {
-	test('execute NOT on zero', () => {
-		const result = evaluate('!0')
-		expect(result).toBe(1)
-	})
-
-	test('execute NOT on non-zero positive', () => {
-		const result = evaluate('!5')
-		expect(result).toBe(0)
-	})
-
-	test('execute NOT on non-zero negative', () => {
-		const result = evaluate('!-5')
-		expect(result).toBe(0)
+	test('execute NOT on boolean', () => {
+		expect(evaluate('!true')).toBe(false)
+		expect(evaluate('!false')).toBe(true)
 	})
 
 	test('execute double NOT', () => {
-		const result1 = evaluate('!!0')
-		expect(result1).toBe(0)
-		const result2 = evaluate('!!5')
-		expect(result2).toBe(1)
+		expect(evaluate('!!true')).toBe(true)
+		expect(evaluate('!!false')).toBe(false)
 	})
 
 	test('execute NOT in conditional', () => {
-		const result = evaluate('!0 ? 100 : 50')
-		expect(result).toBe(100)
+		expect(evaluate('!false ? 100 : 50')).toBe(100)
 	})
 
 	test('execute NOT with comparison', () => {
-		const result = evaluate('!(5 > 10)')
-		expect(result).toBe(1)
+		expect(evaluate('!(5 > 10)')).toBe(true)
+		expect(evaluate('!(5 < 10)')).toBe(false)
 	})
 
 	test('execute NOT with logical AND', () => {
-		const result = evaluate('!0 && !0')
-		expect(result).toBe(1)
+		expect(evaluate('!false && !false')).toBe(true)
 	})
 
 	test('execute NOT with logical OR', () => {
-		const result = evaluate('!1 || !0')
-		expect(result).toBe(1)
+		expect(evaluate('!true || !false')).toBe(true)
 	})
 
-	test('execute NOT with arithmetic', () => {
-		// !0 + 5 should be (!0) + 5 = 1 + 5 = 6
-		const result = evaluate('!0 + 5')
-		expect(result).toBe(6)
+	test('execute NOT with boolean variable', () => {
+		expect(evaluate('!x', { variables: { x: false } })).toBe(true)
+		expect(evaluate('!x', { variables: { x: true } })).toBe(false)
 	})
 
-	test('execute NOT with variable', () => {
-		const result = evaluate('!x', { variables: { x: 0 } })
-		expect(result).toBe(1)
-	})
-
-	test('execute NOT in complex expression', () => {
-		const result = evaluate('x = 0; y = !x; y + 10')
-		expect(result).toBe(11)
-	})
-
-	test('execute mixed unary operators', () => {
-		// -!5 should be -((!5)) = -(0) = -0 (which equals 0)
-		const result = evaluate('-!5')
-		expect(result).toBe(-0) // -0 is valid (signed zero in JavaScript)
-	})
-
-	test('execute NOT with exponentiation precedence', () => {
-		// !2 ^ 2 should be !(2 ^ 2) = !4 = 0
-		const result = evaluate('!2 ^ 2')
-		expect(result).toBe(0)
+	test('NOT requires boolean operand', () => {
+		expect(() => evaluate('!0')).toThrow(TypeError)
+		expect(() => evaluate('!5')).toThrow(TypeError)
+		expect(() => evaluate('!"hello"')).toThrow(TypeError)
 	})
 })
 
@@ -318,12 +313,23 @@ describe('evaluateScope', () => {
 
 	test('works with function calls', () => {
 		const scope = evaluateScope('x = ABS(-5); y = MAX(x, 10)', {
-			functions: { ABS: Math.abs, MAX: Math.max },
+			functions: {
+				ABS: (v) => {
+					if (typeof v !== 'number') throw new TypeError('expected number')
+					return Math.abs(v)
+				},
+				MAX: (...args) => {
+					for (const a of args) {
+						if (typeof a !== 'number') throw new TypeError('expected number')
+					}
+					return Math.max(...(args as number[]))
+				},
+			},
 		})
 		expect(scope).toEqual({ x: 5, y: 10 })
 	})
 
-	test('works with realistic BVA formula', () => {
+	test('works with realistic formula', () => {
 		const scope = evaluateScope(
 			`
 			totalTime = hoursPerWeek * 52
@@ -347,5 +353,10 @@ describe('evaluateScope', () => {
 		const node = parse('x = 5; y = x + 1')
 		const scope = evaluateScope(node)
 		expect(scope).toEqual({ x: 5, y: 6 })
+	})
+
+	test('supports multi-type variables in scope', () => {
+		const scope = evaluateScope('x = "hello"; y = true; z = [1, 2, 3]')
+		expect(scope).toEqual({ x: 'hello', y: true, z: [1, 2, 3] })
 	})
 })

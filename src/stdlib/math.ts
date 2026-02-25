@@ -1,33 +1,90 @@
 import type { RuntimeValue } from '../types'
+import { assertNumber } from '../utils'
 
 /**
  * Math utility functions
- * All functions work with numbers only
+ * All functions assert number inputs and return numbers
  */
+
+export const ABS = (x: RuntimeValue): RuntimeValue => {
+	assertNumber(x, 'ABS')
+	return Math.abs(x)
+}
+
+export const CEIL = (x: RuntimeValue): RuntimeValue => {
+	assertNumber(x, 'CEIL')
+	return Math.ceil(x)
+}
+
+export const FLOOR = (x: RuntimeValue): RuntimeValue => {
+	assertNumber(x, 'FLOOR')
+	return Math.floor(x)
+}
+
+export const ROUND = (x: RuntimeValue): RuntimeValue => {
+	assertNumber(x, 'ROUND')
+	return Math.round(x)
+}
+
+export const SQRT = (x: RuntimeValue): RuntimeValue => {
+	assertNumber(x, 'SQRT')
+	return Math.sqrt(x)
+}
+
+export const MIN = (...values: RuntimeValue[]): RuntimeValue => {
+	for (const value of values) {
+		assertNumber(value, 'MIN')
+	}
+	return Math.min(...(values as number[]))
+}
+
+export const MAX = (...values: RuntimeValue[]): RuntimeValue => {
+	for (const value of values) {
+		assertNumber(value, 'MAX')
+	}
+	return Math.max(...(values as number[]))
+}
+
+export const SIN = (x: RuntimeValue): RuntimeValue => {
+	assertNumber(x, 'SIN')
+	return Math.sin(x)
+}
+
+export const COS = (x: RuntimeValue): RuntimeValue => {
+	assertNumber(x, 'COS')
+	return Math.cos(x)
+}
+
+export const TAN = (x: RuntimeValue): RuntimeValue => {
+	assertNumber(x, 'TAN')
+	return Math.tan(x)
+}
+
+export const LOG = (x: RuntimeValue): RuntimeValue => {
+	assertNumber(x, 'LOG')
+	return Math.log(x)
+}
+
+export const LOG10 = (x: RuntimeValue): RuntimeValue => {
+	assertNumber(x, 'LOG10')
+	return Math.log10(x)
+}
+
+export const EXP = (x: RuntimeValue): RuntimeValue => {
+	assertNumber(x, 'EXP')
+	return Math.exp(x)
+}
 
 /**
  * Constrain a value between a minimum and maximum
- * @example CLAMP(value, 0, 100) - Clamps value between 0 and 100
  */
 export const CLAMP = (
 	value: RuntimeValue,
 	min: RuntimeValue,
 	max: RuntimeValue,
 ): RuntimeValue => {
+	assertNumber(value, 'CLAMP', 'value')
+	assertNumber(min, 'CLAMP', 'min')
+	assertNumber(max, 'CLAMP', 'max')
 	return value < min ? min : value > max ? max : value
 }
-
-// Standard Math functions (re-exported with UPPERCASE names for consistency)
-export const ABS: (x: RuntimeValue) => RuntimeValue = Math.abs
-export const CEIL: (x: RuntimeValue) => RuntimeValue = Math.ceil
-export const FLOOR: (x: RuntimeValue) => RuntimeValue = Math.floor
-export const ROUND: (x: RuntimeValue) => RuntimeValue = Math.round
-export const SQRT: (x: RuntimeValue) => RuntimeValue = Math.sqrt
-export const MIN: (...values: RuntimeValue[]) => RuntimeValue = Math.min
-export const MAX: (...values: RuntimeValue[]) => RuntimeValue = Math.max
-export const SIN: (x: RuntimeValue) => RuntimeValue = Math.sin
-export const COS: (x: RuntimeValue) => RuntimeValue = Math.cos
-export const TAN: (x: RuntimeValue) => RuntimeValue = Math.tan
-export const LOG: (x: RuntimeValue) => RuntimeValue = Math.log
-export const LOG10: (x: RuntimeValue) => RuntimeValue = Math.log10
-export const EXP: (x: RuntimeValue) => RuntimeValue = Math.exp

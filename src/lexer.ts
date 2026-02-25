@@ -6,6 +6,7 @@ export const enum TokenKind {
 	// Literals
 	Number,
 	Identifier,
+	String,
 
 	// Operators
 	Plus, // +
@@ -31,6 +32,8 @@ export const enum TokenKind {
 	// Punctuation
 	LParen, // (
 	RParen, // )
+	LBracket, // [
+	RBracket, // ]
 	Eq, // =
 	Comma, // ,
 	Question, // ?
@@ -57,8 +60,6 @@ export interface Cursor {
 
 /**
  * Create a new cursor for the given source code
- * @param source - The source code to tokenize
- * @returns A cursor positioned at the start of the source
  */
 export function createCursor(source: string): Cursor {
 	return {
@@ -70,9 +71,6 @@ export function createCursor(source: string): Cursor {
 
 /**
  * Peek at a character code without consuming it
- * @param cursor - The cursor to peek from
- * @param offset - Optional offset from current position (default: 0)
- * @returns Character code at position, or 0 if beyond EOF
  */
 function peek(cursor: Cursor, offset = 0): number {
 	return cursor.pos + offset < cursor.len
@@ -82,8 +80,6 @@ function peek(cursor: Cursor, offset = 0): number {
 
 /**
  * Consume and return the current character code
- * @param cursor - The cursor to advance
- * @returns Character code at current position
  */
 function advance(cursor: Cursor): number {
 	const char = cursor.source.charCodeAt(cursor.pos)
@@ -93,11 +89,8 @@ function advance(cursor: Cursor): number {
 
 /**
  * Skip whitespace characters (space, tab, newline, carriage return)
- * Inlined for performance - avoids function call overhead in hot path
- * @param cursor - The cursor to advance
  */
 function skipWhitespace(cursor: Cursor): void {
-	// 0x20 = space, 0x0a = \n, 0x0d = \r, 0x09 = \t
 	while (cursor.pos < cursor.len) {
 		const c = cursor.source.charCodeAt(cursor.pos)
 		if (c === 0x20 || c === 0x0a || c === 0x0d || c === 0x09) {
@@ -110,9 +103,6 @@ function skipWhitespace(cursor: Cursor): void {
 
 /**
  * Skip a single-line comment starting with '//'
- * Advances cursor to the end of line or EOF
- * Inlined for performance - avoids function call overhead in hot path
- * @param cursor - The cursor to advance
  */
 function skipComment(cursor: Cursor): void {
 	if (
@@ -120,8 +110,7 @@ function skipComment(cursor: Cursor): void {
 		cursor.source.charCodeAt(cursor.pos) === 0x2f &&
 		cursor.source.charCodeAt(cursor.pos + 1) === 0x2f
 	) {
-		cursor.pos += 2 // Skip both slashes
-		// Skip until newline or EOF
+		cursor.pos += 2
 		while (cursor.pos < cursor.len) {
 			const ch = cursor.source.charCodeAt(cursor.pos)
 			if (ch === 0x0a || ch === 0x0d) break
@@ -132,8 +121,6 @@ function skipComment(cursor: Cursor): void {
 
 /**
  * Check if character code is a digit (0-9)
- * @param ch - Character code to check
- * @returns true if ch is in range 0x30-0x39 (ASCII '0'-'9')
  */
 function isDigit(ch: number): boolean {
 	return ch >= 0x30 && ch <= 0x39
@@ -141,8 +128,6 @@ function isDigit(ch: number): boolean {
 
 /**
  * Check if character code is an alphabetic character (a-z, A-Z)
- * @param ch - Character code to check
- * @returns true if ch is in range 0x41-0x5a or 0x61-0x7a (ASCII 'A'-'Z' or 'a'-'z')
  */
 function isAlpha(ch: number): boolean {
 	return (ch >= 0x41 && ch <= 0x5a) || (ch >= 0x61 && ch <= 0x7a)
@@ -150,31 +135,58 @@ function isAlpha(ch: number): boolean {
 
 /**
  * Extract the text content of a token from the source
- * Deferred extraction for performance - only allocate string when needed
- * @param cursor - The cursor containing the source
- * @param token - The token to extract text from
- * @returns The substring of source between token's start and end positions
  */
 export function readText(cursor: Cursor, token: Token): string {
 	return cursor.source.slice(token[1], token[2])
 }
 
 /**
+ * Extract the string value from a String token.
+ * Strips the surrounding quotes and resolves escape sequences.
+ */
+export function readStringValue(cursor: Cursor, token: Token): string {
+	// Slice between the quotes
+	const raw = cursor.source.slice(token[1] + 1, token[2] - 1)
+	// Fast path: no backslashes
+	if (!raw.includes('\\')) return raw
+
+	let result = ''
+	for (let i = 0; i < raw.length; i++) {
+		if (raw[i] === '\\' && i + 1 < raw.length) {
+			i++
+			const ch = raw[i]
+			switch (ch) {
+				case 'n':
+					result += '\n'
+					break
+				case 't':
+					result += '\t'
+					break
+				case '\\':
+					result += '\\'
+					break
+				case '"':
+					result += '"'
+					break
+				default:
+					// Unknown escape: preserve as-is
+					result += `\\${ch}`
+			}
+		} else {
+			result += raw[i]
+		}
+	}
+	return result
+}
+
+/**
  * Get the next token from the source
- * Handles whitespace, comments, operators, literals, and identifiers
- * @param cursor - The cursor to read from
- * @returns A token tuple [kind, start, end]
  */
 export function nextToken(cursor: Cursor): Token {
-	// Skip whitespace and comments in a loop to handle all cases:
-	// - whitespace followed by comments
-	// - comments followed by whitespace
-	// - multiple consecutive comments
 	while (true) {
 		const beforePos = cursor.pos
 		skipWhitespace(cursor)
 		skipComment(cursor)
-		// If position didn't change, we're done skipping
 		if (cursor.pos === beforePos) {
 			break
 		}
@@ -200,6 +212,8 @@ export function nextToken(cursor: Cursor): Token {
 	}
 
 	switch (ch) {
+		case 0x22: // "
+			return lexString(cursor)
 		case 0x2b: // +
 			advance(cursor)
 			return [TokenKind.Plus, start, cursor.pos]
@@ -224,6 +238,12 @@ export function nextToken(cursor: Cursor): Token {
 		case 0x29: // )
 			advance(cursor)
 			return [TokenKind.RParen, start, cursor.pos]
+		case 0x5b: // [
+			advance(cursor)
+			return [TokenKind.LBracket, start, cursor.pos]
+		case 0x5d: // ]
+			advance(cursor)
+			return [TokenKind.RBracket, start, cursor.pos]
 		case 0x3d: // =
 			advance(cursor)
 			if (peek(cursor) === 0x3d) {
@@ -265,18 +285,18 @@ export function nextToken(cursor: Cursor): Token {
 			advance(cursor)
 			return nextToken(cursor)
 		case 0x26: // &
-			advance(cursor) // Consume first '&'
+			advance(cursor)
 			if (peek(cursor) === 0x26) {
-				advance(cursor) // Consume second '&'
+				advance(cursor)
 				return [TokenKind.And, start, cursor.pos]
 			}
 			throw new Error(
 				`Unexpected character '${String.fromCharCode(ch)}' at position ${start}`,
 			)
 		case 0x7c: // |
-			advance(cursor) // Consume first '|'
+			advance(cursor)
 			if (peek(cursor) === 0x7c) {
-				advance(cursor) // Consume second '|'
+				advance(cursor)
 				return [TokenKind.Or, start, cursor.pos]
 			}
 			throw new Error(
@@ -290,23 +310,40 @@ export function nextToken(cursor: Cursor): Token {
 }
 
 /**
+ * Lex a string literal enclosed in double quotes.
+ * Handles escape sequences by skipping the character after backslash.
+ */
+function lexString(cursor: Cursor): Token {
+	const start = cursor.pos
+	advance(cursor) // skip opening "
+
+	while (cursor.pos < cursor.len) {
+		const ch = cursor.source.charCodeAt(cursor.pos)
+		if (ch === 0x5c) {
+			// backslash
+			cursor.pos += 2 // skip backslash and next char
+		} else if (ch === 0x22) {
+			// closing "
+			cursor.pos++
+			return [TokenKind.String, start, cursor.pos]
+		} else {
+			cursor.pos++
+		}
+	}
+
+	throw new Error(`Unterminated string at position ${start}`)
+}
+
+/**
  * Lex a number token
- * Supports integers (42), decimals (3.14), decimal shorthand (.5), and scientific notation (1e6, 2.5e-3)
- * Optimized for performance - inlined character access to avoid function call overhead
- * @param cursor - The cursor to read from
- * @returns A Number token with start and end positions
- * @throws Error if scientific notation is malformed (e.g., "1e" without digits)
  */
 function lexNumber(cursor: Cursor): Token {
 	const start = cursor.pos
 	const { source, len } = cursor
 	let pos = cursor.pos
 
-	// Handle decimal shorthand (.5 means 0.5)
-	// Caller (nextToken) has already verified a digit follows the dot
 	if (source.charCodeAt(pos) === 0x2e) {
 		pos++
-		// Skip decimal digits (we know at least one exists from caller check)
 		while (
 			pos < len &&
 			source.charCodeAt(pos) >= 0x30 &&
@@ -314,7 +351,6 @@ function lexNumber(cursor: Cursor): Token {
 		) {
 			pos++
 		}
-		// Check for scientific notation after decimal shorthand
 		const ch = pos < len ? source.charCodeAt(pos) : 0
 		if (ch === 0x65 || ch === 0x45) {
 			pos = lexExponent(source, len, pos)
@@ -323,7 +359,6 @@ function lexNumber(cursor: Cursor): Token {
 		return [TokenKind.Number, start, pos]
 	}
 
-	// Consume integer part
 	while (
 		pos < len &&
 		source.charCodeAt(pos) >= 0x30 &&
@@ -332,10 +367,8 @@ function lexNumber(cursor: Cursor): Token {
 		pos++
 	}
 
-	// Check for decimal point
 	if (pos < len && source.charCodeAt(pos) === 0x2e) {
 		pos++
-		// Consume fractional part
 		while (
 			pos < len &&
 			source.charCodeAt(pos) >= 0x30 &&
@@ -345,7 +378,6 @@ function lexNumber(cursor: Cursor): Token {
 		}
 	}
 
-	// Check for scientific notation
 	if (pos < len) {
 		const ch = source.charCodeAt(pos)
 		if (ch === 0x65 || ch === 0x45) {
@@ -357,18 +389,9 @@ function lexNumber(cursor: Cursor): Token {
 	return [TokenKind.Number, start, pos]
 }
 
-/**
- * Lex the exponent part of scientific notation
- * Assumes pos points to 'e' or 'E'
- * @param source - Source string
- * @param len - Length of source
- * @param pos - Current position (at 'e'/'E')
- * @returns New position after exponent
- */
 function lexExponent(source: string, len: number, pos: number): number {
-	pos++ // Skip 'e' or 'E'
+	pos++
 
-	// Optional sign: '+' or '-'
 	if (pos < len) {
 		const next = source.charCodeAt(pos)
 		if (next === 0x2b || next === 0x2d) {
@@ -376,14 +399,12 @@ function lexExponent(source: string, len: number, pos: number): number {
 		}
 	}
 
-	// Must have at least one digit after 'e'/'E' and optional sign
 	if (pos >= len || !isDigit(source.charCodeAt(pos))) {
 		throw new Error(
 			`Invalid number: expected digit after exponent at position ${pos}`,
 		)
 	}
 
-	// Consume all exponent digits
 	while (pos < len && isDigit(source.charCodeAt(pos))) {
 		pos++
 	}
@@ -391,28 +412,18 @@ function lexExponent(source: string, len: number, pos: number): number {
 	return pos
 }
 
-/**
- * Lex an identifier token
- * Identifiers start with a letter or underscore, followed by letters, digits, or underscores
- * Examples: x, my_var, NOW, _temp, variable123
- * Optimized for performance - inlined character access to avoid function call overhead
- * @param cursor - The cursor to read from
- * @returns An Identifier token with start and end positions
- */
 function lexIdentifier(cursor: Cursor): Token {
 	const start = cursor.pos
 	const { source, len } = cursor
-	let pos = cursor.pos + 1 // Skip first char (already validated)
+	let pos = cursor.pos + 1
 
-	// Consume remaining identifier characters: letters, digits, or underscores
-	// Inline isAlpha and isDigit checks for performance
 	while (pos < len) {
 		const ch = source.charCodeAt(pos)
 		if (
-			(ch >= 0x41 && ch <= 0x5a) || // A-Z
-			(ch >= 0x61 && ch <= 0x7a) || // a-z
-			(ch >= 0x30 && ch <= 0x39) || // 0-9
-			ch === 0x5f // _
+			(ch >= 0x41 && ch <= 0x5a) ||
+			(ch >= 0x61 && ch <= 0x7a) ||
+			(ch >= 0x30 && ch <= 0x39) ||
+			ch === 0x5f
 		) {
 			pos++
 		} else {

@@ -29,6 +29,9 @@ export const enum NodeKind {
 	FunctionCall,
 	Assignment,
 	ConditionalExpression,
+	StringLiteral,
+	BooleanLiteral,
+	ArrayLiteral,
 }
 
 /**
@@ -47,6 +50,33 @@ export type Program = readonly [
 export type NumberLiteral = readonly [
 	kind: NodeKind.NumberLiteral,
 	value: number,
+]
+
+/**
+ * String literal ("hello")
+ * Tuple: [kind, value]
+ */
+export type StringLiteral = readonly [
+	kind: NodeKind.StringLiteral,
+	value: string,
+]
+
+/**
+ * Boolean literal (true, false)
+ * Tuple: [kind, value]
+ */
+export type BooleanLiteral = readonly [
+	kind: NodeKind.BooleanLiteral,
+	value: boolean,
+]
+
+/**
+ * Array literal ([1, 2, 3])
+ * Tuple: [kind, elements]
+ */
+export type ArrayLiteral = readonly [
+	kind: NodeKind.ArrayLiteral,
+	elements: readonly ASTNode[],
 ]
 
 /**
@@ -99,7 +129,7 @@ export type Assignment = readonly [
 
 /**
  * Conditional expression (ternary operator: condition ? consequent : alternate)
- * Returns consequent if condition !== 0, otherwise returns alternate
+ * Returns consequent if condition is true, otherwise returns alternate
  * Tuple: [kind, condition, consequent, alternate]
  */
 export type ConditionalExpression = readonly [
@@ -115,6 +145,9 @@ export type ConditionalExpression = readonly [
 export type ASTNode =
 	| Program
 	| NumberLiteral
+	| StringLiteral
+	| BooleanLiteral
+	| ArrayLiteral
 	| Identifier
 	| BinaryOp
 	| UnaryOp
@@ -131,6 +164,18 @@ export function isProgram(node: ASTNode): node is Program {
 
 export function isNumberLiteral(node: ASTNode): node is NumberLiteral {
 	return node[0] === NodeKind.NumberLiteral
+}
+
+export function isStringLiteral(node: ASTNode): node is StringLiteral {
+	return node[0] === NodeKind.StringLiteral
+}
+
+export function isBooleanLiteral(node: ASTNode): node is BooleanLiteral {
+	return node[0] === NodeKind.BooleanLiteral
+}
+
+export function isArrayLiteral(node: ASTNode): node is ArrayLiteral {
+	return node[0] === NodeKind.ArrayLiteral
 }
 
 export function isIdentifier(node: ASTNode): node is Identifier {
@@ -175,6 +220,27 @@ export function program(statements: readonly ASTNode[]): Program {
  */
 export function number(value: number): NumberLiteral {
 	return [NodeKind.NumberLiteral, value]
+}
+
+/**
+ * Create a string literal node
+ */
+export function string(value: string): StringLiteral {
+	return [NodeKind.StringLiteral, value]
+}
+
+/**
+ * Create a boolean literal node
+ */
+export function boolean(value: boolean): BooleanLiteral {
+	return [NodeKind.BooleanLiteral, value]
+}
+
+/**
+ * Create an array literal node
+ */
+export function array(elements: readonly ASTNode[]): ArrayLiteral {
+	return [NodeKind.ArrayLiteral, elements]
 }
 
 /**
@@ -234,122 +300,66 @@ export function conditional(
  * Convenience functions for common operations
  */
 
-/**
- * Create an addition operation
- */
 export function add(left: ASTNode, right: ASTNode): BinaryOp {
 	return binaryOp(left, '+', right)
 }
 
-/**
- * Create a subtraction operation
- */
 export function subtract(left: ASTNode, right: ASTNode): BinaryOp {
 	return binaryOp(left, '-', right)
 }
 
-/**
- * Create a multiplication operation
- */
 export function multiply(left: ASTNode, right: ASTNode): BinaryOp {
 	return binaryOp(left, '*', right)
 }
 
-/**
- * Create a division operation
- */
 export function divide(left: ASTNode, right: ASTNode): BinaryOp {
 	return binaryOp(left, '/', right)
 }
 
-/**
- * Create a modulo operation
- */
 export function modulo(left: ASTNode, right: ASTNode): BinaryOp {
 	return binaryOp(left, '%', right)
 }
 
-/**
- * Create an exponentiation operation
- */
 export function exponentiate(left: ASTNode, right: ASTNode): BinaryOp {
 	return binaryOp(left, '^', right)
 }
 
-/**
- * Create a negation operation
- */
 export function negate(argument: ASTNode): UnaryOp {
 	return unaryOp('-', argument)
 }
 
-/**
- * Create a logical NOT operation
- */
 export function logicalNot(argument: ASTNode): UnaryOp {
 	return unaryOp('!', argument)
 }
 
-/**
- * Comparison operator convenience functions
- */
-
-/**
- * Create an equality comparison (==)
- */
 export function equals(left: ASTNode, right: ASTNode): BinaryOp {
 	return binaryOp(left, '==', right)
 }
 
-/**
- * Create a not-equals comparison (!=)
- */
 export function notEquals(left: ASTNode, right: ASTNode): BinaryOp {
 	return binaryOp(left, '!=', right)
 }
 
-/**
- * Create a less-than comparison (<)
- */
 export function lessThan(left: ASTNode, right: ASTNode): BinaryOp {
 	return binaryOp(left, '<', right)
 }
 
-/**
- * Create a greater-than comparison (>)
- */
 export function greaterThan(left: ASTNode, right: ASTNode): BinaryOp {
 	return binaryOp(left, '>', right)
 }
 
-/**
- * Create a less-than-or-equal comparison (<=)
- */
 export function lessEqual(left: ASTNode, right: ASTNode): BinaryOp {
 	return binaryOp(left, '<=', right)
 }
 
-/**
- * Create a greater-than-or-equal comparison (>=)
- */
 export function greaterEqual(left: ASTNode, right: ASTNode): BinaryOp {
 	return binaryOp(left, '>=', right)
 }
 
-/**
- * Logical operator convenience functions
- */
-
-/**
- * Create a logical AND operation (&&)
- */
 export function logicalAnd(left: ASTNode, right: ASTNode): BinaryOp {
 	return binaryOp(left, '&&', right)
 }
 
-/**
- * Create a logical OR operation (||)
- */
 export function logicalOr(left: ASTNode, right: ASTNode): BinaryOp {
 	return binaryOp(left, '||', right)
 }
@@ -368,11 +378,17 @@ export function getNodeName(node: ASTNode): string {
 			return 'Identifier'
 		case NodeKind.NumberLiteral:
 			return 'NumberLiteral'
+		case NodeKind.StringLiteral:
+			return 'StringLiteral'
+		case NodeKind.BooleanLiteral:
+			return 'BooleanLiteral'
+		case NodeKind.ArrayLiteral:
+			return 'ArrayLiteral'
 		case NodeKind.Program:
 			return 'Program'
 		case NodeKind.UnaryOp:
 			return 'UnaryOp'
 		default:
-			throw new Error(`Unknown node kind: ${node[0]}`)
+			throw new Error(`Unknown node kind: ${(node as ASTNode)[0]}`)
 	}
 }

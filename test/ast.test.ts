@@ -1,6 +1,13 @@
 import { describe, expect, test } from 'bun:test'
 import * as ast from '../src/ast'
-import { isBinaryOp, isConditionalExpression, NodeKind } from '../src/ast'
+import {
+	isArrayLiteral,
+	isBinaryOp,
+	isBooleanLiteral,
+	isConditionalExpression,
+	isStringLiteral,
+	NodeKind,
+} from '../src/ast'
 import { evaluate } from '../src/interpreter'
 
 describe('AST Builders', () => {
@@ -28,7 +35,12 @@ describe('AST Builders', () => {
 	test('function call', () => {
 		const node = ast.functionCall('ABS', [ast.negate(ast.number(5))])
 		const result = evaluate(node, {
-			functions: { ABS: Math.abs },
+			functions: {
+				ABS: (x) => {
+					if (typeof x !== 'number') throw new TypeError('expected number')
+					return Math.abs(x)
+				},
+			},
 		})
 		expect(result).toBe(5)
 	})
@@ -85,7 +97,6 @@ describe('AST Builders', () => {
 		)
 		expect(isConditionalExpression(node)).toBe(true)
 		if (isConditionalExpression(node)) {
-			// Tuple: [kind, condition, consequent, alternate]
 			expect(node[0]).toBe(NodeKind.ConditionalExpression)
 			expect(node[1]).toBeDefined()
 			expect(node[2]).toBeDefined()
@@ -94,22 +105,63 @@ describe('AST Builders', () => {
 	})
 
 	test('logicalAnd', () => {
-		const node = ast.logicalAnd(ast.number(1), ast.number(1))
+		const node = ast.logicalAnd(ast.boolean(true), ast.boolean(true))
 		expect(isBinaryOp(node)).toBe(true)
 		if (isBinaryOp(node)) {
 			expect(node[2]).toBe('&&')
 		}
 		const result = evaluate(node)
-		expect(result).toBe(1)
+		expect(result).toBe(true)
 	})
 
 	test('logicalOr', () => {
-		const node = ast.logicalOr(ast.number(0), ast.number(1))
+		const node = ast.logicalOr(ast.boolean(false), ast.boolean(true))
 		expect(isBinaryOp(node)).toBe(true)
 		if (isBinaryOp(node)) {
 			expect(node[2]).toBe('||')
 		}
 		const result = evaluate(node)
-		expect(result).toBe(1)
+		expect(result).toBe(true)
+	})
+
+	test('string builder', () => {
+		const node = ast.string('hello')
+		expect(isStringLiteral(node)).toBe(true)
+		if (isStringLiteral(node)) {
+			expect(node[0]).toBe(NodeKind.StringLiteral)
+			expect(node[1]).toBe('hello')
+		}
+	})
+
+	test('boolean builder', () => {
+		const nodeTrue = ast.boolean(true)
+		expect(isBooleanLiteral(nodeTrue)).toBe(true)
+		if (isBooleanLiteral(nodeTrue)) {
+			expect(nodeTrue[0]).toBe(NodeKind.BooleanLiteral)
+			expect(nodeTrue[1]).toBe(true)
+		}
+
+		const nodeFalse = ast.boolean(false)
+		expect(isBooleanLiteral(nodeFalse)).toBe(true)
+		if (isBooleanLiteral(nodeFalse)) {
+			expect(nodeFalse[1]).toBe(false)
+		}
+	})
+
+	test('array builder', () => {
+		const node = ast.array([ast.number(1), ast.number(2), ast.number(3)])
+		expect(isArrayLiteral(node)).toBe(true)
+		if (isArrayLiteral(node)) {
+			expect(node[0]).toBe(NodeKind.ArrayLiteral)
+			expect(node[1].length).toBe(3)
+		}
+	})
+
+	test('logicalNot builder', () => {
+		const node = ast.logicalNot(ast.boolean(true))
+		expect(node[0]).toBe(NodeKind.UnaryOp)
+		expect(node[1]).toBe('!')
+		const result = evaluate(node)
+		expect(result).toBe(false)
 	})
 })

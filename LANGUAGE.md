@@ -1,16 +1,19 @@
 # Littlewing Language Reference
 
-> A minimal, high-performance arithmetic expression language for the browser
+> A minimal, high-performance multi-type expression language for the browser
 
 ## Overview
 
-Littlewing is a **pure arithmetic expression language** where every value is a number. It's designed for evaluating mathematical expressions, financial calculations, date arithmetic, and conditional logic with zero dependencies and blazing fast performance.
+Littlewing is a **multi-type expression language** with five value types: numbers, strings, booleans, dates, and arrays. It's designed for evaluating expressions, financial calculations, date arithmetic, and conditional logic with type-safe execution.
 
 ### Key Features
 
-- **Numbers-only type system** - Simple, predictable, fast
-- **Timestamp arithmetic** - Built-in date/time calculations
-- **Zero dependencies** - Perfect for browser environments
+- **Five types** - Numbers, strings, booleans, dates (Temporal.PlainDate), and homogeneous arrays
+- **No implicit coercion** - Explicit type conversion via `STR()`, `NUM()`, etc.
+- **Strict boolean logic** - `!`, `&&`, `||`, and ternary conditions require booleans
+- **Deep equality** - `[1, 2] == [1, 2]` evaluates to `true`
+- **Date arithmetic** - Built-in date functions using `Temporal.PlainDate`
+- **Zero dependencies** - Perfect for browser environments (uses `temporal-polyfill`)
 - **Linear time execution** - O(n) parsing and evaluation
 - **Context variables** - Runtime value injection
 - **Custom functions** - Extensible with JavaScript functions
@@ -23,17 +26,29 @@ Littlewing is a **pure arithmetic expression language** where every value is a n
 // Basic arithmetic
 2 + 3 * 4 // → 14
 
+// String concatenation
+"hello" + " world" // → "hello world"
+
+// Boolean logic
+5 > 3 && 10 != 5 // → true
+
 // Variables and assignment
 radius = 5
 area = 3.14159 * radius ^ 2 // → 78.54
 
 // Conditional expressions
 score = 85
-grade = score >= 90 ? 100 : score >= 80 ? 90 : 75 // → 90
+passed = score >= 60 // → true
+grade = score >= 90 ? "A" : score >= 80 ? "B" : "C" // → "B"
 
 // Date arithmetic
-deadline = NOW() + FROM_DAYS(7) // 7 days from now
-hoursLeft = DIFFERENCE_IN_HOURS(deadline, NOW())
+today = TODAY()
+deadline = ADD_DAYS(today, 7) // 7 days from now
+daysLeft = DIFFERENCE_IN_DAYS(today, deadline)
+
+// Arrays
+items = [10, 20, 30]
+total = ARR_FIRST(items) + ARR_LAST(items) // → 40
 
 // Financial calculations
 principal = 1000
@@ -44,9 +59,28 @@ futureValue = principal * (1 + rate) ^ years // → 1157.625
 
 ## Language Fundamentals
 
-### Numbers
+### Types
 
-All values in littlewing are numbers. This includes:
+Littlewing has five value types:
+
+| Type | Examples | Description |
+| --- | --- | --- |
+| `number` | `42`, `3.14`, `.5`, `1.5e6` | IEEE 754 double-precision floats |
+| `string` | `"hello"`, `"line1\nline2"` | Double-quoted, with escape sequences |
+| `boolean` | `true`, `false` | Logical values |
+| `date` | `DATE(2024, 6, 15)` | `Temporal.PlainDate` (no time, no timezone) |
+| `array` | `[1, 2, 3]`, `["a", "b"]` | Homogeneous (all elements same type) |
+
+There is **no implicit type coercion**. Use explicit conversion functions:
+
+```
+// Convert between types explicitly
+STR(42) // → "42"
+NUM("3.14") // → 3.14
+TYPE(true) // → "boolean"
+```
+
+### Numbers
 
 - Integers: `42`, `0`, `-17`
 - Decimals: `3.14159`, `-0.5`
@@ -54,22 +88,114 @@ All values in littlewing are numbers. This includes:
 - Scientific notation: `1.5e6` (1,500,000), `2e-3` (0.002)
 
 ```
-// All valid number formats
-x = 42 // integer
-y = 3.14159 // decimal
-z = .5 // shorthand decimal (same as 0.5)
-w = 1.5e6 // scientific notation
-v = .5e2 // shorthand + scientific = 50
+x = 42        // integer
+y = 3.14159   // decimal
+z = .5        // shorthand decimal (same as 0.5)
+w = 1.5e6     // scientific notation
+v = .5e2      // shorthand + scientific = 50
+```
+
+### Strings
+
+Double-quoted strings with escape sequences:
+
+```
+greeting = "hello world"
+escaped = "line1\nline2"   // newline
+quoted = "say \"hi\""      // escaped quotes
+path = "C:\\Users\\file"   // escaped backslash
+empty = ""                 // empty string
+```
+
+Supported escape sequences: `\"`, `\\`, `\n`, `\t`
+
+String concatenation uses `+`:
+
+```
+first = "hello"
+last = " world"
+full = first + last // → "hello world"
+```
+
+### Booleans
+
+`true` and `false` are boolean literals:
+
+```
+x = true
+y = false
+result = x && y // → false
+```
+
+Booleans cannot be used as numbers. Use explicit conversion:
+
+```
+// This is a TypeError:
+// true + 1
+
+// Use NUM() to convert:
+NUM(true) + 1 // → 2
+```
+
+### Dates
+
+Dates are `Temporal.PlainDate` values (date only, no time, no timezone):
+
+```
+today = TODAY()                 // current date
+christmas = DATE(2024, 12, 25)  // specific date
+nextWeek = ADD_DAYS(today, 7)   // date arithmetic
+```
+
+Dates can be compared with `<`, `>`, `<=`, `>=`, `==`, `!=`:
+
+```
+d1 = DATE(2024, 1, 1)
+d2 = DATE(2024, 12, 31)
+d1 < d2 // → true
+```
+
+### Arrays
+
+Homogeneous arrays (all elements must be the same type):
+
+```
+nums = [1, 2, 3]            // array of numbers
+names = ["alice", "bob"]     // array of strings
+flags = [true, false, true]  // array of booleans
+empty = []                   // empty array (type determined on first operation)
+nested = [[1, 2], [3, 4]]   // nested arrays
+```
+
+Mixed-type arrays are a TypeError:
+
+```
+// TypeError: [1, "two", true]
+```
+
+Array concatenation uses `+`:
+
+```
+[1, 2] + [3, 4] // → [1, 2, 3, 4]
+```
+
+Access elements via functions (no index syntax):
+
+```
+items = [10, 20, 30]
+ARR_INDEX(items, 0)  // → 10
+ARR_FIRST(items)     // → 10
+ARR_LAST(items)      // → 30
 ```
 
 ### Variables
 
-Variables store numeric values and can be assigned and reassigned:
+Variables store values of any type and can be assigned and reassigned:
 
 ```
-x = 10 // assign 10 to x
-y = x * 2 // use x in expression
-x = x + 1 // reassign x
+x = 10         // number
+name = "alice" // string
+active = true  // boolean
 
 // Chain assignments (right-associative)
 a = b = c = 5 // all get value 5
@@ -80,6 +206,7 @@ Variable names:
 - Start with letter or underscore
 - Contain letters, numbers, underscores
 - Case-sensitive (`myVar` ≠ `myvar`)
+- `true` and `false` are reserved and cannot be used as variable names
 
 ### Comments
 
@@ -92,11 +219,9 @@ x = 10 // Comment after code
 z = 30
 ```
 
-Comments are ignored by the lexer and do not affect execution.
-
 ### Semicolons
 
-Semicolons between statements are **optional**. Use them if you prefer, or omit them:
+Semicolons between statements are **optional**:
 
 ```
 // With semicolons
@@ -106,81 +231,79 @@ x = 10; y = 20; x + y
 x = 10
 y = 20
 x + y
-
-// Mixed (also valid)
-x = 10; y = 20
-x + y
 ```
 
 ### Operators
 
 #### Arithmetic Operators
 
-| Operator    | Name           | Example  | Result |
-| ----------- | -------------- | -------- | ------ |
-| `+`         | Addition       | `5 + 3`  | `8`    |
-| `-`         | Subtraction    | `10 - 3` | `7`    |
-| `*`         | Multiplication | `4 * 3`  | `12`   |
-| `/`         | Division       | `10 / 2` | `5`    |
-| `%`         | Modulo         | `10 % 3` | `1`    |
-| `^`         | Exponentiation | `2 ^ 3`  | `8`    |
-| `-` (unary) | Negation       | `-5`     | `-5`   |
+| Operator | Name | Operand Types | Example | Result |
+| --- | --- | --- | --- | --- |
+| `+` | Addition / Concatenation | number+number, string+string, array+array | `5 + 3` | `8` |
+| `-` | Subtraction | number | `10 - 3` | `7` |
+| `*` | Multiplication | number | `4 * 3` | `12` |
+| `/` | Division | number | `10 / 2` | `5` |
+| `%` | Modulo | number | `10 % 3` | `1` |
+| `^` | Exponentiation | number | `2 ^ 3` | `8` |
+| `-` (unary) | Negation | number | `-5` | `-5` |
 
 #### Comparison Operators
 
-All comparisons return `1` (true) or `0` (false):
+All comparisons return `boolean` (`true` or `false`):
 
-| Operator | Name             | Example  | Result |
-| -------- | ---------------- | -------- | ------ |
-| `==`     | Equal            | `5 == 5` | `1`    |
-| `!=`     | Not equal        | `5 != 3` | `1`    |
-| `<`      | Less than        | `3 < 5`  | `1`    |
-| `>`      | Greater than     | `5 > 3`  | `1`    |
-| `<=`     | Less or equal    | `3 <= 3` | `1`    |
-| `>=`     | Greater or equal | `5 >= 3` | `1`    |
+| Operator | Name | Supported Types | Example | Result |
+| --- | --- | --- | --- | --- |
+| `==` | Equal | any (deep equality) | `5 == 5` | `true` |
+| `!=` | Not equal | any (deep equality) | `5 != 3` | `true` |
+| `<` | Less than | number, string, date | `3 < 5` | `true` |
+| `>` | Greater than | number, string, date | `5 > 3` | `true` |
+| `<=` | Less or equal | number, string, date | `3 <= 3` | `true` |
+| `>=` | Greater or equal | number, string, date | `5 >= 3` | `true` |
+
+Deep equality for arrays: `[1, 2] == [1, 2]` → `true`
+
+Cross-type equality: `1 == "1"` → `false` (no coercion)
 
 #### Logical Operators
 
-Work with truthiness (0 is false, non-zero is true):
+Logical operators **require boolean operands** (no truthiness):
 
-| Operator | Name | Example    | Result |
-| -------- | ---- | ---------- | ------ |
-| `!`      | NOT  | `!0`       | `1`    |
-| `&&`     | AND  | `1 && 1`   | `1`    |
-| `\|\|`   | OR   | `0 \|\| 1` | `1`    |
+| Operator | Name | Example | Result |
+| --- | --- | --- | --- |
+| `!` | NOT | `!false` | `true` |
+| `&&` | AND | `true && true` | `true` |
+| `\|\|` | OR | `false \|\| true` | `true` |
 
 ```
 // Logical NOT
-!0 // → 1 (true)
-!5 // → 0 (false, because 5 is non-zero)
-!!x // → normalizes x to 0 or 1
+!false // → true
+!true  // → false
+// !0   // → TypeError (use 0 != 0 or NUM() conversion)
 
 // Logical operators with comparisons
 x = 10
-result = x > 5 && x < 20 // → 1 (true)
-notResult = !(x > 5) // → 0 (false)
+result = x > 5 && x < 20 // → true
+notResult = !(x > 5) // → false
 
 // Short-circuit evaluation
 y = 0
-safe = y != 0 && 100 / y > 5 // → 0 (avoids division by zero)
-
-// NOT in conditionals
-isBlocked = 1
-canAccess = !isBlocked // → 0 (false)
+safe = y != 0 && 100 / y > 5 // → false (right side not evaluated)
 ```
 
 #### Conditional (Ternary) Operator
 
 Syntax: `condition ? consequent : alternate`
 
+The condition **must be a boolean**:
+
 ```
 // Basic conditional
 age = 18
-canVote = age >= 18 ? 1 : 0 // → 1
+canVote = age >= 18 // → true
 
 // Nested conditionals
 score = 85
-grade = score >= 90 ? 100 : score >= 80 ? 90 : score >= 70 ? 80 : 60 // → 90
+grade = score >= 90 ? "A" : score >= 80 ? "B" : score >= 70 ? "C" : "F" // → "B"
 
 // With calculations
 discount = quantity > 100 ? price * 0.2 : price * 0.1
@@ -203,14 +326,10 @@ From highest to lowest (use parentheses to override):
 
 ```
 // Examples showing precedence
-2 + 3 * 4 // → 14 (not 20)
-2 ^ 3 ^ 2 // → 512 (right-associative: 2^(3^2))
--2 ^ 2 // → -4 (parsed as -(2^2))
-(-2) ^ 2 // → 4 (parentheses change precedence)
-!5 + 1 // → 1 (unary operators bind tightly: (!5) + 1 = 0 + 1)
-!2 ^ 2 // → 0 (exponentiation higher: !(2^2) = !4 = 0)
--!5 // → -0 (left-to-right: -((!5)) = -(0) = -0)
-x = 5 > 3 ? 10 : 5 - 2 ^ 2 // → x gets 10
+2 + 3 * 4      // → 14 (not 20)
+2 ^ 3 ^ 2      // → 512 (right-associative: 2^(3^2))
+-2 ^ 2          // → -4 (parsed as -(2^2))
+(-2) ^ 2        // → 4 (parentheses change precedence)
 ```
 
 ### Multiple Statements
@@ -229,167 +348,139 @@ principal * (1 + rate) ^ years // → 1157.625
 
 ## Built-in Functions
 
-### Math Functions
+### Type Conversion (3 functions)
 
-All math functions use UPPERCASE names to avoid collisions with user variables:
+| Function | Description | Example |
+| --- | --- | --- |
+| `STR(v)` | Convert to string | `STR(42)` → `"42"` |
+| `NUM(v)` | Convert to number | `NUM("42")` → `42` |
+| `TYPE(v)` | Get type name | `TYPE(42)` → `"number"` |
 
-| Function           | Description        | Example                      |
-| ------------------ | ------------------ | ---------------------------- |
-| `ABS(x)`           | Absolute value     | `ABS(-5)` → `5`              |
-| `CEIL(x)`          | Round up           | `CEIL(4.3)` → `5`            |
-| `FLOOR(x)`         | Round down         | `FLOOR(4.7)` → `4`           |
-| `ROUND(x)`         | Round to nearest   | `ROUND(4.5)` → `5`           |
-| `SQRT(x)`          | Square root        | `SQRT(16)` → `4`             |
-| `SIN(x)`           | Sine (radians)     | `SIN(3.14159/2)` → `1`       |
-| `COS(x)`           | Cosine (radians)   | `COS(0)` → `1`               |
-| `TAN(x)`           | Tangent (radians)  | `TAN(0)` → `0`               |
-| `LOG(x)`           | Natural logarithm  | `LOG(2.71828)` → `1`         |
-| `LOG10(x)`         | Base-10 logarithm  | `LOG10(100)` → `2`           |
-| `EXP(x)`           | e^x                | `EXP(1)` → `2.71828`         |
-| `MIN(...)`         | Minimum value      | `MIN(3, 1, 5)` → `1`         |
-| `MAX(...)`         | Maximum value      | `MAX(3, 1, 5)` → `5`         |
+### Math Functions (14 functions)
+
+| Function | Description | Example |
+| --- | --- | --- |
+| `ABS(x)` | Absolute value | `ABS(-5)` → `5` |
+| `CEIL(x)` | Round up | `CEIL(4.3)` → `5` |
+| `FLOOR(x)` | Round down | `FLOOR(4.7)` → `4` |
+| `ROUND(x)` | Round to nearest | `ROUND(4.5)` → `5` |
+| `SQRT(x)` | Square root | `SQRT(16)` → `4` |
+| `SIN(x)` | Sine (radians) | `SIN(0)` → `0` |
+| `COS(x)` | Cosine (radians) | `COS(0)` → `1` |
+| `TAN(x)` | Tangent (radians) | `TAN(0)` → `0` |
+| `LOG(x)` | Natural logarithm | `LOG(1)` → `0` |
+| `LOG10(x)` | Base-10 logarithm | `LOG10(100)` → `2` |
+| `EXP(x)` | e^x | `EXP(0)` → `1` |
+| `MIN(...)` | Minimum value | `MIN(3, 1, 5)` → `1` |
+| `MAX(...)` | Maximum value | `MAX(3, 1, 5)` → `5` |
 | `CLAMP(val, a, b)` | Constrain to range | `CLAMP(150, 0, 100)` → `100` |
 
-### Date & Time Functions
+### String Functions (8 functions)
 
-All date/time functions use UPPERCASE names and work with timestamps (milliseconds since Unix epoch). All operations use **local timezone**.
+| Function | Description | Example |
+| --- | --- | --- |
+| `STR_LEN(s)` | String length | `STR_LEN("hello")` → `5` |
+| `STR_CHAR_AT(s, i)` | Character at index | `STR_CHAR_AT("hello", 0)` → `"h"` |
+| `STR_UPPER(s)` | Uppercase | `STR_UPPER("hello")` → `"HELLO"` |
+| `STR_LOWER(s)` | Lowercase | `STR_LOWER("HELLO")` → `"hello"` |
+| `STR_TRIM(s)` | Trim whitespace | `STR_TRIM("  hi  ")` → `"hi"` |
+| `STR_SLICE(s, start, end?)` | Substring | `STR_SLICE("hello", 1, 3)` → `"el"` |
+| `STR_CONTAINS(s, search)` | Contains check | `STR_CONTAINS("hello", "ell")` → `true` |
+| `STR_INDEX_OF(s, search)` | Find index | `STR_INDEX_OF("hello", "ll")` → `2` |
 
-#### Current Time
+### Array Functions (8 functions)
 
-- `NOW()` - Returns current timestamp
+| Function | Description | Example |
+| --- | --- | --- |
+| `ARR_LEN(a)` | Array length | `ARR_LEN([1, 2, 3])` → `3` |
+| `ARR_INDEX(a, i)` | Element at index | `ARR_INDEX([10, 20], 0)` → `10` |
+| `ARR_PUSH(a, v)` | Append element | `ARR_PUSH([1, 2], 3)` → `[1, 2, 3]` |
+| `ARR_SLICE(a, start, end?)` | Sub-array | `ARR_SLICE([1, 2, 3], 1)` → `[2, 3]` |
+| `ARR_CONTAINS(a, v)` | Contains check | `ARR_CONTAINS([1, 2], 2)` → `true` |
+| `ARR_REVERSE(a)` | Reverse array | `ARR_REVERSE([1, 2, 3])` → `[3, 2, 1]` |
+| `ARR_FIRST(a)` | First element | `ARR_FIRST([10, 20])` → `10` |
+| `ARR_LAST(a)` | Last element | `ARR_LAST([10, 20])` → `20` |
 
-#### Create Timestamps
+### Date Functions (24 functions)
 
-- `DATE(year, month?, day?, hour?, minute?, second?)` - Create a timestamp
-  - Only `year` is required
-  - `month` defaults to 1 (January), `day` defaults to 1
-  - Month is 1-based (1 = January, 12 = December)
-  - Hour, minute, second default to 0 if omitted
-  - Uses local timezone
+All date functions operate on `Temporal.PlainDate` values (date only, no time, no timezone).
 
-```
-// Just the year (January 1st at midnight)
-y2024 = DATE(2024)
+#### Core Date Functions
 
-// Christmas 2024
-xmas = DATE(2024, 12, 25)
-
-// New Year 2025 at midnight
-newYear = DATE(2025, 1, 1, 0, 0, 0)
-```
-
-#### Time Converters
-
-Convert human-readable units to milliseconds:
-
-| Function         | Description  | Example                         |
-| ---------------- | ------------ | ------------------------------- |
-| `FROM_DAYS(x)`   | Days to ms   | `FROM_DAYS(7)` → `604800000`    |
-| `FROM_WEEKS(x)`  | Weeks to ms  | `FROM_WEEKS(2)` → `1209600000`  |
-| `FROM_MONTHS(x)` | Months to ms | `FROM_MONTHS(1)` → `2592000000` |
-| `FROM_YEARS(x)`  | Years to ms  | `FROM_YEARS(1)` → `31536000000` |
-
-**Note:** `FROM_MONTHS` and `FROM_YEARS` use approximate durations (30 days/month, 365 days/year). For exact calendar calculations, use `ADD_MONTHS`, `ADD_YEARS`, `DIFFERENCE_IN_MONTHS`, or `DIFFERENCE_IN_YEARS`.
+| Function | Description | Example |
+| --- | --- | --- |
+| `TODAY()` | Current date | `TODAY()` → today's date |
+| `DATE(y, m, d)` | Create date | `DATE(2024, 6, 15)` → June 15, 2024 |
 
 #### Component Extractors
 
-Extract components from a timestamp (local timezone):
-
-| Function              | Description      | Returns        |
-| --------------------- | ---------------- | -------------- |
-| `GET_YEAR(ts)`        | Get year         | 2024           |
-| `GET_MONTH(ts)`       | Get month        | 1-12           |
-| `GET_DAY(ts)`         | Get day of month | 1-31           |
-| `GET_HOUR(ts)`        | Get hour         | 0-23           |
-| `GET_MINUTE(ts)`      | Get minute       | 0-59           |
-| `GET_SECOND(ts)`      | Get second       | 0-59           |
-| `GET_MILLISECOND(ts)` | Get millisecond  | 0-999          |
-| `GET_WEEKDAY(ts)`     | Get day of week  | 0-6 (0=Sunday) |
-| `GET_DAY_OF_YEAR(ts)` | Get day of year  | 1-366          |
-| `GET_QUARTER(ts)`     | Get quarter      | 1-4            |
-
-#### Time Differences
-
-Calculate absolute differences between timestamps (always positive, whole units):
-
-| Function                          | Description             | Example                                  |
-| --------------------------------- | ----------------------- | ---------------------------------------- |
-| `DIFFERENCE_IN_SECONDS(ts1, ts2)` | Difference in seconds   | `DIFFERENCE_IN_SECONDS(ts1, ts2)` → `30` |
-| `DIFFERENCE_IN_MINUTES(ts1, ts2)` | Difference in minutes   | `DIFFERENCE_IN_MINUTES(ts1, ts2)` → `15` |
-| `DIFFERENCE_IN_HOURS(ts1, ts2)`   | Difference in hours     | `DIFFERENCE_IN_HOURS(ts1, ts2)` → `4`    |
-| `DIFFERENCE_IN_DAYS(ts1, ts2)`    | Calendar days between   | `DIFFERENCE_IN_DAYS(ts1, ts2)` → `7`     |
-| `DIFFERENCE_IN_WEEKS(ts1, ts2)`   | Calendar weeks between  | `DIFFERENCE_IN_WEEKS(ts1, ts2)` → `2`    |
-| `DIFFERENCE_IN_MONTHS(ts1, ts2)`  | Calendar months between | `DIFFERENCE_IN_MONTHS(ts1, ts2)` → `3`   |
-| `DIFFERENCE_IN_YEARS(ts1, ts2)`   | Calendar years between  | `DIFFERENCE_IN_YEARS(ts1, ts2)` → `5`    |
-
-#### Start/End of Period
-
-Get the start or end of a time period (local timezone):
-
-| Function               | Description                     |
-| ---------------------- | ------------------------------- |
-| `START_OF_DAY(ts)`     | Start of day (00:00:00.000)     |
-| `END_OF_DAY(ts)`       | End of day (23:59:59.999)       |
-| `START_OF_WEEK(ts)`    | Start of week (Sunday 00:00)    |
-| `START_OF_MONTH(ts)`   | Start of month (1st at 00:00)   |
-| `END_OF_MONTH(ts)`     | End of month (last day 23:59)   |
-| `START_OF_YEAR(ts)`    | Start of year (Jan 1 at 00:00)  |
-| `END_OF_YEAR(ts)`      | End of year (Dec 31 at 23:59)   |
-| `START_OF_QUARTER(ts)` | Start of quarter (1st at 00:00) |
+| Function | Description | Returns |
+| --- | --- | --- |
+| `GET_YEAR(d)` | Get year | 2024 |
+| `GET_MONTH(d)` | Get month | 1-12 |
+| `GET_DAY(d)` | Get day of month | 1-31 |
+| `GET_WEEKDAY(d)` | Get day of week | 1-7 (1=Monday, 7=Sunday) |
+| `GET_DAY_OF_YEAR(d)` | Get day of year | 1-366 |
+| `GET_QUARTER(d)` | Get quarter | 1-4 |
 
 #### Date Arithmetic
 
-Add time to dates (exact calendar calculations, local timezone):
+| Function | Description | Example |
+| --- | --- | --- |
+| `ADD_DAYS(d, n)` | Add days | `ADD_DAYS(d, 7)` → 7 days later |
+| `ADD_MONTHS(d, n)` | Add months | `ADD_MONTHS(d, 2)` → 2 months later |
+| `ADD_YEARS(d, n)` | Add years | `ADD_YEARS(d, 1)` → 1 year later |
 
-| Function            | Description | Example                              |
-| ------------------- | ----------- | ------------------------------------ |
-| `ADD_DAYS(ts, n)`   | Add days    | `ADD_DAYS(ts, 7)` → 7 days later     |
-| `ADD_MONTHS(ts, n)` | Add months  | `ADD_MONTHS(ts, 2)` → 2 months later |
-| `ADD_YEARS(ts, n)`  | Add years   | `ADD_YEARS(ts, 1)` → 1 year later    |
+#### Date Differences
+
+| Function | Description |
+| --- | --- |
+| `DIFFERENCE_IN_DAYS(d1, d2)` | Absolute difference in days |
+| `DIFFERENCE_IN_WEEKS(d1, d2)` | Absolute difference in whole weeks |
+| `DIFFERENCE_IN_MONTHS(d1, d2)` | Absolute difference in whole months |
+| `DIFFERENCE_IN_YEARS(d1, d2)` | Absolute difference in whole years |
+
+#### Start/End of Period
+
+| Function | Description |
+| --- | --- |
+| `START_OF_MONTH(d)` | First day of month |
+| `END_OF_MONTH(d)` | Last day of month |
+| `START_OF_YEAR(d)` | January 1st of year |
+| `END_OF_YEAR(d)` | December 31st of year |
+| `START_OF_WEEK(d)` | Monday of the week |
+| `START_OF_QUARTER(d)` | First day of quarter |
 
 #### Date Comparisons
 
-Compare dates (return 1 for true, 0 for false, local timezone):
+| Function | Description | Returns |
+| --- | --- | --- |
+| `IS_SAME_DAY(d1, d2)` | Same calendar day | `boolean` |
+| `IS_WEEKEND(d)` | Saturday or Sunday | `boolean` |
+| `IS_LEAP_YEAR(d)` | Leap year check | `boolean` |
+| `d1 < d2` | Before (use operators) | `boolean` |
+| `d1 > d2` | After (use operators) | `boolean` |
 
-| Function                | Description                                 |
-| ----------------------- | ------------------------------------------- |
-| `IS_SAME_DAY(ts1, ts2)` | Check if same calendar day                  |
-| `IS_WEEKEND(ts)`        | Check if Saturday or Sunday                 |
-| `IS_LEAP_YEAR(ts)`      | Check if leap year                          |
-| `ts1 < ts2`             | Check if ts1 is before ts2 (use < operator) |
-| `ts1 > ts2`             | Check if ts1 is after ts2 (use > operator)  |
-
-### Date Arithmetic Examples
+### Date Examples
 
 ```
-// Add time to current timestamp
-tomorrow = NOW() + FROM_DAYS(1)
-nextWeek = NOW() + FROM_WEEKS(1)
-in2Hours = NOW() + 2 * 3600000 + 30 * 60000 // 2 hours + 30 minutes
+// Create and compare dates
+today = TODAY()
+christmas = DATE(2024, 12, 25)
+daysUntil = DIFFERENCE_IN_DAYS(today, christmas)
 
-// Calculate time differences using DIFFERENCE functions
-deadline = DATE(2024, 12, 31)
-daysLeft = DIFFERENCE_IN_DAYS(NOW(), deadline)
-hoursLeft = DIFFERENCE_IN_HOURS(NOW(), deadline)
+// Date arithmetic
+nextWeek = ADD_DAYS(today, 7)
+nextMonth = ADD_MONTHS(today, 1)
 
-// Check if date is weekend
-ts = DATE(2024, 11, 9) // Saturday
-isWeekend = IS_WEEKEND(ts) // → 1 (true)
+// Check properties
+IS_WEEKEND(today) // → true or false
+IS_LEAP_YEAR(DATE(2024, 1, 1)) // → true
+GET_WEEKDAY(today) // → 1-7
 
-// Age calculation (calendar-accurate)
-birthdate = DATE(1990, 5, 15)
-today = DATE(2024, 6, 15)
-ageInYears = DIFFERENCE_IN_YEARS(birthdate, today)
-
-// Business days calculation
-deadline = ADD_DAYS(START_OF_WEEK(NOW()), 12) // Friday of next week
-
-// Check if in working hours
-ts = NOW()
-inWorkingHours = GET_HOUR(ts) >= 9 && GET_HOUR(ts) < 17 && IS_WEEKEND(ts) == 0
-
-// Quarter end date
-quarterEnd = END_OF_MONTH(ADD_MONTHS(START_OF_QUARTER(NOW()), 2))
+// Period boundaries
+monthStart = START_OF_MONTH(today)
+monthEnd = END_OF_MONTH(today)
 ```
 
 ## External Variables and Functions
@@ -399,10 +490,15 @@ quarterEnd = END_OF_MONTH(ADD_MONTHS(START_OF_QUARTER(NOW()), 2))
 You can inject variables when executing expressions:
 
 ```typescript
-// In your JavaScript code
 evaluate("radius * 2 * 3.14159", {
-	variables: { radius: 10 },
+  variables: { radius: 10 },
 }); // → 62.8318
+
+// Variables can be any type
+evaluate("STR_UPPER(name)", {
+  functions: { ...defaultContext.functions },
+  variables: { name: "alice" },
+}); // → "ALICE"
 ```
 
 Variables provided externally override script assignments:
@@ -418,19 +514,18 @@ evaluate(script, { variables: { x: 10 } }); // → 20 (external x overrides)
 Extend littlewing with your own functions:
 
 ```typescript
-// In your JavaScript code
 evaluate("CLAMP(x, 0, 100)", {
-	variables: { x: 150 },
-	functions: {
-		CLAMP: (value, min, max) => Math.min(Math.max(value, min), max),
-	},
+  variables: { x: 150 },
+  functions: {
+    CLAMP: (value, min, max) => Math.min(Math.max(value, min), max),
+  },
 }); // → 100
 ```
 
 All custom functions must:
 
-- Accept zero or more number arguments
-- Return a number
+- Accept zero or more `RuntimeValue` arguments
+- Return a `RuntimeValue`
 - Be pure (no side effects recommended)
 - **Use UPPERCASE naming** to match built-in function convention and avoid collisions with variables
 
@@ -450,12 +545,6 @@ loanAmount = 200000
 monthlyRate = 0.04 / 12
 months = 360
 payment = loanAmount * monthlyRate / (1 - (1 + monthlyRate) ^ -months)
-
-// Investment return
-initial = 10000
-final = 15000
-years = 3
-annualReturn = ((final / initial) ^ (1 / years) - 1) * 100 // percent
 ```
 
 ### Business Rules
@@ -466,13 +555,9 @@ quantity = 150
 unitPrice = quantity > 100 ? 0.8 : quantity > 50 ? 0.9 : 1.0
 total = quantity * unitPrice
 
-// Employee bonus calculation
-sales = 125000
-bonus = sales > 100000 ? sales * 0.1 : sales > 50000 ? sales * 0.05 : 0
-
 // Shipping cost
-weight = 15 // kg
-distance = 500 // km
+weight = 15
+distance = 500
 baseCost = 10
 weightCost = weight * 0.5
 distanceCost = distance * 0.02
@@ -484,99 +569,54 @@ shippingTotal = baseCost + weightCost + distanceCost
 ```
 // Check value ranges
 age = 25
-isValidAge = age >= 0 && age <= 120 // → 1
+isValidAge = age >= 0 && age <= 120 // → true
 
 // Complex validation
 score = 85
-isPass = score >= 60 // → 1
-isExcellent = score >= 90 // → 0
-needsImprovement = score < 70 // → 0
-
-// Date validation
-inputDate = DATE(2024, 2, 30) // Invalid date becomes valid JS Date
-isValid = GET_DAY(inputDate) == 30 // Will be 0 (JS corrects to March)
+isPass = score >= 60       // → true
+isExcellent = score >= 90  // → false
 ```
 
-### Scientific Computing
+### String Processing
 
 ```
-// Distance between points
-x1 = 0
-y1 = 0
-x2 = 3
-y2 = 4
-distance = SQRT((x2 - x1) ^ 2 + (y2 - y1) ^ 2) // → 5
+// String manipulation
+greeting = STR_UPPER("hello") // → "HELLO"
+msg = "hello world"
+hasWorld = STR_CONTAINS(msg, "world") // → true
+first = STR_SLICE(msg, 0, 5) // → "hello"
 
-// Circle calculations
-radius = 5
-pi = 3.14159
-area = pi * radius ^ 2
-circumference = 2 * pi * radius
-
-// Temperature conversion
-celsius = 25
-fahrenheit = celsius * 9 / 5 + 32 // → 77
-kelvin = celsius + 273.15 // → 298.15
+// Type conversion
+label = "Score: " + STR(95) // → "Score: 95"
 ```
 
-## Performance Benefits
+## Performance
 
-### Why Choose Littlewing?
-
-1. **Zero Dependencies** - No external libraries needed
-2. **Small Bundle** - Minimal impact on your app size (7.8 KB gzipped)
-3. **O(n) Performance** - Linear time parsing and evaluation
-4. **Type Safety** - Numbers-only means no runtime type checks
-5. **Browser Optimized** - Pure ESM, no Node.js dependencies
-
-### Ideal For:
-
-- **User-defined formulas** - Let users write safe arithmetic expressions
-- **Configuration expressions** - Dynamic config without eval()
-- **Business rules** - Express complex logic simply
-- **Financial calculators** - Accurate arithmetic with custom functions
-- **Date arithmetic** - Built-in timestamp support
-- **Data transformations** - Process numeric data streams
-- **Game mechanics** - Damage formulas, score calculations
-- **IoT data processing** - Sensor value transformations
-
-### Performance Characteristics
-
-- **Parse once, evaluate many** - The `evaluate()` function accepts both strings and pre-parsed AST nodes, allowing you to parse once and evaluate many times with different contexts
-- **High-frequency evaluation** - Suitable for 1000s of evaluations per second
-- **Constant memory** - No memory leaks or unbounded growth
-- **Predictable evaluation time** - O(n) based on expression size
-
-#### Optimization Example
+1. **Small bundle** - Minimal impact on your app size
+2. **O(n) performance** - Linear time parsing and evaluation
+3. **Parse once, evaluate many** - Reuse ASTs for repeated evaluation
+4. **Predictable evaluation time** - O(n) based on expression size
 
 ```typescript
 import { evaluate, parse } from "littlewing";
 
-// For expressions evaluated multiple times, parse once and reuse the AST
+// Parse once, evaluate many times
 const formula = parse("price * quantity * (1 - discount)");
-
-// Evaluate many times with different values (no re-parsing overhead)
 evaluate(formula, { variables: { price: 10, quantity: 5, discount: 0.1 } }); // → 45
 evaluate(formula, { variables: { price: 20, quantity: 3, discount: 0.15 } }); // → 51
-evaluate(formula, { variables: { price: 15, quantity: 10, discount: 0.2 } }); // → 120
-
-// This pattern is ideal for:
-// - Applying formulas to datasets
-// - Real-time calculations with user input
-// - Batch processing with different contexts
 ```
 
 ## Limitations
 
 ### What Littlewing Doesn't Support
 
-- **No strings** - Pure arithmetic only
 - **No loops** - Use host language for iteration
 - **No if statements** - Use ternary operator instead
 - **No function definitions** - Provide via context
-- **No arrays/objects** - Single number values only
 - **No mutations** - Variables are reassigned, not mutated
 - **No side effects** - Pure expression evaluation
+- **No index syntax** - Use `ARR_INDEX()` and `STR_CHAR_AT()` functions
+- **No implicit coercion** - Use explicit conversion functions
 
 These limitations are features! They ensure:
 
@@ -596,10 +636,4 @@ Littlewing is safe for evaluating untrusted user input:
 - No injection attacks
 - Bounded execution time (O(n))
 
-The worst a malicious user can do is write an expression that returns the wrong number or triggers a division by zero error.
-
-## Summary
-
-Littlewing provides a powerful yet simple expression language for numeric calculations. Its numbers-only design, built-in date arithmetic, and extensibility through context make it perfect for applications that need safe, fast expression evaluation without the complexity of a full programming language.
-
-Whether you're building financial calculators, game mechanics, business rule engines, or data processing pipelines, littlewing offers the right balance of simplicity, safety, and performance.
+The worst a malicious user can do is write an expression that returns an unexpected value or triggers a type error.

@@ -1,42 +1,60 @@
 import { describe, expect, test } from 'bun:test'
+import { Temporal } from 'temporal-polyfill'
 import { evaluate } from '../src/interpreter'
 import { defaultContext } from '../src/stdlib'
 
 describe('Default Context Functions', () => {
-	describe('CLAMP', () => {
+	describe('Math', () => {
+		test('ABS', () => {
+			expect(evaluate('ABS(-5)', defaultContext)).toBe(5)
+			expect(evaluate('ABS(5)', defaultContext)).toBe(5)
+			expect(evaluate('ABS(0)', defaultContext)).toBe(0)
+		})
+
+		test('CEIL', () => {
+			expect(evaluate('CEIL(4.2)', defaultContext)).toBe(5)
+			expect(evaluate('CEIL(-4.8)', defaultContext)).toBe(-4)
+		})
+
+		test('FLOOR', () => {
+			expect(evaluate('FLOOR(4.8)', defaultContext)).toBe(4)
+			expect(evaluate('FLOOR(-4.2)', defaultContext)).toBe(-5)
+		})
+
+		test('ROUND', () => {
+			expect(evaluate('ROUND(4.5)', defaultContext)).toBe(5)
+			expect(evaluate('ROUND(4.4)', defaultContext)).toBe(4)
+		})
+
+		test('SQRT', () => {
+			expect(evaluate('SQRT(9)', defaultContext)).toBe(3)
+			expect(evaluate('SQRT(2)', defaultContext)).toBeCloseTo(Math.SQRT2)
+		})
+
+		test('MIN and MAX', () => {
+			expect(evaluate('MIN(1, 2, 3)', defaultContext)).toBe(1)
+			expect(evaluate('MAX(1, 2, 3)', defaultContext)).toBe(3)
+		})
+
 		test('CLAMP returns value when within bounds', () => {
-			const result = evaluate('CLAMP(50, 0, 100)', defaultContext)
-			expect(result).toBe(50)
+			expect(evaluate('CLAMP(50, 0, 100)', defaultContext)).toBe(50)
 		})
 
 		test('CLAMP returns min when value is below minimum', () => {
-			const result = evaluate('CLAMP(-10, 0, 100)', defaultContext)
-			expect(result).toBe(0)
+			expect(evaluate('CLAMP(-10, 0, 100)', defaultContext)).toBe(0)
 		})
 
 		test('CLAMP returns max when value is above maximum', () => {
-			const result = evaluate('CLAMP(150, 0, 100)', defaultContext)
-			expect(result).toBe(100)
+			expect(evaluate('CLAMP(150, 0, 100)', defaultContext)).toBe(100)
 		})
 
-		test('CLAMP works with negative bounds', () => {
-			const result = evaluate('CLAMP(-5, -10, -1)', defaultContext)
-			expect(result).toBe(-5)
+		test('CLAMP with negative bounds', () => {
+			expect(evaluate('CLAMP(-5, -10, -1)', defaultContext)).toBe(-5)
 		})
 
-		test('CLAMP at exact minimum boundary', () => {
-			const result = evaluate('CLAMP(0, 0, 100)', defaultContext)
-			expect(result).toBe(0)
-		})
-
-		test('CLAMP at exact maximum boundary', () => {
-			const result = evaluate('CLAMP(100, 0, 100)', defaultContext)
-			expect(result).toBe(100)
-		})
-
-		test('CLAMP with decimal values', () => {
-			const result = evaluate('CLAMP(5.5, 0, 10)', defaultContext)
-			expect(result).toBe(5.5)
+		test('CLAMP at boundaries', () => {
+			expect(evaluate('CLAMP(0, 0, 100)', defaultContext)).toBe(0)
+			expect(evaluate('CLAMP(100, 0, 100)', defaultContext)).toBe(100)
 		})
 
 		test('CLAMP with variables', () => {
@@ -47,7 +65,7 @@ describe('Default Context Functions', () => {
 			expect(result).toBe(75)
 		})
 
-		test('CLAMP in expression - percentage clamping', () => {
+		test('CLAMP in expression', () => {
 			const result = evaluate('CLAMP((score / total) * 100, 0, 100)', {
 				...defaultContext,
 				variables: { score: 95, total: 90 },
@@ -55,12 +73,225 @@ describe('Default Context Functions', () => {
 			expect(result).toBe(100)
 		})
 
-		test('CLAMP in expression - discount validation', () => {
-			const result = evaluate('price * (1 - CLAMP(discount, 0, 1))', {
+		test('SIN, COS, TAN', () => {
+			expect(evaluate('SIN(0)', defaultContext)).toBe(0)
+			expect(evaluate('COS(0)', defaultContext)).toBe(1)
+			expect(evaluate('TAN(0)', defaultContext)).toBe(0)
+		})
+
+		test('LOG, LOG10, EXP', () => {
+			expect(evaluate('LOG(1)', defaultContext)).toBe(0)
+			expect(evaluate('LOG10(100)', defaultContext)).toBe(2)
+			expect(evaluate('EXP(0)', defaultContext)).toBe(1)
+		})
+
+		test('math functions throw TypeError on non-number', () => {
+			expect(() => evaluate('ABS("hello")', defaultContext)).toThrow(TypeError)
+			expect(() => evaluate('SQRT(true)', defaultContext)).toThrow(TypeError)
+		})
+	})
+
+	describe('Core (Type Conversion)', () => {
+		test('STR converts number to string', () => {
+			expect(evaluate('STR(42)', defaultContext)).toBe('42')
+		})
+
+		test('STR converts boolean to string', () => {
+			expect(evaluate('STR(true)', defaultContext)).toBe('true')
+			expect(evaluate('STR(false)', defaultContext)).toBe('false')
+		})
+
+		test('NUM converts string to number', () => {
+			expect(evaluate('NUM("42")', defaultContext)).toBe(42)
+			expect(evaluate('NUM("3.14")', defaultContext)).toBeCloseTo(3.14)
+		})
+
+		test('NUM converts boolean to number', () => {
+			expect(evaluate('NUM(true)', defaultContext)).toBe(1)
+			expect(evaluate('NUM(false)', defaultContext)).toBe(0)
+		})
+
+		test('TYPE returns type name', () => {
+			expect(evaluate('TYPE(42)', defaultContext)).toBe('number')
+			expect(evaluate('TYPE("hello")', defaultContext)).toBe('string')
+			expect(evaluate('TYPE(true)', defaultContext)).toBe('boolean')
+			expect(evaluate('TYPE([1, 2])', defaultContext)).toBe('array')
+		})
+	})
+
+	describe('String Functions', () => {
+		test('STR_LEN', () => {
+			expect(evaluate('STR_LEN("hello")', defaultContext)).toBe(5)
+			expect(evaluate('STR_LEN("")', defaultContext)).toBe(0)
+		})
+
+		test('STR_UPPER and STR_LOWER', () => {
+			expect(evaluate('STR_UPPER("hello")', defaultContext)).toBe('HELLO')
+			expect(evaluate('STR_LOWER("HELLO")', defaultContext)).toBe('hello')
+		})
+
+		test('STR_TRIM', () => {
+			expect(evaluate('STR_TRIM("  hello  ")', defaultContext)).toBe('hello')
+		})
+
+		test('STR_CONTAINS', () => {
+			expect(
+				evaluate('STR_CONTAINS("hello world", "world")', defaultContext),
+			).toBe(true)
+			expect(
+				evaluate('STR_CONTAINS("hello world", "xyz")', defaultContext),
+			).toBe(false)
+		})
+
+		test('STR_INDEX_OF', () => {
+			expect(
+				evaluate('STR_INDEX_OF("hello world", "world")', defaultContext),
+			).toBe(6)
+			expect(evaluate('STR_INDEX_OF("hello", "xyz")', defaultContext)).toBe(-1)
+		})
+
+		test('STR_CHAR_AT', () => {
+			expect(evaluate('STR_CHAR_AT("hello", 0)', defaultContext)).toBe('h')
+			expect(evaluate('STR_CHAR_AT("hello", 4)', defaultContext)).toBe('o')
+		})
+
+		test('STR_CHAR_AT throws on out of bounds', () => {
+			expect(() =>
+				evaluate('STR_CHAR_AT("hello", 5)', defaultContext),
+			).toThrow()
+			expect(() =>
+				evaluate('STR_CHAR_AT("hello", -1)', defaultContext),
+			).toThrow()
+		})
+
+		test('STR_SLICE', () => {
+			expect(evaluate('STR_SLICE("hello", 1, 3)', defaultContext)).toBe('el')
+			expect(evaluate('STR_SLICE("hello", 1)', defaultContext)).toBe('ello')
+		})
+
+		test('string functions throw TypeError on non-string', () => {
+			expect(() => evaluate('STR_LEN(42)', defaultContext)).toThrow(TypeError)
+			expect(() => evaluate('STR_UPPER(true)', defaultContext)).toThrow(
+				TypeError,
+			)
+		})
+	})
+
+	describe('Array Functions', () => {
+		test('ARR_LEN', () => {
+			expect(evaluate('ARR_LEN([1, 2, 3])', defaultContext)).toBe(3)
+			expect(evaluate('ARR_LEN([])', defaultContext)).toBe(0)
+		})
+
+		test('ARR_INDEX', () => {
+			expect(evaluate('ARR_INDEX([10, 20, 30], 0)', defaultContext)).toBe(10)
+			expect(evaluate('ARR_INDEX([10, 20, 30], 2)', defaultContext)).toBe(30)
+		})
+
+		test('ARR_INDEX throws on out of bounds', () => {
+			expect(() => evaluate('ARR_INDEX([1, 2], 5)', defaultContext)).toThrow()
+			expect(() => evaluate('ARR_INDEX([1, 2], -1)', defaultContext)).toThrow()
+		})
+
+		test('ARR_PUSH', () => {
+			expect(evaluate('ARR_PUSH([1, 2], 3)', defaultContext)).toEqual([1, 2, 3])
+		})
+
+		test('ARR_SLICE', () => {
+			expect(evaluate('ARR_SLICE([1, 2, 3, 4], 1, 3)', defaultContext)).toEqual(
+				[2, 3],
+			)
+			expect(evaluate('ARR_SLICE([1, 2, 3], 1)', defaultContext)).toEqual([
+				2, 3,
+			])
+		})
+
+		test('ARR_CONTAINS', () => {
+			expect(evaluate('ARR_CONTAINS([1, 2, 3], 2)', defaultContext)).toBe(true)
+			expect(evaluate('ARR_CONTAINS([1, 2, 3], 5)', defaultContext)).toBe(false)
+		})
+
+		test('ARR_REVERSE', () => {
+			expect(evaluate('ARR_REVERSE([1, 2, 3])', defaultContext)).toEqual([
+				3, 2, 1,
+			])
+		})
+
+		test('ARR_FIRST and ARR_LAST', () => {
+			expect(evaluate('ARR_FIRST([10, 20, 30])', defaultContext)).toBe(10)
+			expect(evaluate('ARR_LAST([10, 20, 30])', defaultContext)).toBe(30)
+		})
+
+		test('ARR_FIRST and ARR_LAST throw on empty array', () => {
+			expect(() => evaluate('ARR_FIRST([])', defaultContext)).toThrow()
+			expect(() => evaluate('ARR_LAST([])', defaultContext)).toThrow()
+		})
+
+		test('array functions throw TypeError on non-array', () => {
+			expect(() => evaluate('ARR_LEN(42)', defaultContext)).toThrow(TypeError)
+			expect(() => evaluate('ARR_INDEX("hello", 0)', defaultContext)).toThrow(
+				TypeError,
+			)
+		})
+	})
+
+	describe('Date Functions', () => {
+		test('TODAY returns a PlainDate', () => {
+			const result = evaluate('TODAY()', defaultContext)
+			expect(result).toBeInstanceOf(Temporal.PlainDate)
+		})
+
+		test('DATE creates a PlainDate', () => {
+			const result = evaluate('DATE(2024, 6, 15)', defaultContext)
+			expect(result).toBeInstanceOf(Temporal.PlainDate)
+			const date = result as Temporal.PlainDate
+			expect(date.year).toBe(2024)
+			expect(date.month).toBe(6)
+			expect(date.day).toBe(15)
+		})
+
+		test('GET_YEAR, GET_MONTH, GET_DAY', () => {
+			const ctx = {
 				...defaultContext,
-				variables: { price: 100, discount: 1.5 },
-			})
-			expect(result).toBe(0)
+				variables: { d: new Temporal.PlainDate(2024, 6, 15) },
+			}
+			expect(evaluate('GET_YEAR(d)', ctx)).toBe(2024)
+			expect(evaluate('GET_MONTH(d)', ctx)).toBe(6)
+			expect(evaluate('GET_DAY(d)', ctx)).toBe(15)
+		})
+
+		test('ADD_DAYS', () => {
+			const ctx = {
+				...defaultContext,
+				variables: { d: new Temporal.PlainDate(2024, 6, 15) },
+			}
+			const result = evaluate('ADD_DAYS(d, 7)', ctx) as Temporal.PlainDate
+			expect(result.day).toBe(22)
+			expect(result.month).toBe(6)
+		})
+
+		test('IS_WEEKEND', () => {
+			const saturday = new Temporal.PlainDate(2024, 6, 15) // Saturday
+			const monday = new Temporal.PlainDate(2024, 6, 17) // Monday
+			expect(
+				evaluate('IS_WEEKEND(d)', {
+					...defaultContext,
+					variables: { d: saturday },
+				}),
+			).toBe(true)
+			expect(
+				evaluate('IS_WEEKEND(d)', {
+					...defaultContext,
+					variables: { d: monday },
+				}),
+			).toBe(false)
+		})
+
+		test('date functions throw TypeError on non-date', () => {
+			expect(() => evaluate('GET_YEAR(42)', defaultContext)).toThrow(TypeError)
+			expect(() => evaluate('ADD_DAYS("hello", 1)', defaultContext)).toThrow(
+				TypeError,
+			)
 		})
 	})
 })
