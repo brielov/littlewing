@@ -83,7 +83,7 @@
 		}
 	},
 	"simple-git-hooks": {
-		"pre-commit": "bun run lint && bun run type-check"
+		"pre-commit": "bun run fmt:check && bun run lint"
 	},
 	"engines": {
 		"node": ">=18.0.0"
