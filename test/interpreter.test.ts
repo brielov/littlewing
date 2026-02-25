@@ -1,7 +1,9 @@
 import { describe, expect, test } from 'bun:test'
+import { Temporal } from 'temporal-polyfill'
 import * as ast from '../src/ast'
 import { evaluate, evaluateScope } from '../src/interpreter'
 import { parse } from '../src/parser'
+import { defaultContext } from '../src/stdlib'
 
 describe('Interpreter', () => {
 	test('execute number literal', () => {
@@ -570,5 +572,50 @@ describe('evaluateScope', () => {
 	test('supports multi-type variables in scope', () => {
 		const scope = evaluateScope('x = "hello"; y = true; z = [1, 2, 3]')
 		expect(scope).toEqual({ x: 'hello', y: true, z: [1, 2, 3] })
+	})
+})
+
+describe('PlainTime and PlainDateTime integration', () => {
+	test('PlainTime in variables', () => {
+		const t = new Temporal.PlainTime(14, 30, 0)
+		const result = evaluate('t', { variables: { t } })
+		expect(result).toBeInstanceOf(Temporal.PlainTime)
+	})
+
+	test('PlainDateTime in variables', () => {
+		const dt = new Temporal.PlainDateTime(2024, 6, 15, 14, 30, 0)
+		const result = evaluate('dt', { variables: { dt } })
+		expect(result).toBeInstanceOf(Temporal.PlainDateTime)
+	})
+
+	test('TYPE() returns "time" for PlainTime', () => {
+		const t = new Temporal.PlainTime(10, 0, 0)
+		expect(evaluate('TYPE(t)', { ...defaultContext, variables: { t } })).toBe(
+			'time',
+		)
+	})
+
+	test('TYPE() returns "datetime" for PlainDateTime', () => {
+		const dt = new Temporal.PlainDateTime(2024, 6, 15, 10, 0, 0)
+		expect(evaluate('TYPE(dt)', { ...defaultContext, variables: { dt } })).toBe(
+			'datetime',
+		)
+	})
+
+	test('STR() converts PlainTime to ISO string', () => {
+		const t = new Temporal.PlainTime(14, 30, 0)
+		const result = evaluate('STR(t)', { ...defaultContext, variables: { t } })
+		expect(typeof result).toBe('string')
+		expect(result).toBe('14:30:00')
+	})
+
+	test('STR() converts PlainDateTime to ISO string', () => {
+		const dt = new Temporal.PlainDateTime(2024, 6, 15, 14, 30, 0)
+		const result = evaluate('STR(dt)', {
+			...defaultContext,
+			variables: { dt },
+		})
+		expect(typeof result).toBe('string')
+		expect(result).toBe('2024-06-15T14:30:00')
 	})
 })

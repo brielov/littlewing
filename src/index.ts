@@ -50,7 +50,16 @@ export { optimize } from './optimizer'
 // Parser
 export { parse } from './parser'
 // Standard library
-export { array, core, datetime, defaultContext, math, string } from './stdlib'
+export {
+	array,
+	core,
+	datetime,
+	datetimefull,
+	defaultContext,
+	math,
+	string,
+	time,
+} from './stdlib'
 // Type definitions
 export type { ExecutionContext, RuntimeValue } from './types'
 // Utilities

@@ -1,4 +1,5 @@
 import { describe, expect, test } from 'bun:test'
+import { Temporal } from 'temporal-polyfill'
 import { evaluate } from '../src/interpreter'
 
 describe('Operators', () => {
@@ -71,6 +72,64 @@ describe('Operators', () => {
 			expect(evaluate('false == false')).toBe(true)
 			expect(evaluate('true == false')).toBe(false)
 			expect(evaluate('true != false')).toBe(true)
+		})
+
+		test('PlainTime equality', () => {
+			const t1 = new Temporal.PlainTime(10, 30, 0)
+			const t2 = new Temporal.PlainTime(10, 30, 0)
+			const t3 = new Temporal.PlainTime(11, 0, 0)
+			expect(evaluate('t1 == t2', { variables: { t1, t2 } })).toBe(true)
+			expect(evaluate('t1 == t3', { variables: { t1, t3 } })).toBe(false)
+			expect(evaluate('t1 != t3', { variables: { t1, t3 } })).toBe(true)
+		})
+
+		test('PlainDateTime equality', () => {
+			const dt1 = new Temporal.PlainDateTime(2024, 6, 15, 10, 30, 0)
+			const dt2 = new Temporal.PlainDateTime(2024, 6, 15, 10, 30, 0)
+			const dt3 = new Temporal.PlainDateTime(2024, 6, 15, 11, 0, 0)
+			expect(evaluate('dt1 == dt2', { variables: { dt1, dt2 } })).toBe(true)
+			expect(evaluate('dt1 == dt3', { variables: { dt1, dt3 } })).toBe(false)
+			expect(evaluate('dt1 != dt3', { variables: { dt1, dt3 } })).toBe(true)
+		})
+
+		test('cross-type temporal equality returns false', () => {
+			const d = new Temporal.PlainDate(2024, 6, 15)
+			const t = new Temporal.PlainTime(10, 30, 0)
+			const dt = new Temporal.PlainDateTime(2024, 6, 15, 10, 30, 0)
+			expect(evaluate('d == dt', { variables: { d, dt } })).toBe(false)
+			expect(evaluate('d == t', { variables: { d, t } })).toBe(false)
+			expect(evaluate('t == dt', { variables: { t, dt } })).toBe(false)
+		})
+
+		test('PlainTime comparison operators', () => {
+			const t1 = new Temporal.PlainTime(10, 0, 0)
+			const t2 = new Temporal.PlainTime(14, 0, 0)
+			expect(evaluate('t1 < t2', { variables: { t1, t2 } })).toBe(true)
+			expect(evaluate('t2 > t1', { variables: { t1, t2 } })).toBe(true)
+			expect(evaluate('t1 >= t1', { variables: { t1 } })).toBe(true)
+			expect(evaluate('t1 <= t2', { variables: { t1, t2 } })).toBe(true)
+		})
+
+		test('PlainDateTime comparison operators', () => {
+			const dt1 = new Temporal.PlainDateTime(2024, 6, 15, 10, 0, 0)
+			const dt2 = new Temporal.PlainDateTime(2024, 6, 15, 14, 0, 0)
+			expect(evaluate('dt1 < dt2', { variables: { dt1, dt2 } })).toBe(true)
+			expect(evaluate('dt2 > dt1', { variables: { dt1, dt2 } })).toBe(true)
+		})
+
+		test('cross-type ordered comparison throws TypeError', () => {
+			const t = new Temporal.PlainTime(10, 0, 0)
+			const d = new Temporal.PlainDate(2024, 6, 15)
+			expect(() => evaluate('t < d', { variables: { t, d } })).toThrow(
+				TypeError,
+			)
+			const dt = new Temporal.PlainDateTime(2024, 6, 15, 10, 0, 0)
+			expect(() => evaluate('t < dt', { variables: { t, dt } })).toThrow(
+				TypeError,
+			)
+			expect(() => evaluate('d < dt', { variables: { d, dt } })).toThrow(
+				TypeError,
+			)
 		})
 
 		test('array equality (deep structural)', () => {

@@ -2,11 +2,12 @@ import { describe, expect, test } from 'bun:test'
 import { Temporal } from 'temporal-polyfill'
 import { evaluate } from '../src/interpreter'
 import { defaultContext } from '../src/stdlib'
+import type { RuntimeValue } from '../src/types'
 
 /**
- * Helper to create a context with PlainDate variables
+ * Helper to create a context with temporal variables
  */
-function dateCtx(vars: Record<string, Temporal.PlainDate>) {
+function dateCtx(vars: Record<string, RuntimeValue>) {
 	return { ...defaultContext, variables: vars }
 }
 
@@ -542,6 +543,216 @@ describe('Date Utils', () => {
 		test('Check if date is in Q1', () => {
 			const d = new Temporal.PlainDate(2024, 2, 15)
 			expect(evaluate('GET_QUARTER(d) == 1', dateCtx({ d }))).toBe(true)
+		})
+	})
+
+	describe('PlainDateTime support', () => {
+		const dt = new Temporal.PlainDateTime(2024, 6, 15, 14, 30, 0)
+
+		describe('EXTRACTORS with PlainDateTime', () => {
+			test('GET_YEAR()', () => {
+				expect(evaluate('GET_YEAR(dt)', dateCtx({ dt }))).toBe(2024)
+			})
+
+			test('GET_MONTH()', () => {
+				expect(evaluate('GET_MONTH(dt)', dateCtx({ dt }))).toBe(6)
+			})
+
+			test('GET_DAY()', () => {
+				expect(evaluate('GET_DAY(dt)', dateCtx({ dt }))).toBe(15)
+			})
+
+			test('GET_WEEKDAY()', () => {
+				// 2024-06-15 is a Saturday
+				expect(evaluate('GET_WEEKDAY(dt)', dateCtx({ dt }))).toBe(6)
+			})
+
+			test('GET_DAY_OF_YEAR()', () => {
+				const jan1 = new Temporal.PlainDateTime(2024, 1, 1, 12, 0, 0)
+				expect(evaluate('GET_DAY_OF_YEAR(dt)', dateCtx({ dt: jan1 }))).toBe(1)
+			})
+
+			test('GET_QUARTER()', () => {
+				expect(evaluate('GET_QUARTER(dt)', dateCtx({ dt }))).toBe(2)
+			})
+		})
+
+		describe('ARITHMETIC with PlainDateTime', () => {
+			test('ADD_DAYS() preserves PlainDateTime type', () => {
+				const result = evaluate(
+					'ADD_DAYS(dt, 7)',
+					dateCtx({ dt }),
+				) as Temporal.PlainDateTime
+				expect(result).toBeInstanceOf(Temporal.PlainDateTime)
+				expect(result.day).toBe(22)
+				expect(result.hour).toBe(14)
+				expect(result.minute).toBe(30)
+			})
+
+			test('ADD_MONTHS() preserves PlainDateTime type', () => {
+				const result = evaluate(
+					'ADD_MONTHS(dt, 2)',
+					dateCtx({ dt }),
+				) as Temporal.PlainDateTime
+				expect(result).toBeInstanceOf(Temporal.PlainDateTime)
+				expect(result.month).toBe(8)
+				expect(result.hour).toBe(14)
+			})
+
+			test('ADD_YEARS() preserves PlainDateTime type', () => {
+				const result = evaluate(
+					'ADD_YEARS(dt, 1)',
+					dateCtx({ dt }),
+				) as Temporal.PlainDateTime
+				expect(result).toBeInstanceOf(Temporal.PlainDateTime)
+				expect(result.year).toBe(2025)
+				expect(result.hour).toBe(14)
+			})
+		})
+
+		describe('DIFFERENCES with PlainDateTime', () => {
+			test('DIFFERENCE_IN_DAYS() between PlainDateTimes', () => {
+				const dt1 = new Temporal.PlainDateTime(2024, 6, 15, 10, 0, 0)
+				const dt2 = new Temporal.PlainDateTime(2024, 6, 20, 18, 0, 0)
+				expect(
+					evaluate('DIFFERENCE_IN_DAYS(dt1, dt2)', dateCtx({ dt1, dt2 })),
+				).toBe(5)
+			})
+
+			test('DIFFERENCE_IN_MONTHS() between PlainDateTimes', () => {
+				const dt1 = new Temporal.PlainDateTime(2024, 1, 15, 10, 0, 0)
+				const dt2 = new Temporal.PlainDateTime(2024, 4, 15, 18, 0, 0)
+				expect(
+					evaluate('DIFFERENCE_IN_MONTHS(dt1, dt2)', dateCtx({ dt1, dt2 })),
+				).toBe(3)
+			})
+
+			test('DIFFERENCE_IN_YEARS() between PlainDateTimes', () => {
+				const dt1 = new Temporal.PlainDateTime(2020, 6, 15, 10, 0, 0)
+				const dt2 = new Temporal.PlainDateTime(2024, 6, 15, 18, 0, 0)
+				expect(
+					evaluate('DIFFERENCE_IN_YEARS(dt1, dt2)', dateCtx({ dt1, dt2 })),
+				).toBe(4)
+			})
+
+			test('mixed date+datetime rejects', () => {
+				const d = new Temporal.PlainDate(2024, 6, 15)
+				expect(() =>
+					evaluate('DIFFERENCE_IN_DAYS(d, dt)', dateCtx({ d, dt })),
+				).toThrow(TypeError)
+			})
+
+			test('mixed datetime+date rejects', () => {
+				const d = new Temporal.PlainDate(2024, 6, 15)
+				expect(() =>
+					evaluate('DIFFERENCE_IN_DAYS(dt, d)', dateCtx({ dt, d })),
+				).toThrow(TypeError)
+			})
+		})
+
+		describe('PERIOD BOUNDARIES with PlainDateTime', () => {
+			test('START_OF_MONTH() preserves PlainDateTime type', () => {
+				const result = evaluate(
+					'START_OF_MONTH(dt)',
+					dateCtx({ dt }),
+				) as Temporal.PlainDateTime
+				expect(result).toBeInstanceOf(Temporal.PlainDateTime)
+				expect(result.day).toBe(1)
+				expect(result.hour).toBe(14)
+			})
+
+			test('END_OF_MONTH() preserves PlainDateTime type', () => {
+				const result = evaluate(
+					'END_OF_MONTH(dt)',
+					dateCtx({ dt }),
+				) as Temporal.PlainDateTime
+				expect(result).toBeInstanceOf(Temporal.PlainDateTime)
+				expect(result.day).toBe(30)
+			})
+
+			test('START_OF_YEAR() preserves PlainDateTime type', () => {
+				const result = evaluate(
+					'START_OF_YEAR(dt)',
+					dateCtx({ dt }),
+				) as Temporal.PlainDateTime
+				expect(result).toBeInstanceOf(Temporal.PlainDateTime)
+				expect(result.month).toBe(1)
+				expect(result.day).toBe(1)
+			})
+
+			test('END_OF_YEAR() preserves PlainDateTime type', () => {
+				const result = evaluate(
+					'END_OF_YEAR(dt)',
+					dateCtx({ dt }),
+				) as Temporal.PlainDateTime
+				expect(result).toBeInstanceOf(Temporal.PlainDateTime)
+				expect(result.month).toBe(12)
+				expect(result.day).toBe(31)
+			})
+
+			test('START_OF_WEEK() preserves PlainDateTime type', () => {
+				// 2024-06-15 Saturday → Monday 2024-06-10
+				const result = evaluate(
+					'START_OF_WEEK(dt)',
+					dateCtx({ dt }),
+				) as Temporal.PlainDateTime
+				expect(result).toBeInstanceOf(Temporal.PlainDateTime)
+				expect(result.dayOfWeek).toBe(1)
+				expect(result.day).toBe(10)
+			})
+
+			test('START_OF_QUARTER() preserves PlainDateTime type', () => {
+				const result = evaluate(
+					'START_OF_QUARTER(dt)',
+					dateCtx({ dt }),
+				) as Temporal.PlainDateTime
+				expect(result).toBeInstanceOf(Temporal.PlainDateTime)
+				expect(result.month).toBe(4)
+				expect(result.day).toBe(1)
+			})
+		})
+
+		describe('COMPARISONS with PlainDateTime', () => {
+			test('IS_SAME_DAY() same day different time', () => {
+				const dt1 = new Temporal.PlainDateTime(2024, 6, 15, 10, 0, 0)
+				const dt2 = new Temporal.PlainDateTime(2024, 6, 15, 22, 30, 0)
+				expect(evaluate('IS_SAME_DAY(dt1, dt2)', dateCtx({ dt1, dt2 }))).toBe(
+					true,
+				)
+			})
+
+			test('IS_SAME_DAY() different days', () => {
+				const dt1 = new Temporal.PlainDateTime(2024, 6, 15, 10, 0, 0)
+				const dt2 = new Temporal.PlainDateTime(2024, 6, 16, 10, 0, 0)
+				expect(evaluate('IS_SAME_DAY(dt1, dt2)', dateCtx({ dt1, dt2 }))).toBe(
+					false,
+				)
+			})
+
+			test('IS_SAME_DAY() mixed date+datetime', () => {
+				const d = new Temporal.PlainDate(2024, 6, 15)
+				expect(evaluate('IS_SAME_DAY(d, dt)', dateCtx({ d, dt }))).toBe(true)
+			})
+
+			test('IS_SAME_DAY() mixed datetime+date', () => {
+				const d = new Temporal.PlainDate(2024, 6, 15)
+				expect(evaluate('IS_SAME_DAY(dt, d)', dateCtx({ dt, d }))).toBe(true)
+			})
+
+			test('IS_WEEKEND() with PlainDateTime', () => {
+				// 2024-06-15 is Saturday
+				expect(evaluate('IS_WEEKEND(dt)', dateCtx({ dt }))).toBe(true)
+				const monday = new Temporal.PlainDateTime(2024, 6, 17, 10, 0, 0)
+				expect(evaluate('IS_WEEKEND(dt)', dateCtx({ dt: monday }))).toBe(false)
+			})
+
+			test('IS_LEAP_YEAR() with PlainDateTime', () => {
+				expect(evaluate('IS_LEAP_YEAR(dt)', dateCtx({ dt }))).toBe(true)
+				const nonLeap = new Temporal.PlainDateTime(2023, 6, 15, 10, 0, 0)
+				expect(evaluate('IS_LEAP_YEAR(dt)', dateCtx({ dt: nonLeap }))).toBe(
+					false,
+				)
+			})
 		})
 	})
 })
