@@ -73,15 +73,15 @@ futureValue = principal * (1 + rate) ^ years // → 1157.625
 
 Littlewing has seven value types:
 
-| Type | Examples | Description |
-| --- | --- | --- |
-| `number` | `42`, `3.14`, `0.5` | IEEE 754 double-precision floats |
-| `string` | `"hello"`, `"line1\nline2"` | Double-quoted, with escape sequences |
-| `boolean` | `true`, `false` | Logical values |
-| `date` | `DATE(2024, 6, 15)` | `Temporal.PlainDate` (no time, no timezone) |
-| `time` | `TIME(14, 30, 0)` | `Temporal.PlainTime` (no date, no timezone) |
-| `datetime` | `DATETIME(2024, 6, 15, 14, 30, 0)` | `Temporal.PlainDateTime` (no timezone) |
-| `array` | `[1, 2, 3]`, `["a", "b"]` | Homogeneous (all elements same type) |
+| Type       | Examples                           | Description                                 |
+| ---------- | ---------------------------------- | ------------------------------------------- |
+| `number`   | `42`, `3.14`, `0.5`                | IEEE 754 double-precision floats            |
+| `string`   | `"hello"`, `"line1\nline2"`        | Double-quoted, with escape sequences        |
+| `boolean`  | `true`, `false`                    | Logical values                              |
+| `date`     | `DATE(2024, 6, 15)`                | `Temporal.PlainDate` (no time, no timezone) |
+| `time`     | `TIME(14, 30, 0)`                  | `Temporal.PlainTime` (no date, no timezone) |
+| `datetime` | `DATETIME(2024, 6, 15, 14, 30, 0)` | `Temporal.PlainDateTime` (no timezone)      |
+| `array`    | `[1, 2, 3]`, `["a", "b"]`          | Homogeneous (all elements same type)        |
 
 There is **no implicit type coercion**. Use explicit conversion functions:
 
@@ -326,28 +326,28 @@ x + y
 
 #### Arithmetic Operators
 
-| Operator | Name | Operand Types | Example | Result |
-| --- | --- | --- | --- | --- |
-| `+` | Addition / Concatenation | number+number, string+string, array+array | `5 + 3` | `8` |
-| `-` | Subtraction | number | `10 - 3` | `7` |
-| `*` | Multiplication | number | `4 * 3` | `12` |
-| `/` | Division | number | `10 / 2` | `5` |
-| `%` | Modulo | number | `10 % 3` | `1` |
-| `^` | Exponentiation | number | `2 ^ 3` | `8` |
-| `-` (unary) | Negation | number | `-5` | `-5` |
+| Operator    | Name                     | Operand Types                             | Example  | Result |
+| ----------- | ------------------------ | ----------------------------------------- | -------- | ------ |
+| `+`         | Addition / Concatenation | number+number, string+string, array+array | `5 + 3`  | `8`    |
+| `-`         | Subtraction              | number                                    | `10 - 3` | `7`    |
+| `*`         | Multiplication           | number                                    | `4 * 3`  | `12`   |
+| `/`         | Division                 | number                                    | `10 / 2` | `5`    |
+| `%`         | Modulo                   | number                                    | `10 % 3` | `1`    |
+| `^`         | Exponentiation           | number                                    | `2 ^ 3`  | `8`    |
+| `-` (unary) | Negation                 | number                                    | `-5`     | `-5`   |
 
 #### Comparison Operators
 
 All comparisons return `boolean` (`true` or `false`):
 
-| Operator | Name | Supported Types | Example | Result |
-| --- | --- | --- | --- | --- |
-| `==` | Equal | any (deep equality) | `5 == 5` | `true` |
-| `!=` | Not equal | any (deep equality) | `5 != 3` | `true` |
-| `<` | Less than | number, string, date, time, datetime | `3 < 5` | `true` |
-| `>` | Greater than | number, string, date, time, datetime | `5 > 3` | `true` |
-| `<=` | Less or equal | number, string, date, time, datetime | `3 <= 3` | `true` |
-| `>=` | Greater or equal | number, string, date, time, datetime | `5 >= 3` | `true` |
+| Operator | Name             | Supported Types                      | Example  | Result |
+| -------- | ---------------- | ------------------------------------ | -------- | ------ |
+| `==`     | Equal            | any (deep equality)                  | `5 == 5` | `true` |
+| `!=`     | Not equal        | any (deep equality)                  | `5 != 3` | `true` |
+| `<`      | Less than        | number, string, date, time, datetime | `3 < 5`  | `true` |
+| `>`      | Greater than     | number, string, date, time, datetime | `5 > 3`  | `true` |
+| `<=`     | Less or equal    | number, string, date, time, datetime | `3 <= 3` | `true` |
+| `>=`     | Greater or equal | number, string, date, time, datetime | `5 >= 3` | `true` |
 
 Deep equality for arrays: `[1, 2] == [1, 2]` → `true`
 
@@ -357,11 +357,11 @@ Cross-type equality: `1 == "1"` → `false` (no coercion)
 
 Logical operators **require boolean operands** (no truthiness):
 
-| Operator | Name | Example | Result |
-| --- | --- | --- | --- |
-| `!` | NOT | `!false` | `true` |
-| `&&` | AND | `true && true` | `true` |
-| `\|\|` | OR | `false \|\| true` | `true` |
+| Operator | Name | Example           | Result |
+| -------- | ---- | ----------------- | ------ |
+| `!`      | NOT  | `!false`          | `true` |
+| `&&`     | AND  | `true && true`    | `true` |
+| `\|\|`   | OR   | `false \|\| true` | `true` |
 
 ```
 // Logical NOT
@@ -466,56 +466,56 @@ principal * (1 + rate) ^ years // → 1157.625
 
 ### Type Conversion (3 functions)
 
-| Function | Description | Example |
-| --- | --- | --- |
-| `STR(v)` | Convert to string | `STR(42)` → `"42"` |
-| `NUM(v)` | Convert to number | `NUM("42")` → `42` |
-| `TYPE(v)` | Get type name | `TYPE(42)` → `"number"` |
+| Function  | Description       | Example                 |
+| --------- | ----------------- | ----------------------- |
+| `STR(v)`  | Convert to string | `STR(42)` → `"42"`      |
+| `NUM(v)`  | Convert to number | `NUM("42")` → `42`      |
+| `TYPE(v)` | Get type name     | `TYPE(42)` → `"number"` |
 
 ### Math Functions (14 functions)
 
-| Function | Description | Example |
-| --- | --- | --- |
-| `ABS(x)` | Absolute value | `ABS(-5)` → `5` |
-| `CEIL(x)` | Round up | `CEIL(4.3)` → `5` |
-| `FLOOR(x)` | Round down | `FLOOR(4.7)` → `4` |
-| `ROUND(x)` | Round to nearest | `ROUND(4.5)` → `5` |
-| `SQRT(x)` | Square root | `SQRT(16)` → `4` |
-| `SIN(x)` | Sine (radians) | `SIN(0)` → `0` |
-| `COS(x)` | Cosine (radians) | `COS(0)` → `1` |
-| `TAN(x)` | Tangent (radians) | `TAN(0)` → `0` |
-| `LOG(x)` | Natural logarithm | `LOG(1)` → `0` |
-| `LOG10(x)` | Base-10 logarithm | `LOG10(100)` → `2` |
-| `EXP(x)` | e^x | `EXP(0)` → `1` |
-| `MIN(...)` | Minimum value | `MIN(3, 1, 5)` → `1` |
-| `MAX(...)` | Maximum value | `MAX(3, 1, 5)` → `5` |
+| Function           | Description        | Example                      |
+| ------------------ | ------------------ | ---------------------------- |
+| `ABS(x)`           | Absolute value     | `ABS(-5)` → `5`              |
+| `CEIL(x)`          | Round up           | `CEIL(4.3)` → `5`            |
+| `FLOOR(x)`         | Round down         | `FLOOR(4.7)` → `4`           |
+| `ROUND(x)`         | Round to nearest   | `ROUND(4.5)` → `5`           |
+| `SQRT(x)`          | Square root        | `SQRT(16)` → `4`             |
+| `SIN(x)`           | Sine (radians)     | `SIN(0)` → `0`               |
+| `COS(x)`           | Cosine (radians)   | `COS(0)` → `1`               |
+| `TAN(x)`           | Tangent (radians)  | `TAN(0)` → `0`               |
+| `LOG(x)`           | Natural logarithm  | `LOG(1)` → `0`               |
+| `LOG10(x)`         | Base-10 logarithm  | `LOG10(100)` → `2`           |
+| `EXP(x)`           | e^x                | `EXP(0)` → `1`               |
+| `MIN(...)`         | Minimum value      | `MIN(3, 1, 5)` → `1`         |
+| `MAX(...)`         | Maximum value      | `MAX(3, 1, 5)` → `5`         |
 | `CLAMP(val, a, b)` | Constrain to range | `CLAMP(150, 0, 100)` → `100` |
 
 ### String Functions (8 functions)
 
-| Function | Description | Example |
-| --- | --- | --- |
-| `STR_LEN(s)` | String length | `STR_LEN("hello")` → `5` |
-| `STR_CHAR_AT(s, i)` | Character at index | `STR_CHAR_AT("hello", 0)` → `"h"` |
-| `STR_UPPER(s)` | Uppercase | `STR_UPPER("hello")` → `"HELLO"` |
-| `STR_LOWER(s)` | Lowercase | `STR_LOWER("HELLO")` → `"hello"` |
-| `STR_TRIM(s)` | Trim whitespace | `STR_TRIM("  hi  ")` → `"hi"` |
-| `STR_SLICE(s, start, end?)` | Substring | `STR_SLICE("hello", 1, 3)` → `"el"` |
-| `STR_CONTAINS(s, search)` | Contains check | `STR_CONTAINS("hello", "ell")` → `true` |
-| `STR_INDEX_OF(s, search)` | Find index | `STR_INDEX_OF("hello", "ll")` → `2` |
+| Function                    | Description        | Example                                 |
+| --------------------------- | ------------------ | --------------------------------------- |
+| `STR_LEN(s)`                | String length      | `STR_LEN("hello")` → `5`                |
+| `STR_CHAR_AT(s, i)`         | Character at index | `STR_CHAR_AT("hello", 0)` → `"h"`       |
+| `STR_UPPER(s)`              | Uppercase          | `STR_UPPER("hello")` → `"HELLO"`        |
+| `STR_LOWER(s)`              | Lowercase          | `STR_LOWER("HELLO")` → `"hello"`        |
+| `STR_TRIM(s)`               | Trim whitespace    | `STR_TRIM("  hi  ")` → `"hi"`           |
+| `STR_SLICE(s, start, end?)` | Substring          | `STR_SLICE("hello", 1, 3)` → `"el"`     |
+| `STR_CONTAINS(s, search)`   | Contains check     | `STR_CONTAINS("hello", "ell")` → `true` |
+| `STR_INDEX_OF(s, search)`   | Find index         | `STR_INDEX_OF("hello", "ll")` → `2`     |
 
 ### Array Functions (8 functions)
 
-| Function | Description | Example |
-| --- | --- | --- |
-| `ARR_LEN(a)` | Array length | `ARR_LEN([1, 2, 3])` → `3` |
-| `ARR_INDEX(a, i)` | Element at index | `ARR_INDEX([10, 20], 0)` → `10` |
-| `ARR_PUSH(a, v)` | Append element | `ARR_PUSH([1, 2], 3)` → `[1, 2, 3]` |
-| `ARR_SLICE(a, start, end?)` | Sub-array | `ARR_SLICE([1, 2, 3], 1)` → `[2, 3]` |
-| `ARR_CONTAINS(a, v)` | Contains check | `ARR_CONTAINS([1, 2], 2)` → `true` |
-| `ARR_REVERSE(a)` | Reverse array | `ARR_REVERSE([1, 2, 3])` → `[3, 2, 1]` |
-| `ARR_FIRST(a)` | First element | `ARR_FIRST([10, 20])` → `10` |
-| `ARR_LAST(a)` | Last element | `ARR_LAST([10, 20])` → `20` |
+| Function                    | Description      | Example                                |
+| --------------------------- | ---------------- | -------------------------------------- |
+| `ARR_LEN(a)`                | Array length     | `ARR_LEN([1, 2, 3])` → `3`             |
+| `ARR_INDEX(a, i)`           | Element at index | `ARR_INDEX([10, 20], 0)` → `10`        |
+| `ARR_PUSH(a, v)`            | Append element   | `ARR_PUSH([1, 2], 3)` → `[1, 2, 3]`    |
+| `ARR_SLICE(a, start, end?)` | Sub-array        | `ARR_SLICE([1, 2, 3], 1)` → `[2, 3]`   |
+| `ARR_CONTAINS(a, v)`        | Contains check   | `ARR_CONTAINS([1, 2], 2)` → `true`     |
+| `ARR_REVERSE(a)`            | Reverse array    | `ARR_REVERSE([1, 2, 3])` → `[3, 2, 1]` |
+| `ARR_FIRST(a)`              | First element    | `ARR_FIRST([10, 20])` → `10`           |
+| `ARR_LAST(a)`               | Last element     | `ARR_LAST([10, 20])` → `20`            |
 
 Note: Bracket indexing (`arr[0]`, `arr[-1]`) is generally preferred over `ARR_INDEX()` for element access.
 
@@ -525,59 +525,59 @@ Date functions operate on `Temporal.PlainDate` values. Most also accept `Tempora
 
 #### Core Date Functions
 
-| Function | Description | Example |
-| --- | --- | --- |
-| `TODAY()` | Current date | `TODAY()` → today's date |
-| `DATE(y, m, d)` | Create date | `DATE(2024, 6, 15)` → June 15, 2024 |
+| Function        | Description  | Example                             |
+| --------------- | ------------ | ----------------------------------- |
+| `TODAY()`       | Current date | `TODAY()` → today's date            |
+| `DATE(y, m, d)` | Create date  | `DATE(2024, 6, 15)` → June 15, 2024 |
 
 #### Component Extractors (date or datetime)
 
-| Function | Description | Returns |
-| --- | --- | --- |
-| `GET_YEAR(d)` | Get year | 2024 |
-| `GET_MONTH(d)` | Get month | 1-12 |
-| `GET_DAY(d)` | Get day of month | 1-31 |
-| `GET_WEEKDAY(d)` | Get day of week | 1-7 (1=Monday, 7=Sunday) |
-| `GET_DAY_OF_YEAR(d)` | Get day of year | 1-366 |
-| `GET_QUARTER(d)` | Get quarter | 1-4 |
+| Function             | Description      | Returns                  |
+| -------------------- | ---------------- | ------------------------ |
+| `GET_YEAR(d)`        | Get year         | 2024                     |
+| `GET_MONTH(d)`       | Get month        | 1-12                     |
+| `GET_DAY(d)`         | Get day of month | 1-31                     |
+| `GET_WEEKDAY(d)`     | Get day of week  | 1-7 (1=Monday, 7=Sunday) |
+| `GET_DAY_OF_YEAR(d)` | Get day of year  | 1-366                    |
+| `GET_QUARTER(d)`     | Get quarter      | 1-4                      |
 
 #### Date Arithmetic (date or datetime, preserves type)
 
-| Function | Description | Example |
-| --- | --- | --- |
-| `ADD_DAYS(d, n)` | Add days | `ADD_DAYS(d, 7)` → 7 days later |
-| `ADD_MONTHS(d, n)` | Add months | `ADD_MONTHS(d, 2)` → 2 months later |
-| `ADD_YEARS(d, n)` | Add years | `ADD_YEARS(d, 1)` → 1 year later |
+| Function           | Description | Example                             |
+| ------------------ | ----------- | ----------------------------------- |
+| `ADD_DAYS(d, n)`   | Add days    | `ADD_DAYS(d, 7)` → 7 days later     |
+| `ADD_MONTHS(d, n)` | Add months  | `ADD_MONTHS(d, 2)` → 2 months later |
+| `ADD_YEARS(d, n)`  | Add years   | `ADD_YEARS(d, 1)` → 1 year later    |
 
 #### Date Differences (same type required)
 
-| Function | Description |
-| --- | --- |
-| `DIFFERENCE_IN_DAYS(d1, d2)` | Absolute difference in days |
-| `DIFFERENCE_IN_WEEKS(d1, d2)` | Absolute difference in whole weeks |
+| Function                       | Description                         |
+| ------------------------------ | ----------------------------------- |
+| `DIFFERENCE_IN_DAYS(d1, d2)`   | Absolute difference in days         |
+| `DIFFERENCE_IN_WEEKS(d1, d2)`  | Absolute difference in whole weeks  |
 | `DIFFERENCE_IN_MONTHS(d1, d2)` | Absolute difference in whole months |
-| `DIFFERENCE_IN_YEARS(d1, d2)` | Absolute difference in whole years |
+| `DIFFERENCE_IN_YEARS(d1, d2)`  | Absolute difference in whole years  |
 
 #### Start/End of Period (date or datetime, preserves type)
 
-| Function | Description |
-| --- | --- |
-| `START_OF_MONTH(d)` | First day of month |
-| `END_OF_MONTH(d)` | Last day of month |
-| `START_OF_YEAR(d)` | January 1st of year |
-| `END_OF_YEAR(d)` | December 31st of year |
-| `START_OF_WEEK(d)` | Monday of the week |
-| `START_OF_QUARTER(d)` | First day of quarter |
+| Function              | Description           |
+| --------------------- | --------------------- |
+| `START_OF_MONTH(d)`   | First day of month    |
+| `END_OF_MONTH(d)`     | Last day of month     |
+| `START_OF_YEAR(d)`    | January 1st of year   |
+| `END_OF_YEAR(d)`      | December 31st of year |
+| `START_OF_WEEK(d)`    | Monday of the week    |
+| `START_OF_QUARTER(d)` | First day of quarter  |
 
 #### Date Comparisons (date or datetime)
 
-| Function | Description | Returns |
-| --- | --- | --- |
+| Function              | Description                                | Returns   |
+| --------------------- | ------------------------------------------ | --------- |
 | `IS_SAME_DAY(d1, d2)` | Same calendar day (mixed date+datetime OK) | `boolean` |
-| `IS_WEEKEND(d)` | Saturday or Sunday | `boolean` |
-| `IS_LEAP_YEAR(d)` | Leap year check | `boolean` |
-| `d1 < d2` | Before (use operators) | `boolean` |
-| `d1 > d2` | After (use operators) | `boolean` |
+| `IS_WEEKEND(d)`       | Saturday or Sunday                         | `boolean` |
+| `IS_LEAP_YEAR(d)`     | Leap year check                            | `boolean` |
+| `d1 < d2`             | Before (use operators)                     | `boolean` |
+| `d1 > d2`             | After (use operators)                      | `boolean` |
 
 ### Time Functions (13 functions)
 
@@ -585,55 +585,55 @@ Time functions operate on `Temporal.PlainTime` values. Extractors and arithmetic
 
 #### Core Time Functions
 
-| Function | Description | Example |
-| --- | --- | --- |
-| `TIME(h, m, s)` | Create time | `TIME(14, 30, 0)` → 2:30 PM |
-| `NOW_TIME()` | Current time | `NOW_TIME()` → current wall-clock time |
+| Function        | Description  | Example                                |
+| --------------- | ------------ | -------------------------------------- |
+| `TIME(h, m, s)` | Create time  | `TIME(14, 30, 0)` → 2:30 PM            |
+| `NOW_TIME()`    | Current time | `NOW_TIME()` → current wall-clock time |
 
 #### Time Extractors (time or datetime)
 
-| Function | Description | Returns |
-| --- | --- | --- |
-| `GET_HOUR(t)` | Get hour | 0-23 |
-| `GET_MINUTE(t)` | Get minute | 0-59 |
-| `GET_SECOND(t)` | Get second | 0-59 |
-| `GET_MILLISECOND(t)` | Get millisecond | 0-999 |
+| Function             | Description     | Returns |
+| -------------------- | --------------- | ------- |
+| `GET_HOUR(t)`        | Get hour        | 0-23    |
+| `GET_MINUTE(t)`      | Get minute      | 0-59    |
+| `GET_SECOND(t)`      | Get second      | 0-59    |
+| `GET_MILLISECOND(t)` | Get millisecond | 0-999   |
 
 #### Time Arithmetic (time or datetime, preserves type)
 
-| Function | Description | Notes |
-| --- | --- | --- |
-| `ADD_HOURS(t, n)` | Add hours | PlainTime wraps at midnight |
+| Function            | Description | Notes                       |
+| ------------------- | ----------- | --------------------------- |
+| `ADD_HOURS(t, n)`   | Add hours   | PlainTime wraps at midnight |
 | `ADD_MINUTES(t, n)` | Add minutes | PlainTime wraps at midnight |
 | `ADD_SECONDS(t, n)` | Add seconds | PlainTime wraps at midnight |
 
 #### Time Differences (same type required)
 
-| Function | Description |
-| --- | --- |
-| `DIFFERENCE_IN_HOURS(t1, t2)` | Absolute difference in hours |
+| Function                        | Description                    |
+| ------------------------------- | ------------------------------ |
+| `DIFFERENCE_IN_HOURS(t1, t2)`   | Absolute difference in hours   |
 | `DIFFERENCE_IN_MINUTES(t1, t2)` | Absolute difference in minutes |
 | `DIFFERENCE_IN_SECONDS(t1, t2)` | Absolute difference in seconds |
 
 #### Time Comparisons
 
-| Function | Description | Returns |
-| --- | --- | --- |
+| Function               | Description                               | Returns   |
+| ---------------------- | ----------------------------------------- | --------- |
 | `IS_SAME_TIME(t1, t2)` | Same time-of-day (mixed time+datetime OK) | `boolean` |
 
 ### DateTime Functions (7 functions)
 
 DateTime functions for construction and conversion using `Temporal.PlainDateTime`.
 
-| Function | Description | Example |
-| --- | --- | --- |
-| `DATETIME(y, mo, d, h, mi, s)` | Create datetime | `DATETIME(2024, 6, 15, 14, 30, 0)` |
-| `NOW()` | Current datetime | `NOW()` → current date and time |
-| `TO_DATE(dt)` | Extract date portion | `TO_DATE(dt)` → `PlainDate` |
-| `TO_TIME(dt)` | Extract time portion | `TO_TIME(dt)` → `PlainTime` |
-| `COMBINE(d, t)` | Combine date + time | `COMBINE(d, t)` → `PlainDateTime` |
-| `START_OF_DAY(dt)` | Midnight (00:00:00) | `START_OF_DAY(dt)` |
-| `END_OF_DAY(dt)` | End of day (23:59:59.999...) | `END_OF_DAY(dt)` |
+| Function                       | Description                  | Example                            |
+| ------------------------------ | ---------------------------- | ---------------------------------- |
+| `DATETIME(y, mo, d, h, mi, s)` | Create datetime              | `DATETIME(2024, 6, 15, 14, 30, 0)` |
+| `NOW()`                        | Current datetime             | `NOW()` → current date and time    |
+| `TO_DATE(dt)`                  | Extract date portion         | `TO_DATE(dt)` → `PlainDate`        |
+| `TO_TIME(dt)`                  | Extract time portion         | `TO_TIME(dt)` → `PlainTime`        |
+| `COMBINE(d, t)`                | Combine date + time          | `COMBINE(d, t)` → `PlainDateTime`  |
+| `START_OF_DAY(dt)`             | Midnight (00:00:00)          | `START_OF_DAY(dt)`                 |
+| `END_OF_DAY(dt)`               | End of day (23:59:59.999...) | `END_OF_DAY(dt)`                   |
 
 ### Temporal Examples
 
@@ -679,13 +679,13 @@ You can inject variables when executing expressions:
 
 ```typescript
 evaluate("radius * 2 * 3.14159", {
-  variables: { radius: 10 },
+	variables: { radius: 10 },
 }); // → 62.8318
 
 // Variables can be any type
 evaluate("STR_UPPER(name)", {
-  functions: { ...defaultContext.functions },
-  variables: { name: "alice" },
+	functions: { ...defaultContext.functions },
+	variables: { name: "alice" },
 }); // → "ALICE"
 ```
 
@@ -703,10 +703,10 @@ Extend littlewing with your own functions:
 
 ```typescript
 evaluate("CLAMP(x, 0, 100)", {
-  variables: { x: 150 },
-  functions: {
-    CLAMP: (value, min, max) => Math.min(Math.max(value, min), max),
-  },
+	variables: { x: 150 },
+	functions: {
+		CLAMP: (value, min, max) => Math.min(Math.max(value, min), max),
+	},
 }); // → 100
 ```
 

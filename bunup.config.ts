@@ -1,7 +1,7 @@
-import { defineConfig } from 'bunup'
+import { defineConfig } from "bunup";
 
 export default defineConfig({
-	entry: 'src/index.ts',
-	format: 'esm',
-	target: 'browser',
-})
+	entry: "src/index.ts",
+	format: "esm",
+	target: "browser",
+});

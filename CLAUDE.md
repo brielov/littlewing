@@ -66,18 +66,18 @@ Type guards (`isNumberLiteral`, `isStringLiteral`, `isBooleanLiteral`, `isArrayL
 
 ### Operator Semantics
 
-| Operator | Types | Behavior |
-| --- | --- | --- |
-| `+` | number+number, string+string, array+array | Add, concatenate, or concat arrays |
-| `-`, `*`, `/`, `%`, `^` | number only | Arithmetic |
-| `==`, `!=` | any types | Deep equality (cross-type → `false`) |
-| `<`, `>`, `<=`, `>=` | number, string, date, time, or datetime (same type) | Ordered comparison |
-| `&&`, `||` | boolean only | Short-circuit; returns boolean |
-| `!` | boolean only | Logical NOT |
-| `-` (unary) | number only | Negation |
-| `[]` | array or string | Bracket indexing (zero-based, negative OK) |
-| `..` | number | Exclusive range (`1..4` → `[1, 2, 3]`) |
-| `..=` | number | Inclusive range (`1..=3` → `[1, 2, 3]`) |
+| Operator                | Types                                               | Behavior                                   |
+| ----------------------- | --------------------------------------------------- | ------------------------------------------ | ------------ | ------------------------------ |
+| `+`                     | number+number, string+string, array+array           | Add, concatenate, or concat arrays         |
+| `-`, `*`, `/`, `%`, `^` | number only                                         | Arithmetic                                 |
+| `==`, `!=`              | any types                                           | Deep equality (cross-type → `false`)       |
+| `<`, `>`, `<=`, `>=`    | number, string, date, time, or datetime (same type) | Ordered comparison                         |
+| `&&`, `                 |                                                     | `                                          | boolean only | Short-circuit; returns boolean |
+| `!`                     | boolean only                                        | Logical NOT                                |
+| `-` (unary)             | number only                                         | Negation                                   |
+| `[]`                    | array or string                                     | Bracket indexing (zero-based, negative OK) |
+| `..`                    | number                                              | Exclusive range (`1..4` → `[1, 2, 3]`)     |
+| `..=`                   | number                                              | Inclusive range (`1..=3` → `[1, 2, 3]`)    |
 
 ### Public API
 
@@ -225,20 +225,22 @@ The codebase uses a centralized visitor pattern for AST traversal, implemented i
 import { visit } from "littlewing";
 
 const count = visit(ast, {
-  Program: (n, recurse) => n.statements.reduce((sum, s) => sum + recurse(s), 0),
-  NumberLiteral: () => 1,
-  StringLiteral: () => 1,
-  BooleanLiteral: () => 1,
-  ArrayLiteral: (n, recurse) => 1 + n.elements.reduce((sum, el) => sum + recurse(el), 0),
-  Identifier: () => 1,
-  BinaryOp: (n, recurse) => 1 + recurse(n.left) + recurse(n.right),
-  UnaryOp: (n, recurse) => 1 + recurse(n.argument),
-  FunctionCall: (n, recurse) => 1 + n.args.reduce((sum, arg) => sum + recurse(arg), 0),
-  Assignment: (n, recurse) => 1 + recurse(n.value),
-  IfExpression: (n, recurse) => 1 + recurse(n.condition) + recurse(n.consequent) + recurse(n.alternate),
-  ForExpression: (n, recurse) => 1 + recurse(n.iterable) + (n.guard ? recurse(n.guard) : 0) + recurse(n.body),
-  IndexAccess: (n, recurse) => 1 + recurse(n.object) + recurse(n.index),
-  RangeExpression: (n, recurse) => 1 + recurse(n.start) + recurse(n.end),
+	Program: (n, recurse) => n.statements.reduce((sum, s) => sum + recurse(s), 0),
+	NumberLiteral: () => 1,
+	StringLiteral: () => 1,
+	BooleanLiteral: () => 1,
+	ArrayLiteral: (n, recurse) => 1 + n.elements.reduce((sum, el) => sum + recurse(el), 0),
+	Identifier: () => 1,
+	BinaryOp: (n, recurse) => 1 + recurse(n.left) + recurse(n.right),
+	UnaryOp: (n, recurse) => 1 + recurse(n.argument),
+	FunctionCall: (n, recurse) => 1 + n.args.reduce((sum, arg) => sum + recurse(arg), 0),
+	Assignment: (n, recurse) => 1 + recurse(n.value),
+	IfExpression: (n, recurse) =>
+		1 + recurse(n.condition) + recurse(n.consequent) + recurse(n.alternate),
+	ForExpression: (n, recurse) =>
+		1 + recurse(n.iterable) + (n.guard ? recurse(n.guard) : 0) + recurse(n.body),
+	IndexAccess: (n, recurse) => 1 + recurse(n.object) + recurse(n.index),
+	RangeExpression: (n, recurse) => 1 + recurse(n.start) + recurse(n.end),
 });
 ```
 
@@ -268,9 +270,9 @@ Tests use Bun's built-in test framework:
 
 ### Code Style
 
-- Biome for linting and formatting
+- oxlint for linting, oxfmt for formatting
 - Tabs for indentation
-- Single quotes, no semicolons (configured in biome.json)
+- Double quotes, semicolons (configured in oxlint/oxfmt)
 - Git hooks enforce lint and type-check on pre-commit
 
 ### Common Development Tasks
@@ -308,20 +310,75 @@ Tests use Bun's built-in test framework:
 ```typescript
 // 14 readonly object-based AST node types
 
-interface Program { readonly kind: NodeKind.Program; readonly statements: readonly ASTNode[] }
-interface NumberLiteral { readonly kind: NodeKind.NumberLiteral; readonly value: number }
-interface StringLiteral { readonly kind: NodeKind.StringLiteral; readonly value: string }
-interface BooleanLiteral { readonly kind: NodeKind.BooleanLiteral; readonly value: boolean }
-interface ArrayLiteral { readonly kind: NodeKind.ArrayLiteral; readonly elements: readonly ASTNode[] }
-interface Identifier { readonly kind: NodeKind.Identifier; readonly name: string }
-interface BinaryOp { readonly kind: NodeKind.BinaryOp; readonly left: ASTNode; readonly operator: Operator; readonly right: ASTNode }
-interface UnaryOp { readonly kind: NodeKind.UnaryOp; readonly operator: '-' | '!'; readonly argument: ASTNode }
-interface FunctionCall { readonly kind: NodeKind.FunctionCall; readonly name: string; readonly args: readonly ASTNode[] }
-interface Assignment { readonly kind: NodeKind.Assignment; readonly name: string; readonly value: ASTNode }
-interface IfExpression { readonly kind: NodeKind.IfExpression; readonly condition: ASTNode; readonly consequent: ASTNode; readonly alternate: ASTNode }
-interface ForExpression { readonly kind: NodeKind.ForExpression; readonly variable: string; readonly iterable: ASTNode; readonly guard: ASTNode | null; readonly body: ASTNode }
-interface IndexAccess { readonly kind: NodeKind.IndexAccess; readonly object: ASTNode; readonly index: ASTNode }
-interface RangeExpression { readonly kind: NodeKind.RangeExpression; readonly start: ASTNode; readonly end: ASTNode; readonly inclusive: boolean }
+interface Program {
+	readonly kind: NodeKind.Program;
+	readonly statements: readonly ASTNode[];
+}
+interface NumberLiteral {
+	readonly kind: NodeKind.NumberLiteral;
+	readonly value: number;
+}
+interface StringLiteral {
+	readonly kind: NodeKind.StringLiteral;
+	readonly value: string;
+}
+interface BooleanLiteral {
+	readonly kind: NodeKind.BooleanLiteral;
+	readonly value: boolean;
+}
+interface ArrayLiteral {
+	readonly kind: NodeKind.ArrayLiteral;
+	readonly elements: readonly ASTNode[];
+}
+interface Identifier {
+	readonly kind: NodeKind.Identifier;
+	readonly name: string;
+}
+interface BinaryOp {
+	readonly kind: NodeKind.BinaryOp;
+	readonly left: ASTNode;
+	readonly operator: Operator;
+	readonly right: ASTNode;
+}
+interface UnaryOp {
+	readonly kind: NodeKind.UnaryOp;
+	readonly operator: "-" | "!";
+	readonly argument: ASTNode;
+}
+interface FunctionCall {
+	readonly kind: NodeKind.FunctionCall;
+	readonly name: string;
+	readonly args: readonly ASTNode[];
+}
+interface Assignment {
+	readonly kind: NodeKind.Assignment;
+	readonly name: string;
+	readonly value: ASTNode;
+}
+interface IfExpression {
+	readonly kind: NodeKind.IfExpression;
+	readonly condition: ASTNode;
+	readonly consequent: ASTNode;
+	readonly alternate: ASTNode;
+}
+interface ForExpression {
+	readonly kind: NodeKind.ForExpression;
+	readonly variable: string;
+	readonly iterable: ASTNode;
+	readonly guard: ASTNode | null;
+	readonly body: ASTNode;
+}
+interface IndexAccess {
+	readonly kind: NodeKind.IndexAccess;
+	readonly object: ASTNode;
+	readonly index: ASTNode;
+}
+interface RangeExpression {
+	readonly kind: NodeKind.RangeExpression;
+	readonly start: ASTNode;
+	readonly end: ASTNode;
+	readonly inclusive: boolean;
+}
 ```
 
 ## Built-in Functions Summary

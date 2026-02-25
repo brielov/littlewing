@@ -113,14 +113,14 @@ evaluate("IS_WEEKEND(TODAY())", defaultContext); // → true or false
 import { evaluate } from "littlewing";
 
 const context = {
-  functions: {
-    FAHRENHEIT: (celsius) => (celsius * 9) / 5 + 32,
-    DISCOUNT: (price, percent) => price * (1 - percent / 100),
-  },
-  variables: {
-    pi: 3.14159,
-    taxRate: 0.08,
-  },
+	functions: {
+		FAHRENHEIT: (celsius) => (celsius * 9) / 5 + 32,
+		DISCOUNT: (price, percent) => price * (1 - percent / 100),
+	},
+	variables: {
+		pi: 3.14159,
+		taxRate: 0.08,
+	},
 };
 
 evaluate("FAHRENHEIT(20)", context); // → 68
@@ -195,7 +195,7 @@ const opt3 = optimize(ast3); // Removes unused y assignment
 Convert AST back to source code.
 
 ```typescript
-const ast = parse('2 + 3 * 4');
+const ast = parse("2 + 3 * 4");
 generate(ast); // → "2 + 3 * 4"
 
 generate(parse('"hello"')); // → '"hello"'
@@ -224,17 +224,17 @@ Exhaustively visit every node in an AST. All 11 node types must be handled.
 import { visit, parse } from "littlewing";
 
 const count = visit(parse("x + 10"), {
-  Program: (n, recurse) => n[1].reduce((s, stmt) => s + recurse(stmt), 0),
-  NumberLiteral: () => 1,
-  StringLiteral: () => 1,
-  BooleanLiteral: () => 1,
-  ArrayLiteral: (n, recurse) => 1 + n[1].reduce((s, el) => s + recurse(el), 0),
-  Identifier: () => 1,
-  BinaryOp: (n, recurse) => 1 + recurse(n[1]) + recurse(n[3]),
-  UnaryOp: (n, recurse) => 1 + recurse(n[2]),
-  Assignment: (n, recurse) => 1 + recurse(n[2]),
-  FunctionCall: (n, recurse) => 1 + n[2].reduce((s, arg) => s + recurse(arg), 0),
-  ConditionalExpression: (n, recurse) => 1 + recurse(n[1]) + recurse(n[2]) + recurse(n[3]),
+	Program: (n, recurse) => n[1].reduce((s, stmt) => s + recurse(stmt), 0),
+	NumberLiteral: () => 1,
+	StringLiteral: () => 1,
+	BooleanLiteral: () => 1,
+	ArrayLiteral: (n, recurse) => 1 + n[1].reduce((s, el) => s + recurse(el), 0),
+	Identifier: () => 1,
+	BinaryOp: (n, recurse) => 1 + recurse(n[1]) + recurse(n[3]),
+	UnaryOp: (n, recurse) => 1 + recurse(n[2]),
+	Assignment: (n, recurse) => 1 + recurse(n[2]),
+	FunctionCall: (n, recurse) => 1 + n[2].reduce((s, arg) => s + recurse(arg), 0),
+	ConditionalExpression: (n, recurse) => 1 + recurse(n[1]) + recurse(n[2]) + recurse(n[3]),
 });
 ```
 
@@ -267,16 +267,11 @@ generate(ast.array([ast.number(1), ast.number(2)])); // → "[1, 2]"
 
 ```typescript
 interface ExecutionContext {
-  functions?: Record<string, (...args: RuntimeValue[]) => RuntimeValue>;
-  variables?: Record<string, RuntimeValue>;
+	functions?: Record<string, (...args: RuntimeValue[]) => RuntimeValue>;
+	variables?: Record<string, RuntimeValue>;
 }
 
-type RuntimeValue =
-  | number
-  | string
-  | boolean
-  | Temporal.PlainDate
-  | readonly RuntimeValue[];
+type RuntimeValue = number | string | boolean | Temporal.PlainDate | readonly RuntimeValue[];
 ```
 
 ### Default Context Functions

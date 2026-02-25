@@ -1,8 +1,8 @@
-import { Temporal } from 'temporal-polyfill'
+import { Temporal } from "temporal-polyfill";
 
-Object.defineProperty(globalThis, 'Temporal', {
+Object.defineProperty(globalThis, "Temporal", {
 	value: Temporal,
 	writable: false,
 	enumerable: false,
 	configurable: true,
-})
+});

@@ -16,7 +16,7 @@ import {
 	type RangeExpression,
 	type StringLiteral,
 	type UnaryOp,
-} from './ast'
+} from "./ast";
 
 /**
  * Type-safe visitor pattern for AST traversal.
@@ -29,21 +29,21 @@ import {
  * @template T The return type of visitor handlers
  */
 export type Visitor<T> = {
-	Program: (node: Program, recurse: (n: ASTNode) => T) => T
-	NumberLiteral: (node: NumberLiteral, recurse: (n: ASTNode) => T) => T
-	StringLiteral: (node: StringLiteral, recurse: (n: ASTNode) => T) => T
-	BooleanLiteral: (node: BooleanLiteral, recurse: (n: ASTNode) => T) => T
-	ArrayLiteral: (node: ArrayLiteral, recurse: (n: ASTNode) => T) => T
-	Identifier: (node: Identifier, recurse: (n: ASTNode) => T) => T
-	BinaryOp: (node: BinaryOp, recurse: (n: ASTNode) => T) => T
-	UnaryOp: (node: UnaryOp, recurse: (n: ASTNode) => T) => T
-	FunctionCall: (node: FunctionCall, recurse: (n: ASTNode) => T) => T
-	Assignment: (node: Assignment, recurse: (n: ASTNode) => T) => T
-	IfExpression: (node: IfExpression, recurse: (n: ASTNode) => T) => T
-	ForExpression: (node: ForExpression, recurse: (n: ASTNode) => T) => T
-	IndexAccess: (node: IndexAccess, recurse: (n: ASTNode) => T) => T
-	RangeExpression: (node: RangeExpression, recurse: (n: ASTNode) => T) => T
-}
+	Program: (node: Program, recurse: (n: ASTNode) => T) => T;
+	NumberLiteral: (node: NumberLiteral, recurse: (n: ASTNode) => T) => T;
+	StringLiteral: (node: StringLiteral, recurse: (n: ASTNode) => T) => T;
+	BooleanLiteral: (node: BooleanLiteral, recurse: (n: ASTNode) => T) => T;
+	ArrayLiteral: (node: ArrayLiteral, recurse: (n: ASTNode) => T) => T;
+	Identifier: (node: Identifier, recurse: (n: ASTNode) => T) => T;
+	BinaryOp: (node: BinaryOp, recurse: (n: ASTNode) => T) => T;
+	UnaryOp: (node: UnaryOp, recurse: (n: ASTNode) => T) => T;
+	FunctionCall: (node: FunctionCall, recurse: (n: ASTNode) => T) => T;
+	Assignment: (node: Assignment, recurse: (n: ASTNode) => T) => T;
+	IfExpression: (node: IfExpression, recurse: (n: ASTNode) => T) => T;
+	ForExpression: (node: ForExpression, recurse: (n: ASTNode) => T) => T;
+	IndexAccess: (node: IndexAccess, recurse: (n: ASTNode) => T) => T;
+	RangeExpression: (node: RangeExpression, recurse: (n: ASTNode) => T) => T;
+};
 
 /**
  * Visit an AST node using a visitor object with type-specific handlers.
@@ -56,8 +56,8 @@ export type Visitor<T> = {
  */
 export function visit<T>(node: ASTNode, visitor: Visitor<T>): T {
 	return visitPartial(node, visitor, (node) => {
-		throw new Error(`No handler for node type: ${getNodeName(node)}`)
-	})
+		throw new Error(`No handler for node type: ${getNodeName(node)}`);
+	});
 }
 
 /**
@@ -78,64 +78,54 @@ export function visitPartial<T>(
 	visitor: Partial<Visitor<T>>,
 	defaultHandler: (node: ASTNode, recurse: (n: ASTNode) => T) => T,
 ): T {
-	const recurse = (n: ASTNode): T => visitPartial(n, visitor, defaultHandler)
+	const recurse = (n: ASTNode): T => visitPartial(n, visitor, defaultHandler);
 
 	switch (node.kind) {
 		case NodeKind.Program:
-			return visitor.Program
-				? visitor.Program(node, recurse)
-				: defaultHandler(node, recurse)
+			return visitor.Program ? visitor.Program(node, recurse) : defaultHandler(node, recurse);
 		case NodeKind.NumberLiteral:
 			return visitor.NumberLiteral
 				? visitor.NumberLiteral(node, recurse)
-				: defaultHandler(node, recurse)
+				: defaultHandler(node, recurse);
 		case NodeKind.StringLiteral:
 			return visitor.StringLiteral
 				? visitor.StringLiteral(node, recurse)
-				: defaultHandler(node, recurse)
+				: defaultHandler(node, recurse);
 		case NodeKind.BooleanLiteral:
 			return visitor.BooleanLiteral
 				? visitor.BooleanLiteral(node, recurse)
-				: defaultHandler(node, recurse)
+				: defaultHandler(node, recurse);
 		case NodeKind.ArrayLiteral:
 			return visitor.ArrayLiteral
 				? visitor.ArrayLiteral(node, recurse)
-				: defaultHandler(node, recurse)
+				: defaultHandler(node, recurse);
 		case NodeKind.Identifier:
-			return visitor.Identifier
-				? visitor.Identifier(node, recurse)
-				: defaultHandler(node, recurse)
+			return visitor.Identifier ? visitor.Identifier(node, recurse) : defaultHandler(node, recurse);
 		case NodeKind.BinaryOp:
-			return visitor.BinaryOp
-				? visitor.BinaryOp(node, recurse)
-				: defaultHandler(node, recurse)
+			return visitor.BinaryOp ? visitor.BinaryOp(node, recurse) : defaultHandler(node, recurse);
 		case NodeKind.UnaryOp:
-			return visitor.UnaryOp
-				? visitor.UnaryOp(node, recurse)
-				: defaultHandler(node, recurse)
+			return visitor.UnaryOp ? visitor.UnaryOp(node, recurse) : defaultHandler(node, recurse);
 		case NodeKind.FunctionCall:
 			return visitor.FunctionCall
 				? visitor.FunctionCall(node, recurse)
-				: defaultHandler(node, recurse)
+				: defaultHandler(node, recurse);
 		case NodeKind.Assignment:
-			return visitor.Assignment
-				? visitor.Assignment(node, recurse)
-				: defaultHandler(node, recurse)
+			return visitor.Assignment ? visitor.Assignment(node, recurse) : defaultHandler(node, recurse);
 		case NodeKind.IfExpression:
 			return visitor.IfExpression
 				? visitor.IfExpression(node, recurse)
-				: defaultHandler(node, recurse)
+				: defaultHandler(node, recurse);
 		case NodeKind.ForExpression:
 			return visitor.ForExpression
 				? visitor.ForExpression(node, recurse)
-				: defaultHandler(node, recurse)
+				: defaultHandler(node, recurse);
 		case NodeKind.IndexAccess:
 			return visitor.IndexAccess
 				? visitor.IndexAccess(node, recurse)
-				: defaultHandler(node, recurse)
+				: defaultHandler(node, recurse);
 		case NodeKind.RangeExpression:
 			return visitor.RangeExpression
 				? visitor.RangeExpression(node, recurse)
-				: defaultHandler(node, recurse)
+				: defaultHandler(node, recurse);
 	}
 }

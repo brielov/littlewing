@@ -10,7 +10,7 @@ export type RuntimeValue =
 	| Temporal.PlainDate
 	| Temporal.PlainTime
 	| Temporal.PlainDateTime
-	| readonly RuntimeValue[]
+	| readonly RuntimeValue[];
 
 /**
  * Execution context providing global functions and variables
@@ -18,6 +18,6 @@ export type RuntimeValue =
  * Variables can be any RuntimeValue
  */
 export interface ExecutionContext {
-	functions?: Record<string, (...args: RuntimeValue[]) => RuntimeValue>
-	variables?: Record<string, RuntimeValue>
+	functions?: Record<string, (...args: RuntimeValue[]) => RuntimeValue>;
+	variables?: Record<string, RuntimeValue>;
 }

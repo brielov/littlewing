@@ -1,7 +1,7 @@
-import type { ASTNode } from './ast'
-import { isAssignment, isProgram } from './ast'
-import { collectAllIdentifiers } from './utils'
-import { visitPartial } from './visitor'
+import type { ASTNode } from "./ast";
+import { isAssignment, isProgram } from "./ast";
+import { collectAllIdentifiers } from "./utils";
+import { visitPartial } from "./visitor";
 
 /**
  * Extracts input variables from an AST.
@@ -25,19 +25,19 @@ import { visitPartial } from './visitor'
  * ```
  */
 export function extractInputVariables(ast: ASTNode): string[] {
-	const inputVars = new Set<string>()
+	const inputVars = new Set<string>();
 
-	const statements = isProgram(ast) ? ast.statements : [ast]
+	const statements = isProgram(ast) ? ast.statements : [ast];
 
 	for (const statement of statements) {
 		if (isAssignment(statement)) {
 			if (!containsVariableReference(statement.value)) {
-				inputVars.add(statement.name)
+				inputVars.add(statement.name);
 			}
 		}
 	}
 
-	return Array.from(inputVars)
+	return Array.from(inputVars);
 }
 
 /**
@@ -56,49 +56,49 @@ export function extractInputVariables(ast: ASTNode): string[] {
  * ```
  */
 export function extractAssignedVariables(ast: ASTNode): string[] {
-	const seen = new Set<string>()
-	const names: string[] = []
+	const seen = new Set<string>();
+	const names: string[] = [];
 
 	visitPartial(
 		ast,
 		{
 			Program: (n, recurse) => {
 				for (const statement of n.statements) {
-					recurse(statement)
+					recurse(statement);
 				}
 			},
 			Assignment: (n, recurse) => {
 				if (!seen.has(n.name)) {
-					seen.add(n.name)
-					names.push(n.name)
+					seen.add(n.name);
+					names.push(n.name);
 				}
 				// Recurse into the value in case of nested assignments
-				recurse(n.value)
+				recurse(n.value);
 			},
 			IfExpression: (n, recurse) => {
-				recurse(n.condition)
-				recurse(n.consequent)
-				recurse(n.alternate)
+				recurse(n.condition);
+				recurse(n.consequent);
+				recurse(n.alternate);
 			},
 			ForExpression: (n, recurse) => {
-				recurse(n.iterable)
-				if (n.guard) recurse(n.guard)
-				recurse(n.body)
+				recurse(n.iterable);
+				if (n.guard) recurse(n.guard);
+				recurse(n.body);
 			},
 			IndexAccess: (n, recurse) => {
-				recurse(n.object)
-				recurse(n.index)
+				recurse(n.object);
+				recurse(n.index);
 			},
 			RangeExpression: (n, recurse) => {
-				recurse(n.start)
-				recurse(n.end)
+				recurse(n.start);
+				recurse(n.end);
 			},
 		},
 		// Default handler: no-op for all other node types
 		() => {},
-	)
+	);
 
-	return names
+	return names;
 }
 
 /**
@@ -110,5 +110,5 @@ export function extractAssignedVariables(ast: ASTNode): string[] {
  * @returns true if the node or any of its children contain an Identifier
  */
 function containsVariableReference(node: ASTNode): boolean {
-	return collectAllIdentifiers(node).size > 0
+	return collectAllIdentifiers(node).size > 0;
 }
