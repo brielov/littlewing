@@ -47,7 +47,7 @@
 	"scripts": {
 		"build": "bunup",
 		"dev": "bunup --watch",
-		"postinstall": "bun simple-git-hooks",
+		"setup-hooks": "bun simple-git-hooks",
 		"lint": "oxlint --type-check --type-aware",
 		"lint:fix": "oxlint --type-check --type-aware --fix",
 		"fmt": "oxfmt",
