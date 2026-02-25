@@ -35,7 +35,6 @@
 		"dist"
 	],
 	"scripts": {
-		"bench": "bun bench/run-all.ts",
 		"build": "bunup",
 		"dev": "bunup --watch",
 		"postinstall": "bun simple-git-hooks",
@@ -52,7 +51,6 @@
 		"@types/bun": "^1.3.1",
 		"bumpp": "^10.3.1",
 		"bunup": "^0.15.13",
-		"mitata": "^1.0.34",
 		"simple-git-hooks": "^2.13.1",
 		"temporal-polyfill": "^0.3.0",
 		"temporal-spec": "^0.3.0",
