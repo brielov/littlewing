@@ -6,6 +6,7 @@ import type {
 	FunctionCall,
 	NumberLiteral,
 	Program,
+	StringLiteral,
 } from '../src/ast'
 import * as ast from '../src/ast'
 import {
@@ -16,6 +17,7 @@ import {
 	isIdentifier,
 	isNumberLiteral,
 	isProgram,
+	isStringLiteral,
 	isUnaryOp,
 } from '../src/ast'
 import { evaluate } from '../src/interpreter'
@@ -79,14 +81,12 @@ describe('Optimizer', () => {
 
 	test('multiple statements with folding', () => {
 		const node = optimize(parse('x = 5; y = 2 * 3'))
-		expect(isProgram(node)).toBe(true)
-		const programNode = node as Program
-		expect(programNode.statements.length).toBe(1)
-		const stmt1 = programNode.statements[0]!
-		expect(isAssignment(stmt1)).toBe(true)
-		expect((stmt1 as Assignment).name).toBe('y')
-		expect(isNumberLiteral((stmt1 as Assignment).value)).toBe(true)
-		expect(((stmt1 as Assignment).value as NumberLiteral).value).toBe(6)
+		// DCE removes unused x=5, leaving only y=6, which unwraps from Program
+		expect(isAssignment(node)).toBe(true)
+		const assignNode = node as Assignment
+		expect(assignNode.name).toBe('y')
+		expect(isNumberLiteral(assignNode.value)).toBe(true)
+		expect((assignNode.value as NumberLiteral).value).toBe(6)
 	})
 
 	test('scientific notation folding', () => {
@@ -476,10 +476,9 @@ describe('Dead Code Elimination', () => {
 	test('preserves last statement even if unused', () => {
 		const source = 'x = 10; y = 20'
 		const optimized = optimize(parse(source))
-		expect(isProgram(optimized)).toBe(true)
-		const prog = optimized as Program
-		expect(prog.statements.length).toBe(1)
-		expect((prog.statements[0] as Assignment).name).toBe('y')
+		// DCE removes unused x=10, leaving only y=20, which unwraps from Program
+		expect(isAssignment(optimized)).toBe(true)
+		expect((optimized as Assignment).name).toBe('y')
 	})
 
 	test('removes multiple unused variables', () => {
@@ -610,5 +609,144 @@ describe('Dead Code Elimination', () => {
 		const prog = optimized as Program
 		expect(prog.statements.length).toBe(2)
 		expect((prog.statements[0] as Assignment).name).toBe('c')
+	})
+})
+
+describe('Constant Propagation', () => {
+	const noExternals = new Set<string>()
+
+	test('propagates single-assignment literal', () => {
+		const optimized = optimize(parse('x = 5; x + 10'), noExternals)
+		expect(isNumberLiteral(optimized)).toBe(true)
+		expect((optimized as NumberLiteral).value).toBe(15)
+	})
+
+	test('propagates multiple variables', () => {
+		const optimized = optimize(parse('x = 5; y = 10; x + y'), noExternals)
+		expect(isNumberLiteral(optimized)).toBe(true)
+		expect((optimized as NumberLiteral).value).toBe(15)
+	})
+
+	test('chains through expressions', () => {
+		const optimized = optimize(parse('x = 5; y = x + 10; y * 2'), noExternals)
+		expect(isNumberLiteral(optimized)).toBe(true)
+		expect((optimized as NumberLiteral).value).toBe(30)
+	})
+
+	test('propagates string literals', () => {
+		const optimized = optimize(
+			parse('greeting = "hello"; greeting + " world"'),
+			noExternals,
+		)
+		expect(isStringLiteral(optimized)).toBe(true)
+		expect((optimized as StringLiteral).value).toBe('hello world')
+	})
+
+	test('propagates boolean literals', () => {
+		const optimized = optimize(
+			parse('flag = true; if flag then 1 else 0'),
+			noExternals,
+		)
+		expect(isNumberLiteral(optimized)).toBe(true)
+		expect((optimized as NumberLiteral).value).toBe(1)
+	})
+
+	test('does NOT propagate external variables', () => {
+		const optimized = optimize(parse('x = 5; y = 10; x + y'), new Set(['x']))
+		expect(isProgram(optimized)).toBe(true)
+		const prog = optimized as Program
+		// x is external, so x assignment kept; y=10 propagated and folded
+		// Result: x = 5; x + 10
+		expect(prog.statements.length).toBe(2)
+		expect((prog.statements[0] as Assignment).name).toBe('x')
+		const expr = prog.statements[1]!
+		expect(isBinaryOp(expr)).toBe(true)
+		const binOp = expr as BinaryOp
+		expect(isIdentifier(binOp.left)).toBe(true)
+		expect(isNumberLiteral(binOp.right)).toBe(true)
+		expect((binOp.right as NumberLiteral).value).toBe(10)
+	})
+
+	test('does NOT propagate reassigned variables', () => {
+		const optimized = optimize(parse('x = 5; x = 10; x'), noExternals)
+		expect(isProgram(optimized)).toBe(true)
+		const prog = optimized as Program
+		expect(prog.statements.length).toBe(3)
+	})
+
+	test('does NOT propagate non-literal values (function calls)', () => {
+		const optimized = optimize(parse('x = NOW(); x'), noExternals)
+		expect(isProgram(optimized)).toBe(true)
+		const prog = optimized as Program
+		expect(prog.statements.length).toBe(2)
+	})
+
+	test('does NOT propagate non-literal values (identifiers)', () => {
+		const optimized = optimize(parse('x = y; x + 1'), noExternals)
+		expect(isProgram(optimized)).toBe(true)
+		const prog = optimized as Program
+		expect(prog.statements.length).toBe(2)
+	})
+
+	test('does NOT propagate without externalVariables param (backward compat)', () => {
+		const source = 'x = 5; x + 10'
+		const optimized = optimize(parse(source))
+		expect(isProgram(optimized)).toBe(true)
+		const prog = optimized as Program
+		expect(prog.statements.length).toBe(2)
+		expect(isBinaryOp(prog.statements[1]!)).toBe(true)
+	})
+
+	test('DCE removes propagated-then-unused assignments', () => {
+		const optimized = optimize(parse('x = 5; y = 10; x + y'), noExternals)
+		// Both x and y are propagated and folded to 15
+		// Their assignments become dead code and are eliminated
+		expect(isNumberLiteral(optimized)).toBe(true)
+		expect((optimized as NumberLiteral).value).toBe(15)
+	})
+
+	test('does NOT propagate for loop variables', () => {
+		const source = 'x = 5; for x in [1, 2, 3] then x * 2'
+		const optimized = optimize(parse(source), noExternals)
+		expect(isProgram(optimized)).toBe(true)
+		const prog = optimized as Program
+		// x is a for-loop variable, so x=5 is not propagated
+		expect(prog.statements.length).toBe(2)
+	})
+
+	test('preserves execution semantics with propagation', () => {
+		const source = 'price = 100; tax = 0.08; total = price * (1 + tax); total'
+		const withoutProp = evaluate(source)
+		const optimized = optimize(parse(source), noExternals)
+		const withProp = evaluate(optimized)
+		expect(withProp).toBe(withoutProp)
+		expect(withProp).toBeCloseTo(108, 10)
+	})
+
+	test('preserves execution semantics with external overrides', () => {
+		const source = 'price = 100; tax = 0.08; total = price * (1 + tax); total'
+		const externals = new Set(['price'])
+		const optimized = optimize(parse(source), externals)
+		// With price overridden at runtime, tax is still propagated
+		expect(evaluate(optimized, { variables: { price: 200 } })).toBeCloseTo(
+			216,
+			10,
+		)
+	})
+
+	test('full pipeline example: all locals fold away', () => {
+		const source = 'price = 100; tax = 0.08; total = price * (1 + tax); total'
+		const optimized = optimize(parse(source), noExternals)
+		// All variables are local literals, everything folds
+		expect(isNumberLiteral(optimized)).toBe(true)
+		expect((optimized as NumberLiteral).value).toBeCloseTo(108, 10)
+	})
+
+	test('partial propagation with mixed external and local', () => {
+		const source = 'a = 5; b = external; c = a + 10; c'
+		const optimized = optimize(parse(source), new Set(['external']))
+		// a=5 propagated, c = 5 + 10 = 15, b=external kept but DCE removes it
+		expect(isNumberLiteral(optimized)).toBe(true)
+		expect((optimized as NumberLiteral).value).toBe(15)
 	})
 })

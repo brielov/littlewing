@@ -83,7 +83,7 @@ Type guards (`isNumberLiteral`, `isStringLiteral`, `isBooleanLiteral`, `isArrayL
 - `evaluateScope(source | ast, context?)` - Evaluate and return all assigned variables
 - `parse(source)` - Parse without evaluating, returns AST
 - `generate(ast)` - Convert AST back to source code
-- `optimize(ast)` - Optimize AST with constant folding and dead code elimination
+- `optimize(ast, externalVariables?)` - Optimize AST with constant folding, constant propagation, and dead code elimination
 - `extractInputVariables(ast)` - Extract variables assigned to constant values
 - `extractAssignedVariables(ast)` - Extract all assigned variable names
 
@@ -175,7 +175,7 @@ test/
 ├── lexer.test.ts           # Lexer tests (numbers, strings, operators, brackets)
 ├── parser.test.ts          # Parser tests (all literal types, precedence)
 ├── interpreter.test.ts     # Interpreter tests (evaluation, type errors)
-├── optimizer.test.ts       # Optimizer tests (constant folding, DCE)
+├── optimizer.test.ts       # Optimizer tests (constant folding, propagation, DCE)
 ├── visitor.test.ts         # Visitor pattern tests
 ├── codegen.test.ts         # Code generation tests (all types round-trip)
 ├── analyzer.test.ts        # Analyzer tests
@@ -248,19 +248,20 @@ const count = visit(ast, {
 
 ### Optimization
 
-The optimizer (`src/optimizer.ts`) implements constant folding and dead code elimination:
+The optimizer (`src/optimizer.ts`) implements constant folding, constant propagation, and dead code elimination:
 
 - **Constant folding** - Evaluates pure expressions at compile time (numbers, strings, booleans)
 - **Cross-type folding** - `1 == "1"` folds to `false`, `"a" + "b"` folds to `"ab"`
 - **Conditional folding** - `if true then x else y` folds to `x` (requires boolean literal condition)
+- **Constant propagation** - When `externalVariables` is provided, substitutes single-assignment literal variables and re-folds iteratively until stable. Variables in the `externalVariables` set, reassigned variables, and `for` loop variables are never propagated.
 - **Dead code elimination** - Removes unused variable assignments
-- **Variables are NOT propagated** - They can be overridden by `ExecutionContext.variables` at runtime
+- **Without `externalVariables`** - No variables are propagated (backward-compatible; they can be overridden by `ExecutionContext.variables` at runtime)
 
 ### Testing
 
 Tests use Bun's built-in test framework:
 
-- **588 tests** across 14 test files
+- **604 tests** across 14 test files
 - Run a single test file: `bun test test/optimizer.test.ts`
 
 ### Code Style

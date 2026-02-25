@@ -73,10 +73,243 @@ function isLiteral(node: ASTNode): boolean {
 }
 
 /**
- * Optimize an AST using constant folding, expression simplification, and dead code elimination.
+ * Propagate constants by substituting single-assignment literal variables.
+ *
+ * Only variables that are:
+ * - Assigned exactly once at the program top level
+ * - Assigned a literal value (number, string, boolean) after initial folding
+ * - Not in the externalVariables set (those can be overridden by context)
+ * - Not used as a `for` loop variable (those are rebound per iteration)
+ *
+ * are eligible for propagation.
  */
-export function optimize(node: ASTNode): ASTNode {
-	const folded = visit<ASTNode>(node, {
+function propagateConstants(
+	program: Program,
+	externalVariables: ReadonlySet<string>,
+): Program | null {
+	const statements = program.statements
+
+	// Collect for-loop variable names (they shadow any top-level assignment)
+	const forLoopVars = new Set<string>()
+	for (const stmt of statements) {
+		collectForLoopVars(stmt, forLoopVars)
+	}
+
+	// Build map of variables assigned exactly once to a literal value
+	const knownValues = new Map<string, ASTNode>()
+	const reassigned = new Set<string>()
+
+	for (const stmt of statements) {
+		if (!isAssignment(stmt)) continue
+		if (externalVariables.has(stmt.name)) continue
+		if (forLoopVars.has(stmt.name)) continue
+
+		if (knownValues.has(stmt.name) || reassigned.has(stmt.name)) {
+			// Assigned more than once — unsafe to propagate
+			knownValues.delete(stmt.name)
+			reassigned.add(stmt.name)
+			continue
+		}
+
+		if (isLiteral(stmt.value)) {
+			knownValues.set(stmt.name, stmt.value)
+		}
+	}
+
+	if (knownValues.size === 0) return null
+
+	// Check if any identifier in the program actually references a known value.
+	// If not, substitution would be a no-op — return null to terminate iteration.
+	const referencedIds = new Set<string>()
+	for (const stmt of statements) {
+		if (isAssignment(stmt)) {
+			// Only collect identifiers from the RHS of assignments and non-assignment stmts
+			collectReferencedIdentifiers(stmt.value, referencedIds)
+		} else {
+			collectReferencedIdentifiers(stmt, referencedIds)
+		}
+	}
+
+	let hasSubstitution = false
+	for (const name of knownValues.keys()) {
+		if (referencedIds.has(name)) {
+			hasSubstitution = true
+			break
+		}
+	}
+
+	if (!hasSubstitution) return null
+
+	// Substitute known values throughout the AST
+	return ast.program(
+		statements.map((stmt) => substituteIdentifiers(stmt, knownValues)),
+	)
+}
+
+/**
+ * Collect all identifier names referenced (read) in an AST node.
+ * Unlike `collectAllIdentifiers` from utils, this does NOT collect
+ * assignment LHS names — only identifiers used in expressions.
+ */
+function collectReferencedIdentifiers(node: ASTNode, ids: Set<string>): void {
+	visit<void>(node, {
+		Program: (n, recurse) => {
+			for (const s of n.statements) recurse(s)
+		},
+		NumberLiteral: () => {},
+		StringLiteral: () => {},
+		BooleanLiteral: () => {},
+		ArrayLiteral: (n, recurse) => {
+			for (const e of n.elements) recurse(e)
+		},
+		Identifier: (n) => {
+			ids.add(n.name)
+		},
+		BinaryOp: (n, recurse) => {
+			recurse(n.left)
+			recurse(n.right)
+		},
+		UnaryOp: (n, recurse) => {
+			recurse(n.argument)
+		},
+		FunctionCall: (n, recurse) => {
+			for (const a of n.args) recurse(a)
+		},
+		Assignment: (n, recurse) => {
+			recurse(n.value)
+		},
+		IfExpression: (n, recurse) => {
+			recurse(n.condition)
+			recurse(n.consequent)
+			recurse(n.alternate)
+		},
+		ForExpression: (n, recurse) => {
+			recurse(n.iterable)
+			if (n.guard) recurse(n.guard)
+			recurse(n.body)
+		},
+	})
+}
+
+/**
+ * Collect all `for` loop variable names from an AST node (recursive).
+ */
+function collectForLoopVars(node: ASTNode, vars: Set<string>): void {
+	visit<void>(node, {
+		Program: (n, recurse) => {
+			for (const s of n.statements) recurse(s)
+		},
+		NumberLiteral: () => {},
+		StringLiteral: () => {},
+		BooleanLiteral: () => {},
+		ArrayLiteral: (n, recurse) => {
+			for (const e of n.elements) recurse(e)
+		},
+		Identifier: () => {},
+		BinaryOp: (n, recurse) => {
+			recurse(n.left)
+			recurse(n.right)
+		},
+		UnaryOp: (n, recurse) => {
+			recurse(n.argument)
+		},
+		FunctionCall: (n, recurse) => {
+			for (const a of n.args) recurse(a)
+		},
+		Assignment: (n, recurse) => {
+			recurse(n.value)
+		},
+		IfExpression: (n, recurse) => {
+			recurse(n.condition)
+			recurse(n.consequent)
+			recurse(n.alternate)
+		},
+		ForExpression: (n, recurse) => {
+			vars.add(n.variable)
+			recurse(n.iterable)
+			if (n.guard) recurse(n.guard)
+			recurse(n.body)
+		},
+	})
+}
+
+/**
+ * Replace Identifier nodes whose names are in `knownValues` with their literal values.
+ */
+function substituteIdentifiers(
+	node: ASTNode,
+	knownValues: ReadonlyMap<string, ASTNode>,
+): ASTNode {
+	return visit<ASTNode>(node, {
+		Program: (n, recurse) => ast.program(n.statements.map(recurse)),
+		NumberLiteral: (n) => n,
+		StringLiteral: (n) => n,
+		BooleanLiteral: (n) => n,
+		ArrayLiteral: (n, recurse) => ast.array(n.elements.map(recurse)),
+		Identifier: (n) => knownValues.get(n.name) ?? n,
+		BinaryOp: (n, recurse) =>
+			ast.binaryOp(recurse(n.left), n.operator, recurse(n.right)),
+		UnaryOp: (n, recurse) => ast.unaryOp(n.operator, recurse(n.argument)),
+		FunctionCall: (n, recurse) => ast.functionCall(n.name, n.args.map(recurse)),
+		Assignment: (n, recurse) => ast.assign(n.name, recurse(n.value)),
+		IfExpression: (n, recurse) =>
+			ast.ifExpr(
+				recurse(n.condition),
+				recurse(n.consequent),
+				recurse(n.alternate),
+			),
+		ForExpression: (n, recurse) => {
+			// Do not substitute the loop variable inside for body/guard
+			const innerKnown = new Map(knownValues)
+			innerKnown.delete(n.variable)
+			const iterable = recurse(n.iterable)
+			const guard = n.guard ? substituteIdentifiers(n.guard, innerKnown) : null
+			const body = substituteIdentifiers(n.body, innerKnown)
+			return ast.forExpr(n.variable, iterable, guard, body)
+		},
+	})
+}
+
+/**
+ * Optimize an AST using constant folding, constant propagation, and dead code elimination.
+ *
+ * When `externalVariables` is provided, the optimizer can safely propagate variables
+ * that are not in the set — since they cannot be overridden by `ExecutionContext.variables`.
+ * Without this parameter, no variables are propagated (backward-compatible behavior).
+ */
+export function optimize(
+	node: ASTNode,
+	externalVariables?: ReadonlySet<string>,
+): ASTNode {
+	let propagated = fold(node)
+
+	// Constant propagation: iterate until no more substitutions are possible.
+	// Each round may create new literal assignments that enable further propagation.
+	if (externalVariables !== undefined) {
+		while (isProgram(propagated) && propagated.statements.length > 0) {
+			const substituted = propagateConstants(propagated, externalVariables)
+			if (substituted === null) break
+			propagated = fold(substituted)
+		}
+	}
+
+	if (isProgram(propagated) && propagated.statements.length > 0) {
+		const dce = eliminateDeadCode(propagated)
+		// Unwrap single-statement Programs, consistent with how parse() works
+		if (dce.statements.length === 1) {
+			return dce.statements[0] as ASTNode
+		}
+		return dce
+	}
+
+	return propagated
+}
+
+/**
+ * Constant-fold an AST node, evaluating pure expressions at compile time.
+ */
+function fold(node: ASTNode): ASTNode {
+	return visit<ASTNode>(node, {
 		NumberLiteral: (n) => n,
 		StringLiteral: (n) => n,
 		BooleanLiteral: (n) => n,
@@ -191,10 +424,4 @@ export function optimize(node: ASTNode): ASTNode {
 			return ast.program(optimizedStatements)
 		},
 	})
-
-	if (isProgram(folded) && folded.statements.length > 0) {
-		return eliminateDeadCode(folded)
-	}
-
-	return folded
 }
