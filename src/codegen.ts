@@ -1,5 +1,5 @@
 import type { ASTNode, Operator } from './ast'
-import { isAssignment, isBinaryOp, isUnaryOp } from './ast'
+import { isAssignment, isBinaryOp, isRangeExpression, isUnaryOp } from './ast'
 import { getOperatorPrecedence } from './utils'
 import { visit } from './visitor'
 
@@ -117,6 +117,31 @@ export function generate(node: ASTNode): string {
 				return `for ${n.variable} in ${iterable} when ${guard} then ${body}`
 			}
 			return `for ${n.variable} in ${iterable} then ${body}`
+		},
+
+		IndexAccess: (n, recurse) => {
+			const object = recurse(n.object)
+			const index = recurse(n.index)
+			// Wrap object in parens if it's a binary op, unary op, range, or assignment
+			const needsParens =
+				isBinaryOp(n.object) ||
+				isUnaryOp(n.object) ||
+				isAssignment(n.object) ||
+				isRangeExpression(n.object)
+			const objectCode = needsParens ? `(${object})` : object
+			return `${objectCode}[${index}]`
+		},
+
+		RangeExpression: (n, recurse) => {
+			const start = recurse(n.start)
+			const end = recurse(n.end)
+			const op = n.inclusive ? '..=' : '..'
+			// Wrap operands in parens if they are binary ops or ranges
+			const startNeedsParens = isBinaryOp(n.start) || isRangeExpression(n.start)
+			const endNeedsParens = isBinaryOp(n.end) || isRangeExpression(n.end)
+			const startCode = startNeedsParens ? `(${start})` : start
+			const endCode = endNeedsParens ? `(${end})` : end
+			return `${startCode}${op}${endCode}`
 		},
 	})
 }

@@ -29,6 +29,8 @@ const BINARY_OPERATOR_TOKENS = new Set([
 	TokenKind.Ge,
 	TokenKind.And,
 	TokenKind.Or,
+	TokenKind.DotDot,
+	TokenKind.DotDotEq,
 ])
 
 interface ParserState {
@@ -71,6 +73,19 @@ function parseExpression(state: ParserState, minPrecedence: number): ASTNode {
 	let left = parsePrefix(state)
 
 	while (true) {
+		// Postfix: bracket indexing (highest precedence, chains naturally)
+		if (peekKind(state) === TokenKind.LBracket) {
+			advance(state) // consume [
+			const index = parseExpression(state, 0)
+			if (peekKind(state) !== TokenKind.RBracket) {
+				throw new Error('Expected closing bracket')
+			}
+			advance(state) // consume ]
+			left = ast.indexAccess(left, index)
+			continue
+		}
+
+		// Infix: binary operators (including ranges)
 		const kind = state.currentToken[0]
 		const precedence = getTokenPrecedence(kind)
 
@@ -241,6 +256,14 @@ function parseInfix(
 		return ast.assign(identName, value)
 	}
 
+	// Range operators
+	if (tokenKind === TokenKind.DotDot || tokenKind === TokenKind.DotDotEq) {
+		const inclusive = tokenKind === TokenKind.DotDotEq
+		advance(state)
+		const right = parseExpression(state, precedence + 1)
+		return ast.rangeExpr(left, right, inclusive)
+	}
+
 	// Binary operators
 	if (isBinaryOperator(tokenKind)) {
 		const operator = readText(state.cursor, state.currentToken) as Operator
@@ -272,7 +295,7 @@ function parseFunctionArguments(state: ParserState): ASTNode[] {
 	return args
 }
 
-const UNARY_PRECEDENCE = 7
+const UNARY_PRECEDENCE = 8
 
 function isBinaryOperator(kind: TokenKind): boolean {
 	return BINARY_OPERATOR_TOKENS.has(kind)

@@ -11,16 +11,16 @@ describe('CodeGenerator', () => {
 		expect(code).toBe('42')
 	})
 
-	test('decimal shorthand normalizes to standard form', () => {
-		const ast1 = parse('.2')
+	test('decimal numbers generate standard form', () => {
+		const ast1 = parse('0.2')
 		const code1 = generate(ast1)
 		expect(code1).toBe('0.2')
 
-		const ast2 = parse('.5 + .3')
+		const ast2 = parse('0.5 + 0.3')
 		const code2 = generate(ast2)
 		expect(code2).toBe('0.5 + 0.3')
 
-		const ast3 = parse('x = .25')
+		const ast3 = parse('x = 0.25')
 		const code3 = generate(ast3)
 		expect(code3).toBe('x = 0.25')
 	})
@@ -506,5 +506,68 @@ describe('CodeGenerator', () => {
 		const code = generate(ast1)
 		expect(code).toBe(source)
 		expect(evaluate(code)).toEqual([1, 2, 3])
+	})
+
+	// Index access tests
+	test('generate index access', () => {
+		const node = ast.indexAccess(ast.identifier('arr'), ast.number(0))
+		expect(generate(node)).toBe('arr[0]')
+	})
+
+	test('generate chained index access', () => {
+		const node = ast.indexAccess(
+			ast.indexAccess(ast.identifier('matrix'), ast.number(0)),
+			ast.number(1),
+		)
+		expect(generate(node)).toBe('matrix[0][1]')
+	})
+
+	test('generate index access on binary op wraps in parens', () => {
+		const node = ast.indexAccess(
+			ast.add(ast.identifier('a'), ast.identifier('b')),
+			ast.number(0),
+		)
+		expect(generate(node)).toBe('(a + b)[0]')
+	})
+
+	test('index access round-trip', () => {
+		const source = 'arr[0]'
+		const ast1 = parse(source)
+		const code = generate(ast1)
+		expect(code).toBe(source)
+	})
+
+	// Range expression tests
+	test('generate exclusive range', () => {
+		const node = ast.rangeExpr(ast.number(1), ast.number(5), false)
+		expect(generate(node)).toBe('1..5')
+	})
+
+	test('generate inclusive range', () => {
+		const node = ast.rangeExpr(ast.number(1), ast.number(5), true)
+		expect(generate(node)).toBe('1..=5')
+	})
+
+	test('generate range with binary op wraps in parens', () => {
+		const node = ast.rangeExpr(
+			ast.add(ast.number(1), ast.number(2)),
+			ast.add(ast.number(3), ast.number(4)),
+			false,
+		)
+		expect(generate(node)).toBe('(1 + 2)..(3 + 4)')
+	})
+
+	test('exclusive range round-trip', () => {
+		const source = '1..5'
+		const ast1 = parse(source)
+		const code = generate(ast1)
+		expect(code).toBe(source)
+	})
+
+	test('inclusive range round-trip', () => {
+		const source = '1..=5'
+		const ast1 = parse(source)
+		const code = generate(ast1)
+		expect(code).toBe(source)
 	})
 })

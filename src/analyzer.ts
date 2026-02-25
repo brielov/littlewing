@@ -85,6 +85,14 @@ export function extractAssignedVariables(ast: ASTNode): string[] {
 				if (n.guard) recurse(n.guard)
 				recurse(n.body)
 			},
+			IndexAccess: (n, recurse) => {
+				recurse(n.object)
+				recurse(n.index)
+			},
+			RangeExpression: (n, recurse) => {
+				recurse(n.start)
+				recurse(n.end)
+			},
 		},
 		// Default handler: no-op for all other node types
 		() => {},

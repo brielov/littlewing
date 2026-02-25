@@ -25,16 +25,17 @@ The codebase follows a **three-stage compilation pipeline**:
 
 1. **Lexer** (`src/lexer.ts`) - Tokenizes source code into a token stream
    - Single-pass O(n) tokenization
-   - Handles numbers (including decimal shorthand like `.5`), identifiers, operators, punctuation
-   - Supports scientific notation (`1.5e6`) and decimal shorthand (`.5` → `0.5`)
+   - Handles numbers (integers and standard decimals like `0.5`), identifiers, operators, punctuation
    - Handles string literals with escape sequences (`\"`, `\\`, `\n`, `\t`)
-   - Handles bracket tokens (`[`, `]`) for array literals
+   - Handles bracket tokens (`[`, `]`) for array literals and index access
+   - Handles range tokens (`..`, `..=`) for range expressions
    - Skips whitespace, semicolons, and single-line comments (`//`) automatically
    - `true` and `false` are parsed as identifiers and handled in the parser
 
 2. **Parser** (`src/parser.ts`) - Builds an Abstract Syntax Tree (AST)
    - Pratt parsing (top-down operator precedence climbing)
-   - Supports: unary > exponentiation > mult/div/mod > add/sub > comparison > logical AND > logical OR > assignment
+   - Supports: unary > exponentiation > mult/div/mod > add/sub > range > comparison > logical AND > logical OR > assignment
+   - Postfix bracket indexing (`arr[0]`, `str[1]`) with chaining support (`a[0][1]`, `f()[0]`)
    - `if/then/else` and `for/in/then` are prefix expressions (not infix), parsed in prefix position
    - Keywords: `if`, `then`, `else`, `for`, `in`, `when` — have no precedence, naturally terminate sub-expressions
    - Handles string literals, boolean literals (`true`/`false` in prefix position), array literals (`[...]`)
@@ -55,8 +56,8 @@ The codebase follows a **three-stage compilation pipeline**:
 ### Key Types and Contracts
 
 - **RuntimeValue** (`src/types.ts`) - `number | string | boolean | Temporal.PlainDate | readonly RuntimeValue[]`
-- **ASTNode** (`src/ast.ts`) - Discriminated union of 12 node types:
-  - Program, NumberLiteral, StringLiteral, BooleanLiteral, ArrayLiteral, Identifier, BinaryOp, UnaryOp, FunctionCall, Assignment, IfExpression, ForExpression
+- **ASTNode** (`src/ast.ts`) - Discriminated union of 14 node types:
+  - Program, NumberLiteral, StringLiteral, BooleanLiteral, ArrayLiteral, Identifier, BinaryOp, UnaryOp, FunctionCall, Assignment, IfExpression, ForExpression, IndexAccess, RangeExpression
 - **ExecutionContext** (`src/types.ts`) - Provides global `functions` and `variables`
   - Functions: `(...args: RuntimeValue[]) => RuntimeValue`
   - Variables: `Record<string, RuntimeValue>`
@@ -74,6 +75,9 @@ Type guards (`isNumberLiteral`, `isStringLiteral`, `isBooleanLiteral`, `isArrayL
 | `&&`, `||` | boolean only | Short-circuit; returns boolean |
 | `!` | boolean only | Logical NOT |
 | `-` (unary) | number only | Negation |
+| `[]` | array or string | Bracket indexing (zero-based, negative OK) |
+| `..` | number | Exclusive range (`1..4` → `[1, 2, 3]`) |
+| `..=` | number | Inclusive range (`1..=3` → `[1, 2, 3]`) |
 
 ### Public API
 
@@ -89,20 +93,20 @@ Type guards (`isNumberLiteral`, `isStringLiteral`, `isBooleanLiteral`, `isArrayL
 
 **Builders (`ast` namespace):**
 
-- Core: `program()`, `number()`, `string()`, `boolean()`, `array()`, `identifier()`, `binaryOp()`, `unaryOp()`, `functionCall()`, `assign()`, `ifExpr()`, `forExpr()`
+- Core: `program()`, `number()`, `string()`, `boolean()`, `array()`, `identifier()`, `binaryOp()`, `unaryOp()`, `functionCall()`, `assign()`, `ifExpr()`, `forExpr()`, `indexAccess()`, `rangeExpr()`
 - Arithmetic: `add()`, `subtract()`, `multiply()`, `divide()`, `modulo()`, `exponentiate()`, `negate()`
 - Comparison: `equals()`, `notEquals()`, `lessThan()`, `greaterThan()`, `lessEqual()`, `greaterEqual()`
 - Logical: `logicalAnd()`, `logicalOr()`, `logicalNot()`
 
 **Visitor Pattern:**
 
-- `visit<T>(node, visitor)` - Exhaustive visitor requiring handlers for all 12 node types
+- `visit<T>(node, visitor)` - Exhaustive visitor requiring handlers for all 14 node types
 - `visitPartial<T>(node, visitor, defaultHandler)` - Partial visitor with fallback
 - `Visitor<T>` - Type definition for visitor objects
 
 **Type Guards:**
 
-- `isProgram()`, `isNumberLiteral()`, `isStringLiteral()`, `isBooleanLiteral()`, `isArrayLiteral()`, `isIdentifier()`, `isBinaryOp()`, `isUnaryOp()`, `isFunctionCall()`, `isAssignment()`, `isIfExpression()`, `isForExpression()`
+- `isProgram()`, `isNumberLiteral()`, `isStringLiteral()`, `isBooleanLiteral()`, `isArrayLiteral()`, `isIdentifier()`, `isBinaryOp()`, `isUnaryOp()`, `isFunctionCall()`, `isAssignment()`, `isIfExpression()`, `isForExpression()`, `isIndexAccess()`, `isRangeExpression()`
 
 **Utilities:**
 
@@ -179,7 +183,7 @@ test/
 ├── visitor.test.ts         # Visitor pattern tests
 ├── codegen.test.ts         # Code generation tests (all types round-trip)
 ├── analyzer.test.ts        # Analyzer tests
-├── ast.test.ts             # AST builder tests (all 12 node types)
+├── ast.test.ts             # AST builder tests (all 14 node types)
 ├── defaults.test.ts        # Default context tests (all stdlib functions)
 ├── date-utils.test.ts      # Date utility tests (Temporal.PlainDate)
 ├── integration.test.ts     # Integration tests (full pipeline)
@@ -214,7 +218,7 @@ The codebase uses a centralized visitor pattern for AST traversal, implemented i
 
 **Two visitor functions:**
 
-1. **`visit<T>(node, visitor)`** - Exhaustive visitor requiring all 12 node type handlers
+1. **`visit<T>(node, visitor)`** - Exhaustive visitor requiring all 14 node type handlers
 2. **`visitPartial<T>(node, visitor, defaultHandler)`** - Partial visitor with fallback
 
 **Used by:** interpreter, optimizer, codegen, analyzer
@@ -237,6 +241,8 @@ const count = visit(ast, {
   Assignment: (n, recurse) => 1 + recurse(n.value),
   IfExpression: (n, recurse) => 1 + recurse(n.condition) + recurse(n.consequent) + recurse(n.alternate),
   ForExpression: (n, recurse) => 1 + recurse(n.iterable) + (n.guard ? recurse(n.guard) : 0) + recurse(n.body),
+  IndexAccess: (n, recurse) => 1 + recurse(n.object) + recurse(n.index),
+  RangeExpression: (n, recurse) => 1 + recurse(n.start) + recurse(n.end),
 });
 ```
 
@@ -261,7 +267,7 @@ The optimizer (`src/optimizer.ts`) implements constant folding, constant propaga
 
 Tests use Bun's built-in test framework:
 
-- **604 tests** across 14 test files
+- **653 tests** across 14 test files
 - Run a single test file: `bun test test/optimizer.test.ts`
 
 ### Code Style
@@ -304,7 +310,7 @@ Tests use Bun's built-in test framework:
 ## AST Node Types Reference
 
 ```typescript
-// 12 readonly object-based AST node types
+// 14 readonly object-based AST node types
 
 interface Program { readonly kind: NodeKind.Program; readonly statements: readonly ASTNode[] }
 interface NumberLiteral { readonly kind: NodeKind.NumberLiteral; readonly value: number }
@@ -318,6 +324,8 @@ interface FunctionCall { readonly kind: NodeKind.FunctionCall; readonly name: st
 interface Assignment { readonly kind: NodeKind.Assignment; readonly name: string; readonly value: ASTNode }
 interface IfExpression { readonly kind: NodeKind.IfExpression; readonly condition: ASTNode; readonly consequent: ASTNode; readonly alternate: ASTNode }
 interface ForExpression { readonly kind: NodeKind.ForExpression; readonly variable: string; readonly iterable: ASTNode; readonly guard: ASTNode | null; readonly body: ASTNode }
+interface IndexAccess { readonly kind: NodeKind.IndexAccess; readonly object: ASTNode; readonly index: ASTNode }
+interface RangeExpression { readonly kind: NodeKind.RangeExpression; readonly start: ASTNode; readonly end: ASTNode; readonly inclusive: boolean }
 ```
 
 ## Built-in Functions Summary

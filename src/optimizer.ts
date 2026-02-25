@@ -1,6 +1,7 @@
 import * as ast from './ast'
 import {
 	type ASTNode,
+	isArrayLiteral,
 	isAssignment,
 	isBooleanLiteral,
 	isNumberLiteral,
@@ -8,7 +9,12 @@ import {
 	isStringLiteral,
 	type Program,
 } from './ast'
-import { collectAllIdentifiers, evaluateBinaryOperation } from './utils'
+import {
+	buildRange,
+	collectAllIdentifiers,
+	evaluateBinaryOperation,
+	resolveIndex,
+} from './utils'
 import { visit } from './visitor'
 
 /**
@@ -188,6 +194,14 @@ function collectReferencedIdentifiers(node: ASTNode, ids: Set<string>): void {
 			if (n.guard) recurse(n.guard)
 			recurse(n.body)
 		},
+		IndexAccess: (n, recurse) => {
+			recurse(n.object)
+			recurse(n.index)
+		},
+		RangeExpression: (n, recurse) => {
+			recurse(n.start)
+			recurse(n.end)
+		},
 	})
 }
 
@@ -230,6 +244,14 @@ function collectForLoopVars(node: ASTNode, vars: Set<string>): void {
 			if (n.guard) recurse(n.guard)
 			recurse(n.body)
 		},
+		IndexAccess: (n, recurse) => {
+			recurse(n.object)
+			recurse(n.index)
+		},
+		RangeExpression: (n, recurse) => {
+			recurse(n.start)
+			recurse(n.end)
+		},
 	})
 }
 
@@ -267,6 +289,10 @@ function substituteIdentifiers(
 			const body = substituteIdentifiers(n.body, innerKnown)
 			return ast.forExpr(n.variable, iterable, guard, body)
 		},
+		IndexAccess: (n, recurse) =>
+			ast.indexAccess(recurse(n.object), recurse(n.index)),
+		RangeExpression: (n, recurse) =>
+			ast.rangeExpr(recurse(n.start), recurse(n.end), n.inclusive),
 	})
 }
 
@@ -417,6 +443,56 @@ function fold(node: ASTNode): ASTNode {
 			const guard = n.guard ? recurse(n.guard) : null
 			const body = recurse(n.body)
 			return ast.forExpr(n.variable, iterable, guard, body)
+		},
+
+		IndexAccess: (n, recurse) => {
+			const object = recurse(n.object)
+			const index = recurse(n.index)
+
+			// Fold array[number] at compile time
+			if (isArrayLiteral(object) && isNumberLiteral(index)) {
+				const idx = index.value
+				if (Number.isInteger(idx)) {
+					const len = object.elements.length
+					const resolved = idx < 0 ? len + idx : idx
+					if (resolved >= 0 && resolved < len) {
+						return object.elements[resolved] as ASTNode
+					}
+				}
+			}
+
+			// Fold string[number] at compile time
+			if (isStringLiteral(object) && isNumberLiteral(index)) {
+				try {
+					const char = resolveIndex(object.value, index.value)
+					return ast.string(char as string)
+				} catch {
+					// Out of bounds — leave unfoldable
+				}
+			}
+
+			return ast.indexAccess(object, index)
+		},
+
+		RangeExpression: (n, recurse) => {
+			const start = recurse(n.start)
+			const end = recurse(n.end)
+
+			// Fold constant ranges at compile time (cap at 10000 elements)
+			if (isNumberLiteral(start) && isNumberLiteral(end)) {
+				try {
+					const limit = n.inclusive ? end.value + 1 : end.value
+					const count = limit - start.value
+					if (count >= 0 && count <= 10000) {
+						const values = buildRange(start.value, end.value, n.inclusive)
+						return ast.array(values.map(ast.number))
+					}
+				} catch {
+					// Invalid range — leave unfoldable
+				}
+			}
+
+			return ast.rangeExpr(start, end, n.inclusive)
 		},
 
 		Program: (n, recurse) => {

@@ -14,28 +14,22 @@ describe('Interpreter', () => {
 		expect(result).toBe(5)
 	})
 
-	test('execute decimal shorthand', () => {
-		expect(evaluate('.2')).toBe(0.2)
-		expect(evaluate('.5')).toBe(0.5)
-		expect(evaluate('.999')).toBe(0.999)
+	test('execute decimal numbers', () => {
+		expect(evaluate('0.2')).toBe(0.2)
+		expect(evaluate('0.5')).toBe(0.5)
+		expect(evaluate('0.999')).toBe(0.999)
 	})
 
-	test('execute decimal shorthand in expressions', () => {
-		expect(evaluate('.2 + .3')).toBeCloseTo(0.5)
-		expect(evaluate('.5 * 2')).toBe(1)
-		expect(evaluate('1 - .25')).toBe(0.75)
-		expect(evaluate('.1 + .2')).toBeCloseTo(0.3)
+	test('execute decimal numbers in expressions', () => {
+		expect(evaluate('0.2 + 0.3')).toBeCloseTo(0.5)
+		expect(evaluate('0.5 * 2')).toBe(1)
+		expect(evaluate('1 - 0.25')).toBe(0.75)
+		expect(evaluate('0.1 + 0.2')).toBeCloseTo(0.3)
 	})
 
-	test('execute decimal shorthand with variables', () => {
-		expect(evaluate('x = .5; x * 2')).toBe(1)
-		expect(evaluate('y = .25; y + .75')).toBe(1)
-	})
-
-	test('execute decimal shorthand with scientific notation', () => {
-		expect(evaluate('.5e2')).toBe(50)
-		expect(evaluate('.3e-1')).toBeCloseTo(0.03)
-		expect(evaluate('.1e+3')).toBe(100)
+	test('execute decimal numbers with variables', () => {
+		expect(evaluate('x = 0.5; x * 2')).toBe(1)
+		expect(evaluate('y = 0.25; y + 0.75')).toBe(1)
 	})
 
 	test('execute operator precedence', () => {
@@ -391,6 +385,115 @@ describe('For expression', () => {
 	test('for with string produces string array', () => {
 		const result = evaluate('for c in "hi" then c + c')
 		expect(result).toEqual(['hh', 'ii'])
+	})
+})
+
+describe('Bracket indexing', () => {
+	test('array indexing', () => {
+		expect(evaluate('[1, 2, 3][0]')).toBe(1)
+		expect(evaluate('[1, 2, 3][2]')).toBe(3)
+	})
+
+	test('negative indexing', () => {
+		expect(evaluate('[1, 2, 3][-1]')).toBe(3)
+		expect(evaluate('[1, 2, 3][-3]')).toBe(1)
+	})
+
+	test('string indexing', () => {
+		expect(evaluate('"hello"[0]')).toBe('h')
+		expect(evaluate('"hello"[4]')).toBe('o')
+		expect(evaluate('"hello"[-1]')).toBe('o')
+	})
+
+	test('chained indexing', () => {
+		expect(evaluate('[[1, 2], [3, 4]][0][1]')).toBe(2)
+		expect(evaluate('[[1, 2], [3, 4]][1][0]')).toBe(3)
+	})
+
+	test('indexing with variables', () => {
+		expect(evaluate('arr = [10, 20, 30]; arr[1]')).toBe(20)
+	})
+
+	test('indexing with expression index', () => {
+		expect(evaluate('[10, 20, 30][1 + 1]')).toBe(30)
+	})
+
+	test('out of bounds throws RangeError', () => {
+		expect(() => evaluate('[1, 2, 3][5]')).toThrow(RangeError)
+		expect(() => evaluate('[1, 2, 3][-4]')).toThrow(RangeError)
+		expect(() => evaluate('"hi"[5]')).toThrow(RangeError)
+	})
+
+	test('non-integer index throws TypeError', () => {
+		expect(() => evaluate('[1, 2, 3][1.5]')).toThrow(TypeError)
+	})
+
+	test('non-number index throws TypeError', () => {
+		expect(() => evaluate('[1, 2, 3]["x"]')).toThrow(TypeError)
+	})
+
+	test('indexing non-array/string throws TypeError', () => {
+		expect(() => evaluate('x = 5; x[0]')).toThrow(TypeError)
+		expect(() => evaluate('x = true; x[0]')).toThrow(TypeError)
+	})
+
+	test('function call followed by indexing', () => {
+		expect(
+			evaluate('f()[0]', {
+				functions: { f: () => [10, 20, 30] },
+			}),
+		).toBe(10)
+	})
+})
+
+describe('Range expressions', () => {
+	test('exclusive range', () => {
+		expect(evaluate('1..5')).toEqual([1, 2, 3, 4])
+	})
+
+	test('inclusive range', () => {
+		expect(evaluate('1..=5')).toEqual([1, 2, 3, 4, 5])
+	})
+
+	test('single element exclusive range', () => {
+		expect(evaluate('1..2')).toEqual([1])
+	})
+
+	test('single element inclusive range', () => {
+		expect(evaluate('1..=1')).toEqual([1])
+	})
+
+	test('empty exclusive range', () => {
+		expect(evaluate('5..5')).toEqual([])
+	})
+
+	test('start > end throws RangeError', () => {
+		expect(() => evaluate('5..3')).toThrow(RangeError)
+	})
+
+	test('non-integer start throws TypeError', () => {
+		expect(() => evaluate('1.5..5')).toThrow(TypeError)
+	})
+
+	test('non-integer end throws TypeError', () => {
+		expect(() => evaluate('1..5.5')).toThrow(TypeError)
+	})
+
+	test('non-number throws TypeError', () => {
+		expect(() => evaluate('x = "a"; x..5')).toThrow(TypeError)
+	})
+
+	test('range with for comprehension', () => {
+		expect(evaluate('for i in 1..=5 then i * 2')).toEqual([2, 4, 6, 8, 10])
+	})
+
+	test('range indexing', () => {
+		expect(evaluate('(1..=3)[0]')).toBe(1)
+		expect(evaluate('(0..5)[2]')).toBe(2)
+	})
+
+	test('range with arithmetic bounds', () => {
+		expect(evaluate('(1 + 1)..(3 + 2)')).toEqual([2, 3, 4])
 	})
 })
 

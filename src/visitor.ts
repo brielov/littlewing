@@ -9,9 +9,11 @@ import {
 	getNodeName,
 	type Identifier,
 	type IfExpression,
+	type IndexAccess,
 	NodeKind,
 	type NumberLiteral,
 	type Program,
+	type RangeExpression,
 	type StringLiteral,
 	type UnaryOp,
 } from './ast'
@@ -39,6 +41,8 @@ export type Visitor<T> = {
 	Assignment: (node: Assignment, recurse: (n: ASTNode) => T) => T
 	IfExpression: (node: IfExpression, recurse: (n: ASTNode) => T) => T
 	ForExpression: (node: ForExpression, recurse: (n: ASTNode) => T) => T
+	IndexAccess: (node: IndexAccess, recurse: (n: ASTNode) => T) => T
+	RangeExpression: (node: RangeExpression, recurse: (n: ASTNode) => T) => T
 }
 
 /**
@@ -124,6 +128,14 @@ export function visitPartial<T>(
 		case NodeKind.ForExpression:
 			return visitor.ForExpression
 				? visitor.ForExpression(node, recurse)
+				: defaultHandler(node, recurse)
+		case NodeKind.IndexAccess:
+			return visitor.IndexAccess
+				? visitor.IndexAccess(node, recurse)
+				: defaultHandler(node, recurse)
+		case NodeKind.RangeExpression:
+			return visitor.RangeExpression
+				? visitor.RangeExpression(node, recurse)
 				: defaultHandler(node, recurse)
 	}
 }

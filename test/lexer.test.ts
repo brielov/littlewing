@@ -155,46 +155,66 @@ describe('Lexer', () => {
 		expectTokenNumber(cursor, tokens[0], TokenKind.Number, 1704067200000)
 	})
 
-	test('tokenize scientific notation', () => {
-		const source = '1.5e6 2e10 3e-2 4E+5'
-		const cursor = createCursor(source)
-		const tokens = tokenize(source)
-
-		expectTokenNumber(cursor, tokens[0], TokenKind.Number, 1500000)
-		expectTokenNumber(cursor, tokens[1], TokenKind.Number, 20000000000)
-		expectTokenNumber(cursor, tokens[2], TokenKind.Number, 0.03)
-		expectTokenNumber(cursor, tokens[3], TokenKind.Number, 400000)
+	test('error on leading-dot shorthand', () => {
+		expect(() => tokenize('.5')).toThrow('Unexpected character')
+		expect(() => tokenize('.2 + .3')).toThrow('Unexpected character')
 	})
 
-	test('error on invalid scientific notation', () => {
-		expect(() => tokenize('1e')).toThrow('expected digit after exponent')
-		expect(() => tokenize('1e+')).toThrow('expected digit after exponent')
-	})
-
-	test('tokenize decimal shorthand', () => {
-		const source = '.2 .5 .999'
+	test('error on scientific notation', () => {
+		// 1e6 is now lexed as number(1) then identifier(e6)
+		const source = '1e6'
 		const cursor = createCursor(source)
 		const tokens = tokenize(source)
-
-		expectTokenNumber(cursor, tokens[0], TokenKind.Number, 0.2)
-		expectTokenNumber(cursor, tokens[1], TokenKind.Number, 0.5)
-		expectTokenNumber(cursor, tokens[2], TokenKind.Number, 0.999)
-	})
-
-	test('tokenize decimal shorthand with scientific notation', () => {
-		const source = '.5e2 .3E-1 .1e+3'
-		const cursor = createCursor(source)
-		const tokens = tokenize(source)
-
-		expectTokenNumber(cursor, tokens[0], TokenKind.Number, 50)
-		expectTokenNumber(cursor, tokens[1], TokenKind.Number, 0.03)
-		expectTokenNumber(cursor, tokens[2], TokenKind.Number, 100)
+		expectTokenNumber(cursor, tokens[0], TokenKind.Number, 1)
+		expectTokenText(cursor, tokens[1], TokenKind.Identifier, 'e6')
 	})
 
 	test('error on lone decimal point', () => {
 		expect(() => tokenize('.')).toThrow('Unexpected character')
 		expect(() => tokenize('1 + .')).toThrow('Unexpected character')
 		expect(() => tokenize('. + 1')).toThrow('Unexpected character')
+	})
+
+	test('tokenize .. operator', () => {
+		const source = '1..5'
+		const cursor = createCursor(source)
+		const tokens = tokenize(source)
+
+		expectTokenNumber(cursor, tokens[0], TokenKind.Number, 1)
+		expectToken(tokens[1], TokenKind.DotDot)
+		expectTokenNumber(cursor, tokens[2], TokenKind.Number, 5)
+	})
+
+	test('tokenize ..= operator', () => {
+		const source = '1..=5'
+		const cursor = createCursor(source)
+		const tokens = tokenize(source)
+
+		expectTokenNumber(cursor, tokens[0], TokenKind.Number, 1)
+		expectToken(tokens[1], TokenKind.DotDotEq)
+		expectTokenNumber(cursor, tokens[2], TokenKind.Number, 5)
+	})
+
+	test('disambiguate decimal from range', () => {
+		// 5.3..10 should be: number(5.3) DotDot number(10)
+		const source = '5.3..10'
+		const cursor = createCursor(source)
+		const tokens = tokenize(source)
+
+		expectTokenNumber(cursor, tokens[0], TokenKind.Number, 5.3)
+		expectToken(tokens[1], TokenKind.DotDot)
+		expectTokenNumber(cursor, tokens[2], TokenKind.Number, 10)
+	})
+
+	test('integer followed by range', () => {
+		// 5..10 should be: number(5) DotDot number(10)
+		const source = '5..10'
+		const cursor = createCursor(source)
+		const tokens = tokenize(source)
+
+		expectTokenNumber(cursor, tokens[0], TokenKind.Number, 5)
+		expectToken(tokens[1], TokenKind.DotDot)
+		expectTokenNumber(cursor, tokens[2], TokenKind.Number, 10)
 	})
 
 	test('tokenize comparison operators', () => {

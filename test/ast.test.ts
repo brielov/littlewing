@@ -6,6 +6,8 @@ import {
 	isBooleanLiteral,
 	isForExpression,
 	isIfExpression,
+	isIndexAccess,
+	isRangeExpression,
 	isStringLiteral,
 	NodeKind,
 } from '../src/ast'
@@ -192,5 +194,41 @@ describe('AST Builders', () => {
 		expect(node.operator).toBe('!')
 		const result = evaluate(node)
 		expect(result).toBe(false)
+	})
+
+	test('indexAccess builder', () => {
+		const node = ast.indexAccess(
+			ast.array([ast.number(10), ast.number(20)]),
+			ast.number(1),
+		)
+		expect(isIndexAccess(node)).toBe(true)
+		if (isIndexAccess(node)) {
+			expect(node.kind).toBe(NodeKind.IndexAccess)
+			expect(isArrayLiteral(node.object)).toBe(true)
+			expect(ast.isNumberLiteral(node.index)).toBe(true)
+		}
+		const result = evaluate(node)
+		expect(result).toBe(20)
+	})
+
+	test('rangeExpr builder', () => {
+		const node = ast.rangeExpr(ast.number(1), ast.number(4), false)
+		expect(isRangeExpression(node)).toBe(true)
+		if (isRangeExpression(node)) {
+			expect(node.kind).toBe(NodeKind.RangeExpression)
+			expect(node.inclusive).toBe(false)
+		}
+		const result = evaluate(node)
+		expect(result).toEqual([1, 2, 3])
+	})
+
+	test('rangeExpr builder inclusive', () => {
+		const node = ast.rangeExpr(ast.number(1), ast.number(3), true)
+		expect(isRangeExpression(node)).toBe(true)
+		if (isRangeExpression(node)) {
+			expect(node.inclusive).toBe(true)
+		}
+		const result = evaluate(node)
+		expect(result).toEqual([1, 2, 3])
 	})
 })

@@ -11,6 +11,7 @@ import {
 	functionCall,
 	identifier,
 	ifExpr,
+	indexAccess,
 	isBinaryOp,
 	isNumberLiteral,
 	multiply,
@@ -18,6 +19,7 @@ import {
 	negate,
 	number,
 	program,
+	rangeExpr,
 	string,
 	subtract,
 	unaryOp,
@@ -42,6 +44,8 @@ describe('visit', () => {
 				Assignment: () => 0,
 				IfExpression: () => 0,
 				ForExpression: () => 0,
+				IndexAccess: () => 0,
+				RangeExpression: () => 0,
 			})
 			expect(result).toBe(42)
 		})
@@ -61,6 +65,8 @@ describe('visit', () => {
 				Assignment: () => '',
 				IfExpression: () => '',
 				ForExpression: () => '',
+				IndexAccess: () => '',
+				RangeExpression: () => '',
 			})
 			expect(result).toBe('x')
 		})
@@ -80,6 +86,8 @@ describe('visit', () => {
 				Assignment: () => 0,
 				IfExpression: () => 0,
 				ForExpression: () => 0,
+				IndexAccess: () => 0,
+				RangeExpression: () => 0,
 			})
 			expect(result).toBe(5)
 		})
@@ -99,6 +107,8 @@ describe('visit', () => {
 				Assignment: () => 0,
 				IfExpression: () => 0,
 				ForExpression: () => 0,
+				IndexAccess: () => 0,
+				RangeExpression: () => 0,
 			})
 			expect(result).toBe(-5)
 		})
@@ -121,6 +131,8 @@ describe('visit', () => {
 				Assignment: () => '',
 				IfExpression: () => '',
 				ForExpression: () => '',
+				IndexAccess: () => '',
+				RangeExpression: () => '',
 			})
 			expect(result).toEqual('sum(1,2)')
 		})
@@ -140,6 +152,8 @@ describe('visit', () => {
 				Assignment: (n, recurse) => `${n.name}=${recurse(n.value)}`,
 				IfExpression: () => '',
 				ForExpression: () => '',
+				IndexAccess: () => '',
+				RangeExpression: () => '',
 			})
 			expect(result).toBe('x=10')
 		})
@@ -162,6 +176,8 @@ describe('visit', () => {
 						? recurse(n.consequent)
 						: recurse(n.alternate),
 				ForExpression: () => 0,
+				IndexAccess: () => 0,
+				RangeExpression: () => 0,
 			})
 			expect(result).toBe(100)
 		})
@@ -187,6 +203,8 @@ describe('visit', () => {
 				IfExpression: () => '',
 				ForExpression: (n, recurse) =>
 					`for ${n.variable} in ${recurse(n.iterable)} then ${recurse(n.body)}`,
+				IndexAccess: () => '',
+				RangeExpression: () => '',
 			})
 			expect(result).toBe('for x in [1, 2, 3] then x')
 		})
@@ -207,6 +225,8 @@ describe('visit', () => {
 				Assignment: () => 0,
 				IfExpression: () => 0,
 				ForExpression: () => 0,
+				IndexAccess: () => 0,
+				RangeExpression: () => 0,
 			})
 			expect(result).toBe(6)
 		})
@@ -226,6 +246,8 @@ describe('visit', () => {
 				Assignment: () => '',
 				IfExpression: () => '',
 				ForExpression: () => '',
+				IndexAccess: () => '',
+				RangeExpression: () => '',
 			})
 			expect(result).toBe('hello')
 		})
@@ -245,6 +267,8 @@ describe('visit', () => {
 				Assignment: () => false,
 				IfExpression: () => false,
 				ForExpression: () => false,
+				IndexAccess: () => false,
+				RangeExpression: () => false,
 			})
 			expect(result).toBe(true)
 		})
@@ -265,6 +289,8 @@ describe('visit', () => {
 				Assignment: () => 0,
 				IfExpression: () => 0,
 				ForExpression: () => 0,
+				IndexAccess: () => 0,
+				RangeExpression: () => 0,
 			})
 			expect(result).toBe(6)
 		})
@@ -293,6 +319,8 @@ describe('visit', () => {
 				Assignment: () => 0,
 				IfExpression: () => 0,
 				ForExpression: () => 0,
+				IndexAccess: () => 0,
+				RangeExpression: () => 0,
 			})
 			expect(result).toBe(20)
 		})
@@ -322,6 +350,8 @@ describe('visit', () => {
 				Assignment: () => 0,
 				IfExpression: () => 0,
 				ForExpression: () => 0,
+				IndexAccess: () => 0,
+				RangeExpression: () => 0,
 			})
 			expect(result).toBe(26) // (3 * 7) + 5
 		})
@@ -362,6 +392,8 @@ describe('visit', () => {
 				},
 				IfExpression: () => 0,
 				ForExpression: () => 0,
+				IndexAccess: () => 0,
+				RangeExpression: () => 0,
 			})
 
 			expect(result).toBe(15)
@@ -398,6 +430,10 @@ describe('visit', () => {
 						n.guard ? recurse(n.guard) : null,
 						recurse(n.body),
 					),
+				IndexAccess: (n, recurse) =>
+					indexAccess(recurse(n.object), recurse(n.index)),
+				RangeExpression: (n, recurse) =>
+					rangeExpr(recurse(n.start), recurse(n.end), n.inclusive),
 			})
 
 			expect(transformed.kind).toBe(NodeKind.BinaryOp)
@@ -449,6 +485,10 @@ describe('visit', () => {
 						n.guard ? recurse(n.guard) : null,
 						recurse(n.body),
 					),
+				IndexAccess: (n, recurse) =>
+					indexAccess(recurse(n.object), recurse(n.index)),
+				RangeExpression: (n, recurse) =>
+					rangeExpr(recurse(n.start), recurse(n.end), n.inclusive),
 			})
 
 			expect(isNumberLiteral(folded)).toBe(true)
@@ -485,6 +525,8 @@ describe('visit', () => {
 					recurse(n.iterable) +
 					(n.guard ? recurse(n.guard) : 0) +
 					recurse(n.body),
+				IndexAccess: (n, recurse) => 1 + recurse(n.object) + recurse(n.index),
+				RangeExpression: (n, recurse) => 1 + recurse(n.start) + recurse(n.end),
 			})
 			expect(count).toBe(5) // 1 add + 1 mul + 3 numbers
 		})
@@ -538,6 +580,16 @@ describe('visit', () => {
 					recurse(n.body)
 					return undefined
 				},
+				IndexAccess: (n, recurse) => {
+					recurse(n.object)
+					recurse(n.index)
+					return undefined
+				},
+				RangeExpression: (n, recurse) => {
+					recurse(n.start)
+					recurse(n.end)
+					return undefined
+				},
 			})
 
 			// x and y appear in identifiers (not just assignments)
@@ -577,6 +629,10 @@ describe('visit', () => {
 						n.guard ? recurse(n.guard) : 0,
 						recurse(n.body),
 					),
+				IndexAccess: (n, recurse) =>
+					1 + Math.max(recurse(n.object), recurse(n.index)),
+				RangeExpression: (n, recurse) =>
+					1 + Math.max(recurse(n.start), recurse(n.end)),
 			})
 
 			expect(depth).toBe(4) // add -> divide -> subtract -> number
@@ -637,6 +693,16 @@ describe('visit', () => {
 					recurse(n.iterable)
 					if (n.guard) recurse(n.guard)
 					recurse(n.body)
+				},
+				IndexAccess: (n, recurse) => {
+					visited.push('IndexAccess')
+					recurse(n.object)
+					recurse(n.index)
+				},
+				RangeExpression: (n, recurse) => {
+					visited.push('RangeExpression')
+					recurse(n.start)
+					recurse(n.end)
 				},
 			})
 
@@ -792,6 +858,10 @@ describe('visitor examples from real use cases', () => {
 						n.guard ? recurse(n.guard) : null,
 						recurse(n.body),
 					),
+				IndexAccess: (n, recurse) =>
+					indexAccess(recurse(n.object), recurse(n.index)),
+				RangeExpression: (n, recurse) =>
+					rangeExpr(recurse(n.start), recurse(n.end), n.inclusive),
 			})
 		}
 
@@ -855,6 +925,12 @@ describe('visitor examples from real use cases', () => {
 						recurse(n.body)
 					} else if (n.kind === NodeKind.ArrayLiteral) {
 						n.elements.forEach(recurse)
+					} else if (n.kind === NodeKind.IndexAccess) {
+						recurse(n.object)
+						recurse(n.index)
+					} else if (n.kind === NodeKind.RangeExpression) {
+						recurse(n.start)
+						recurse(n.end)
 					}
 					return undefined
 				},

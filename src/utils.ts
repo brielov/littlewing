@@ -271,6 +271,62 @@ function numericComparison(
 }
 
 /**
+ * Resolve an index into an array or string, with negative indexing and bounds checking.
+ * Returns the element at the resolved index.
+ */
+export function resolveIndex(
+	target: readonly RuntimeValue[] | string,
+	index: RuntimeValue,
+): RuntimeValue {
+	if (typeof index !== 'number') {
+		throw new TypeError(`Index expected number, got ${typeOf(index)}`)
+	}
+	if (!Number.isInteger(index)) {
+		throw new TypeError(`Index must be an integer, got ${index}`)
+	}
+
+	const len = typeof target === 'string' ? target.length : target.length
+	const resolved = index < 0 ? len + index : index
+
+	if (resolved < 0 || resolved >= len) {
+		throw new RangeError(`Index ${index} out of bounds for length ${len}`)
+	}
+
+	if (typeof target === 'string') {
+		return target[resolved] as string
+	}
+
+	return target[resolved] as RuntimeValue
+}
+
+/**
+ * Build a range array from start to end (exclusive or inclusive).
+ * Both bounds must be non-negative integers and start <= end.
+ */
+export function buildRange(
+	start: number,
+	end: number,
+	inclusive: boolean,
+): readonly number[] {
+	if (!Number.isInteger(start)) {
+		throw new TypeError(`Range start must be an integer, got ${start}`)
+	}
+	if (!Number.isInteger(end)) {
+		throw new TypeError(`Range end must be an integer, got ${end}`)
+	}
+	if (start > end) {
+		throw new RangeError(`Range start (${start}) must not exceed end (${end})`)
+	}
+
+	const limit = inclusive ? end + 1 : end
+	const result: number[] = []
+	for (let i = start; i < limit; i++) {
+		result.push(i)
+	}
+	return result
+}
+
+/**
  * Get operator precedence (higher number = higher precedence)
  *
  * Precedence hierarchy:
@@ -279,21 +335,22 @@ function numericComparison(
  * - 3: Logical OR (||)
  * - 4: Logical AND (&&)
  * - 5: Comparison (==, !=, <, >, <=, >=)
- * - 6: Addition/Subtraction (+, -)
- * - 7: Multiplication/Division/Modulo (*, /, %)
- * - 8: Exponentiation (^)
+ * - 6: Range (.., ..=)
+ * - 7: Addition/Subtraction (+, -)
+ * - 8: Multiplication/Division/Modulo (*, /, %)
+ * - 9: Exponentiation (^)
  */
 export function getOperatorPrecedence(operator: Operator): number {
 	switch (operator) {
 		case '^':
-			return 8
+			return 9
 		case '*':
 		case '/':
 		case '%':
-			return 7
+			return 8
 		case '+':
 		case '-':
-			return 6
+			return 7
 		case '==':
 		case '!=':
 		case '<':
@@ -359,6 +416,14 @@ export function collectAllIdentifiers(node: ASTNode): Set<string> {
 			if (n.guard) recurse(n.guard)
 			recurse(n.body)
 		},
+		IndexAccess: (n, recurse) => {
+			recurse(n.object)
+			recurse(n.index)
+		},
+		RangeExpression: (n, recurse) => {
+			recurse(n.start)
+			recurse(n.end)
+		},
 	})
 
 	return identifiers
@@ -382,15 +447,18 @@ export function getTokenPrecedence(kind: TokenKind): number {
 		case TokenKind.Le:
 		case TokenKind.Ge:
 			return 5
+		case TokenKind.DotDot:
+		case TokenKind.DotDotEq:
+			return 6
 		case TokenKind.Plus:
 		case TokenKind.Minus:
-			return 6
+			return 7
 		case TokenKind.Star:
 		case TokenKind.Slash:
 		case TokenKind.Percent:
-			return 7
-		case TokenKind.Caret:
 			return 8
+		case TokenKind.Caret:
+			return 9
 		default:
 			return 0
 	}

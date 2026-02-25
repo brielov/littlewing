@@ -4,7 +4,9 @@ import type { ExecutionContext, RuntimeValue } from './types'
 import {
 	assertBoolean,
 	assertNumber,
+	buildRange,
 	evaluateBinaryOperation,
+	resolveIndex,
 	typeOf,
 	validateHomogeneousArray,
 } from './utils'
@@ -120,6 +122,29 @@ function evaluateNode(
 			const condition = recurse(n.condition)
 			assertBoolean(condition, 'If condition')
 			return condition ? recurse(n.consequent) : recurse(n.alternate)
+		},
+
+		IndexAccess: (n, recurse) => {
+			const object = recurse(n.object)
+			const index = recurse(n.index)
+
+			if (Array.isArray(object)) {
+				return resolveIndex(object, index)
+			}
+			if (typeof object === 'string') {
+				return resolveIndex(object, index)
+			}
+			throw new TypeError(
+				`Index access expected array or string, got ${typeOf(object)}`,
+			)
+		},
+
+		RangeExpression: (n, recurse) => {
+			const start = recurse(n.start)
+			const end = recurse(n.end)
+			assertNumber(start, 'Range start')
+			assertNumber(end, 'Range end')
+			return buildRange(start, end, n.inclusive)
 		},
 
 		ForExpression: (n, recurse) => {

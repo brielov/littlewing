@@ -33,6 +33,8 @@ export const enum NodeKind {
 	BooleanLiteral,
 	ArrayLiteral,
 	ForExpression,
+	IndexAccess,
+	RangeExpression,
 }
 
 /**
@@ -144,6 +146,25 @@ export interface ForExpression {
 }
 
 /**
+ * Index access (arr[0], str[1])
+ */
+export interface IndexAccess {
+	readonly kind: NodeKind.IndexAccess
+	readonly object: ASTNode
+	readonly index: ASTNode
+}
+
+/**
+ * Range expression (1..5, 1..=5)
+ */
+export interface RangeExpression {
+	readonly kind: NodeKind.RangeExpression
+	readonly start: ASTNode
+	readonly end: ASTNode
+	readonly inclusive: boolean
+}
+
+/**
  * AST Node - discriminated union of all node types
  */
 export type ASTNode =
@@ -159,6 +180,8 @@ export type ASTNode =
 	| Assignment
 	| IfExpression
 	| ForExpression
+	| IndexAccess
+	| RangeExpression
 
 /**
  * Type guard functions for discriminated union narrowing
@@ -209,6 +232,14 @@ export function isIfExpression(node: ASTNode): node is IfExpression {
 
 export function isForExpression(node: ASTNode): node is ForExpression {
 	return node.kind === NodeKind.ForExpression
+}
+
+export function isIndexAccess(node: ASTNode): node is IndexAccess {
+	return node.kind === NodeKind.IndexAccess
+}
+
+export function isRangeExpression(node: ASTNode): node is RangeExpression {
+	return node.kind === NodeKind.RangeExpression
 }
 
 /**
@@ -327,6 +358,24 @@ export function forExpr(
 }
 
 /**
+ * Create an index access node (arr[0], str[1])
+ */
+export function indexAccess(object: ASTNode, index: ASTNode): IndexAccess {
+	return { kind: NodeKind.IndexAccess, object, index }
+}
+
+/**
+ * Create a range expression node (1..5, 1..=5)
+ */
+export function rangeExpr(
+	start: ASTNode,
+	end: ASTNode,
+	inclusive: boolean,
+): RangeExpression {
+	return { kind: NodeKind.RangeExpression, start, end, inclusive }
+}
+
+/**
  * Convenience functions for common operations
  */
 
@@ -420,6 +469,10 @@ export function getNodeName(node: ASTNode): string {
 			return 'Program'
 		case NodeKind.UnaryOp:
 			return 'UnaryOp'
+		case NodeKind.IndexAccess:
+			return 'IndexAccess'
+		case NodeKind.RangeExpression:
+			return 'RangeExpression'
 		default:
 			throw new Error(`Unknown node kind: ${(node as ASTNode).kind}`)
 	}

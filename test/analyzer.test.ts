@@ -25,14 +25,8 @@ describe('extractInputVariables', () => {
 			expect(inputs).toEqual(['x'])
 		})
 
-		test('extracts variable assigned to decimal shorthand', () => {
-			const ast = parse('x = .5')
-			const inputs = extractInputVariables(ast)
-			expect(inputs).toEqual(['x'])
-		})
-
-		test('extracts variable assigned to scientific notation', () => {
-			const ast = parse('x = 1.5e6')
+		test('extracts variable assigned to decimal', () => {
+			const ast = parse('x = 0.5')
 			const inputs = extractInputVariables(ast)
 			expect(inputs).toEqual(['x'])
 		})

@@ -29,6 +29,10 @@ export const enum TokenKind {
 	And, // &&
 	Or, // ||
 
+	// Range operators
+	DotDot, // ..
+	DotDotEq, // ..=
+
 	// Punctuation
 	LParen, // (
 	RParen, // )
@@ -221,10 +225,6 @@ export function nextToken(cursor: Cursor): Token {
 		return lexNumber(cursor)
 	}
 
-	if (ch === 0x2e && isDigit(peek(cursor, 1))) {
-		return lexNumber(cursor)
-	}
-
 	if (isAlpha(ch) || ch === 0x5f) {
 		return lexIdentifier(cursor)
 	}
@@ -290,6 +290,19 @@ export function nextToken(cursor: Cursor): Token {
 				return [TokenKind.Ge, start, cursor.pos]
 			}
 			return [TokenKind.Gt, start, cursor.pos]
+		case 0x2e: // .
+			if (peek(cursor, 1) === 0x2e) {
+				advance(cursor)
+				advance(cursor)
+				if (peek(cursor) === 0x3d) {
+					advance(cursor)
+					return [TokenKind.DotDotEq, start, cursor.pos]
+				}
+				return [TokenKind.DotDot, start, cursor.pos]
+			}
+			throw new Error(
+				`Unexpected character '${String.fromCharCode(ch)}' at position ${start}`,
+			)
 		case 0x2c: // ,
 			advance(cursor)
 			return [TokenKind.Comma, start, cursor.pos]
@@ -347,81 +360,35 @@ function lexString(cursor: Cursor): Token {
 }
 
 /**
- * Lex a number token
+ * Lex a number token.
+ * Supports integers (42) and standard decimals (3.14).
+ * Only consumes a decimal point if followed by a digit, to avoid
+ * ambiguity with the range operator (..).
  */
 function lexNumber(cursor: Cursor): Token {
 	const start = cursor.pos
 	const { source, len } = cursor
 	let pos = cursor.pos
 
-	if (source.charCodeAt(pos) === 0x2e) {
+	while (pos < len && isDigit(source.charCodeAt(pos))) {
 		pos++
-		while (
-			pos < len &&
-			source.charCodeAt(pos) >= 0x30 &&
-			source.charCodeAt(pos) <= 0x39
-		) {
-			pos++
-		}
-		const ch = pos < len ? source.charCodeAt(pos) : 0
-		if (ch === 0x65 || ch === 0x45) {
-			pos = lexExponent(source, len, pos)
-		}
-		cursor.pos = pos
-		return [TokenKind.Number, start, pos]
 	}
 
-	while (
+	// Only consume '.' if next char is a digit (avoids conflict with '..')
+	if (
 		pos < len &&
-		source.charCodeAt(pos) >= 0x30 &&
-		source.charCodeAt(pos) <= 0x39
+		source.charCodeAt(pos) === 0x2e &&
+		pos + 1 < len &&
+		isDigit(source.charCodeAt(pos + 1))
 	) {
 		pos++
-	}
-
-	if (pos < len && source.charCodeAt(pos) === 0x2e) {
-		pos++
-		while (
-			pos < len &&
-			source.charCodeAt(pos) >= 0x30 &&
-			source.charCodeAt(pos) <= 0x39
-		) {
+		while (pos < len && isDigit(source.charCodeAt(pos))) {
 			pos++
-		}
-	}
-
-	if (pos < len) {
-		const ch = source.charCodeAt(pos)
-		if (ch === 0x65 || ch === 0x45) {
-			pos = lexExponent(source, len, pos)
 		}
 	}
 
 	cursor.pos = pos
 	return [TokenKind.Number, start, pos]
-}
-
-function lexExponent(source: string, len: number, pos: number): number {
-	pos++
-
-	if (pos < len) {
-		const next = source.charCodeAt(pos)
-		if (next === 0x2b || next === 0x2d) {
-			pos++
-		}
-	}
-
-	if (pos >= len || !isDigit(source.charCodeAt(pos))) {
-		throw new Error(
-			`Invalid number: expected digit after exponent at position ${pos}`,
-		)
-	}
-
-	while (pos < len && isDigit(source.charCodeAt(pos))) {
-		pos++
-	}
-
-	return pos
 }
 
 function lexIdentifier(cursor: Cursor): Token {

@@ -4,9 +4,11 @@ import {
 	type BinaryOp,
 	type ForExpression,
 	type IfExpression,
+	type IndexAccess,
 	NodeKind,
 	type NumberLiteral,
 	type Operator,
+	type RangeExpression,
 	type UnaryOp,
 } from '../src/ast'
 import { parse } from '../src/parser'
@@ -220,31 +222,6 @@ describe('Parser', () => {
 	test('parse decimal number', () => {
 		const node = parse('123.456')
 		expectNumber(node, 123.456)
-	})
-
-	test('parse decimal shorthand', () => {
-		const node = parse('.5')
-		expectNumber(node, 0.5)
-	})
-
-	test('parse scientific notation with lowercase e', () => {
-		const node = parse('1.5e6')
-		expectNumber(node, 1500000)
-	})
-
-	test('parse scientific notation with uppercase E', () => {
-		const node = parse('2E-3')
-		expectNumber(node, 0.002)
-	})
-
-	test('parse scientific notation with explicit plus', () => {
-		const node = parse('3e+2')
-		expectNumber(node, 300)
-	})
-
-	test('parse decimal shorthand with scientific notation', () => {
-		const node = parse('.5e2')
-		expectNumber(node, 50)
 	})
 
 	test('parse negative number literal', () => {
@@ -687,5 +664,93 @@ describe('Parser', () => {
 		expect(arr.elements.length).toBe(2)
 		expectKind(arr.elements[0]!, NodeKind.ArrayLiteral)
 		expectKind(arr.elements[1]!, NodeKind.ArrayLiteral)
+	})
+
+	// Bracket indexing tests
+	test('parse bracket indexing', () => {
+		const node = parse('arr[0]')
+		expectKind(node, NodeKind.IndexAccess)
+		const idx = node as IndexAccess
+		expectKind(idx.object, NodeKind.Identifier)
+		expectNumber(idx.index, 0)
+	})
+
+	test('parse bracket indexing with negative index', () => {
+		const node = parse('arr[-1]')
+		expectKind(node, NodeKind.IndexAccess)
+		const idx = node as IndexAccess
+		expectKind(idx.object, NodeKind.Identifier)
+		expectUnaryOp(idx.index, '-')
+	})
+
+	test('parse chained bracket indexing', () => {
+		const node = parse('arr[0][1]')
+		expectKind(node, NodeKind.IndexAccess)
+		const outer = node as IndexAccess
+		expectNumber(outer.index, 1)
+		expectKind(outer.object, NodeKind.IndexAccess)
+		const inner = outer.object as IndexAccess
+		expectKind(inner.object, NodeKind.Identifier)
+		expectNumber(inner.index, 0)
+	})
+
+	test('parse function call followed by indexing', () => {
+		const node = parse('f()[0]')
+		expectKind(node, NodeKind.IndexAccess)
+		const idx = node as IndexAccess
+		expectKind(idx.object, NodeKind.FunctionCall)
+		expectNumber(idx.index, 0)
+	})
+
+	test('parse indexing with expression', () => {
+		const node = parse('arr[x + 1]')
+		expectKind(node, NodeKind.IndexAccess)
+		const idx = node as IndexAccess
+		expectBinaryOp(idx.index, '+')
+	})
+
+	test('parse binary op result indexing', () => {
+		const node = parse('(a + b)[0]')
+		expectKind(node, NodeKind.IndexAccess)
+		const idx = node as IndexAccess
+		expectBinaryOp(idx.object, '+')
+		expectNumber(idx.index, 0)
+	})
+
+	// Range expression tests
+	test('parse exclusive range', () => {
+		const node = parse('1..5')
+		expectKind(node, NodeKind.RangeExpression)
+		const range = node as RangeExpression
+		expectNumber(range.start, 1)
+		expectNumber(range.end, 5)
+		expect(range.inclusive).toBe(false)
+	})
+
+	test('parse inclusive range', () => {
+		const node = parse('1..=5')
+		expectKind(node, NodeKind.RangeExpression)
+		const range = node as RangeExpression
+		expectNumber(range.start, 1)
+		expectNumber(range.end, 5)
+		expect(range.inclusive).toBe(true)
+	})
+
+	test('parse range with arithmetic (range lower precedence than add)', () => {
+		// 1 + 2..3 + 4 should parse as (1 + 2)..(3 + 4)
+		const node = parse('1 + 2..3 + 4')
+		expectKind(node, NodeKind.RangeExpression)
+		const range = node as RangeExpression
+		expectBinaryOp(range.start, '+')
+		expectBinaryOp(range.end, '+')
+	})
+
+	test('parse range indexing', () => {
+		// (1..=3)[0] — range then index
+		const node = parse('(1..=3)[0]')
+		expectKind(node, NodeKind.IndexAccess)
+		const idx = node as IndexAccess
+		expectKind(idx.object, NodeKind.RangeExpression)
+		expectNumber(idx.index, 0)
 	})
 })

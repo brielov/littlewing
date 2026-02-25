@@ -89,8 +89,8 @@ describe('Optimizer', () => {
 		expect((assignNode.value as NumberLiteral).value).toBe(6)
 	})
 
-	test('scientific notation folding', () => {
-		const node = optimize(parse('1e6 + 2e6'))
+	test('large number folding', () => {
+		const node = optimize(parse('1000000 + 2000000'))
 		expect(isNumberLiteral(node)).toBe(true)
 		expect((node as NumberLiteral).value).toBe(3000000)
 	})
@@ -748,5 +748,67 @@ describe('Constant Propagation', () => {
 		// a=5 propagated, c = 5 + 10 = 15, b=external kept but DCE removes it
 		expect(isNumberLiteral(optimized)).toBe(true)
 		expect((optimized as NumberLiteral).value).toBe(15)
+	})
+})
+
+describe('IndexAccess folding', () => {
+	test('folds array literal index access', () => {
+		const optimized = optimize(parse('[1, 2, 3][1]'))
+		expect(isNumberLiteral(optimized)).toBe(true)
+		expect((optimized as NumberLiteral).value).toBe(2)
+	})
+
+	test('folds string literal index access', () => {
+		const optimized = optimize(parse('"hello"[0]'))
+		expect(isStringLiteral(optimized)).toBe(true)
+		expect((optimized as StringLiteral).value).toBe('h')
+	})
+
+	test('folds negative index on array', () => {
+		const optimized = optimize(parse('[10, 20, 30][-1]'))
+		expect(isNumberLiteral(optimized)).toBe(true)
+		expect((optimized as NumberLiteral).value).toBe(30)
+	})
+
+	test('does not fold out of bounds index', () => {
+		const optimized = optimize(parse('[1, 2, 3][5]'))
+		expect(ast.isIndexAccess(optimized)).toBe(true)
+	})
+
+	test('does not fold variable index', () => {
+		const optimized = optimize(parse('[1, 2, 3][x]'))
+		expect(ast.isIndexAccess(optimized)).toBe(true)
+	})
+})
+
+describe('RangeExpression folding', () => {
+	test('folds constant exclusive range', () => {
+		const optimized = optimize(parse('1..4'))
+		expect(ast.isArrayLiteral(optimized)).toBe(true)
+		if (ast.isArrayLiteral(optimized)) {
+			expect(optimized.elements.length).toBe(3)
+			expect((optimized.elements[0] as NumberLiteral).value).toBe(1)
+			expect((optimized.elements[1] as NumberLiteral).value).toBe(2)
+			expect((optimized.elements[2] as NumberLiteral).value).toBe(3)
+		}
+	})
+
+	test('folds constant inclusive range', () => {
+		const optimized = optimize(parse('1..=3'))
+		expect(ast.isArrayLiteral(optimized)).toBe(true)
+		if (ast.isArrayLiteral(optimized)) {
+			expect(optimized.elements.length).toBe(3)
+		}
+	})
+
+	test('does not fold range with variable', () => {
+		const optimized = optimize(parse('1..n'))
+		expect(ast.isRangeExpression(optimized)).toBe(true)
+	})
+
+	test('combined: range then index folds', () => {
+		const optimized = optimize(parse('(1..=5)[2]'))
+		expect(isNumberLiteral(optimized)).toBe(true)
+		expect((optimized as NumberLiteral).value).toBe(3)
 	})
 })

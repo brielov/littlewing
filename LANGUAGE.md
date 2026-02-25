@@ -10,7 +10,10 @@ Littlewing is a **multi-type expression language** with five value types: number
 
 - **Five types** - Numbers, strings, booleans, dates (Temporal.PlainDate), and homogeneous arrays
 - **No implicit coercion** - Explicit type conversion via `STR()`, `NUM()`, etc.
-- **Strict boolean logic** - `!`, `&&`, `||`, and ternary conditions require booleans
+- **Strict boolean logic** - `!`, `&&`, `||`, and `if` conditions require booleans
+- **Control flow** - `if/then/else` expressions and `for/in/then` comprehensions
+- **Bracket indexing** - `arr[0]`, `str[1]`, with negative indexing and chaining
+- **Range expressions** - `1..5` (exclusive), `1..=5` (inclusive)
 - **Deep equality** - `[1, 2] == [1, 2]` evaluates to `true`
 - **Date arithmetic** - Built-in date functions using `Temporal.PlainDate`
 - **Zero dependencies** - Perfect for browser environments (uses `temporal-polyfill`)
@@ -38,17 +41,24 @@ area = 3.14159 * radius ^ 2 // → 78.54
 
 // Conditional expressions
 score = 85
-passed = score >= 60 // → true
-grade = score >= 90 ? "A" : score >= 80 ? "B" : "C" // → "B"
+grade = if score >= 90 then "A" else if score >= 80 then "B" else "C" // → "B"
 
 // Date arithmetic
 today = TODAY()
 deadline = ADD_DAYS(today, 7) // 7 days from now
 daysLeft = DIFFERENCE_IN_DAYS(today, deadline)
 
-// Arrays
+// Arrays with bracket indexing
 items = [10, 20, 30]
-total = ARR_FIRST(items) + ARR_LAST(items) // → 40
+first = items[0]   // → 10
+last = items[-1]   // → 30
+
+// Range expressions
+nums = 1..=5 // → [1, 2, 3, 4, 5]
+
+// For comprehensions
+doubled = for x in 1..=5 then x * 2 // → [2, 4, 6, 8, 10]
+evens = for x in 1..=10 when x % 2 == 0 then x // → [2, 4, 6, 8, 10]
 
 // Financial calculations
 principal = 1000
@@ -65,7 +75,7 @@ Littlewing has five value types:
 
 | Type | Examples | Description |
 | --- | --- | --- |
-| `number` | `42`, `3.14`, `.5`, `1.5e6` | IEEE 754 double-precision floats |
+| `number` | `42`, `3.14`, `0.5` | IEEE 754 double-precision floats |
 | `string` | `"hello"`, `"line1\nline2"` | Double-quoted, with escape sequences |
 | `boolean` | `true`, `false` | Logical values |
 | `date` | `DATE(2024, 6, 15)` | `Temporal.PlainDate` (no time, no timezone) |
@@ -83,16 +93,12 @@ TYPE(true) // → "boolean"
 ### Numbers
 
 - Integers: `42`, `0`, `-17`
-- Decimals: `3.14159`, `-0.5`
-- Decimal shorthand: `.5` (same as `0.5`)
-- Scientific notation: `1.5e6` (1,500,000), `2e-3` (0.002)
+- Decimals: `3.14159`, `0.5`, `-0.5`
 
 ```
 x = 42        // integer
 y = 3.14159   // decimal
-z = .5        // shorthand decimal (same as 0.5)
-w = 1.5e6     // scientific notation
-v = .5e2      // shorthand + scientific = 50
+z = 0.5       // decimal (leading zero required)
 ```
 
 ### Strings
@@ -115,6 +121,14 @@ String concatenation uses `+`:
 first = "hello"
 last = " world"
 full = first + last // → "hello world"
+```
+
+Strings support bracket indexing (returns single-character strings):
+
+```
+msg = "hello"
+msg[0]  // → "h"
+msg[-1] // → "o"
 ```
 
 ### Booleans
@@ -179,13 +193,44 @@ Array concatenation uses `+`:
 [1, 2] + [3, 4] // → [1, 2, 3, 4]
 ```
 
-Access elements via functions (no index syntax):
+Access elements with bracket indexing:
 
 ```
 items = [10, 20, 30]
-ARR_INDEX(items, 0)  // → 10
-ARR_FIRST(items)     // → 10
-ARR_LAST(items)      // → 30
+items[0]   // → 10 (first element)
+items[-1]  // → 30 (last element)
+items[1]   // → 20
+
+// Chaining works
+matrix = [[1, 2], [3, 4]]
+matrix[0][1] // → 2
+```
+
+Out-of-bounds access is a `RangeError`. Non-integer indices are a `TypeError`.
+
+### Range Expressions
+
+Ranges generate arrays of sequential integers:
+
+```
+1..5    // → [1, 2, 3, 4] (exclusive end)
+1..=5   // → [1, 2, 3, 4, 5] (inclusive end)
+0..0    // → [] (empty range)
+3..=3   // → [3] (single element)
+```
+
+Both bounds must be integers. Start must not exceed end:
+
+```
+// TypeError: 1.5..3 (non-integer bounds)
+// RangeError: 5..3 (start > end)
+```
+
+Ranges combine naturally with indexing and comprehensions:
+
+```
+(1..=5)[0]                        // → 1
+for x in 1..=10 then x * x       // → [1, 4, 9, 16, 25, 36, 49, 64, 81, 100]
 ```
 
 ### Variables
@@ -206,7 +251,7 @@ Variable names:
 - Start with letter or underscore
 - Contain letters, numbers, underscores
 - Case-sensitive (`myVar` ≠ `myvar`)
-- `true` and `false` are reserved and cannot be used as variable names
+- `true`, `false`, `if`, `then`, `else`, `for`, `in`, `when` are reserved
 
 ### Comments
 
@@ -290,11 +335,11 @@ y = 0
 safe = y != 0 && 100 / y > 5 // → false (right side not evaluated)
 ```
 
-#### Conditional (Ternary) Operator
+#### Conditional Expressions
 
-Syntax: `condition ? consequent : alternate`
+Syntax: `if condition then consequent else alternate`
 
-The condition **must be a boolean**:
+The condition **must be a boolean**. The `else` clause is **required**:
 
 ```
 // Basic conditional
@@ -303,25 +348,51 @@ canVote = age >= 18 // → true
 
 // Nested conditionals
 score = 85
-grade = score >= 90 ? "A" : score >= 80 ? "B" : score >= 70 ? "C" : "F" // → "B"
+grade = if score >= 90 then "A" else if score >= 80 then "B" else if score >= 70 then "C" else "F" // → "B"
 
 // With calculations
-discount = quantity > 100 ? price * 0.2 : price * 0.1
+discount = if quantity > 100 then price * 0.2 else price * 0.1
 ```
+
+#### For Comprehensions
+
+Syntax: `for variable in iterable [when guard] then body`
+
+Creates a new array by mapping over each element. The optional `when` clause filters elements:
+
+```
+// Map over an array
+nums = [1, 2, 3, 4, 5]
+doubled = for x in nums then x * 2 // → [2, 4, 6, 8, 10]
+
+// Filter with when guard
+evens = for x in nums when x % 2 == 0 then x // → [2, 4]
+
+// Map + filter
+bigDoubled = for x in nums when x > 2 then x * 2 // → [6, 8, 10]
+
+// Iterate over ranges
+squares = for i in 1..=5 then i ^ 2 // → [1, 4, 9, 16, 25]
+
+// Iterate over strings (splits into single-character strings)
+chars = for c in "hello" then STR_UPPER(c) // → ["H", "E", "L", "L", "O"]
+```
+
+The `when` guard must be a boolean expression. The result must be a homogeneous array.
 
 ### Operator Precedence
 
 From highest to lowest (use parentheses to override):
 
-1. **Parentheses:** `(expression)`
+1. **Parentheses / Bracket indexing:** `(expression)`, `expr[index]`
 2. **Unary operators:** `-x`, `!x`
 3. **Exponentiation:** `x ^ y` (right-associative)
 4. **Multiply/Divide/Modulo:** `x * y`, `x / y`, `x % y`
 5. **Add/Subtract:** `x + y`, `x - y`
-6. **Comparisons:** `<`, `>`, `<=`, `>=`, `==`, `!=`
-7. **Logical AND:** `x && y`
-8. **Logical OR:** `x || y`
-9. **Conditional:** `x ? y : z` (right-associative)
+6. **Range:** `x..y`, `x..=y`
+7. **Comparisons:** `<`, `>`, `<=`, `>=`, `==`, `!=`
+8. **Logical AND:** `x && y`
+9. **Logical OR:** `x || y`
 10. **Assignment:** `x = y` (right-associative)
 
 ```
@@ -330,6 +401,7 @@ From highest to lowest (use parentheses to override):
 2 ^ 3 ^ 2      // → 512 (right-associative: 2^(3^2))
 -2 ^ 2          // → -4 (parsed as -(2^2))
 (-2) ^ 2        // → 4 (parentheses change precedence)
+1 + 2..3 + 4    // → [3, 4, 5, 6] (parsed as (1+2)..(3+4))
 ```
 
 ### Multiple Statements
@@ -400,6 +472,8 @@ principal * (1 + rate) ^ years // → 1157.625
 | `ARR_REVERSE(a)` | Reverse array | `ARR_REVERSE([1, 2, 3])` → `[3, 2, 1]` |
 | `ARR_FIRST(a)` | First element | `ARR_FIRST([10, 20])` → `10` |
 | `ARR_LAST(a)` | Last element | `ARR_LAST([10, 20])` → `20` |
+
+Note: Bracket indexing (`arr[0]`, `arr[-1]`) is generally preferred over `ARR_INDEX()` for element access.
 
 ### Date Functions (24 functions)
 
@@ -552,7 +626,7 @@ payment = loanAmount * monthlyRate / (1 - (1 + monthlyRate) ^ -months)
 ```
 // Tiered pricing
 quantity = 150
-unitPrice = quantity > 100 ? 0.8 : quantity > 50 ? 0.9 : 1.0
+unitPrice = if quantity > 100 then 0.8 else if quantity > 50 then 0.9 else 1.0
 total = quantity * unitPrice
 
 // Shipping cost
@@ -562,6 +636,18 @@ baseCost = 10
 weightCost = weight * 0.5
 distanceCost = distance * 0.02
 shippingTotal = baseCost + weightCost + distanceCost
+```
+
+### Data Processing
+
+```
+// Transform arrays
+prices = [10, 25, 50, 75, 100]
+discounted = for p in prices then p * 0.9 // → [9, 22.5, 45, 67.5, 90]
+expensive = for p in prices when p > 50 then p // → [75, 100]
+
+// Generate sequences
+indices = 0..ARR_LEN(prices) // → [0, 1, 2, 3, 4]
 ```
 
 ### Data Validation
@@ -585,6 +671,7 @@ greeting = STR_UPPER("hello") // → "HELLO"
 msg = "hello world"
 hasWorld = STR_CONTAINS(msg, "world") // → true
 first = STR_SLICE(msg, 0, 5) // → "hello"
+initial = msg[0] // → "h"
 
 // Type conversion
 label = "Score: " + STR(95) // → "Score: 95"
@@ -610,13 +697,11 @@ evaluate(formula, { variables: { price: 20, quantity: 3, discount: 0.15 } }); //
 
 ### What Littlewing Doesn't Support
 
-- **No loops** - Use host language for iteration
-- **No if statements** - Use ternary operator instead
 - **No function definitions** - Provide via context
-- **No mutations** - Variables are reassigned, not mutated
+- **No mutations** - Variables are reassigned, not mutated; arrays are immutable
 - **No side effects** - Pure expression evaluation
-- **No index syntax** - Use `ARR_INDEX()` and `STR_CHAR_AT()` functions
 - **No implicit coercion** - Use explicit conversion functions
+- **No general-purpose loops** - `for` comprehensions produce arrays (no imperative looping)
 
 These limitations are features! They ensure:
 
