@@ -4,7 +4,8 @@ import {
 	isArrayLiteral,
 	isBinaryOp,
 	isBooleanLiteral,
-	isConditionalExpression,
+	isForExpression,
+	isIfExpression,
 	isStringLiteral,
 	NodeKind,
 } from '../src/ast'
@@ -89,18 +90,46 @@ describe('AST Builders', () => {
 		}
 	})
 
-	test('conditional expression builder', () => {
-		const node = ast.conditional(
+	test('if expression builder', () => {
+		const node = ast.ifExpr(
 			ast.greaterThan(ast.number(5), ast.number(3)),
 			ast.number(100),
 			ast.number(50),
 		)
-		expect(isConditionalExpression(node)).toBe(true)
-		if (isConditionalExpression(node)) {
-			expect(node.kind).toBe(NodeKind.ConditionalExpression)
+		expect(isIfExpression(node)).toBe(true)
+		if (isIfExpression(node)) {
+			expect(node.kind).toBe(NodeKind.IfExpression)
 			expect(node.condition).toBeDefined()
 			expect(node.consequent).toBeDefined()
 			expect(node.alternate).toBeDefined()
+		}
+	})
+
+	test('for expression builder', () => {
+		const node = ast.forExpr(
+			'x',
+			ast.array([ast.number(1), ast.number(2)]),
+			null,
+			ast.identifier('x'),
+		)
+		expect(isForExpression(node)).toBe(true)
+		if (isForExpression(node)) {
+			expect(node.kind).toBe(NodeKind.ForExpression)
+			expect(node.variable).toBe('x')
+			expect(node.guard).toBeNull()
+		}
+	})
+
+	test('for expression builder with guard', () => {
+		const node = ast.forExpr(
+			'x',
+			ast.identifier('arr'),
+			ast.greaterThan(ast.identifier('x'), ast.number(0)),
+			ast.multiply(ast.identifier('x'), ast.number(2)),
+		)
+		expect(isForExpression(node)).toBe(true)
+		if (isForExpression(node)) {
+			expect(node.guard).not.toBeNull()
 		}
 	})
 

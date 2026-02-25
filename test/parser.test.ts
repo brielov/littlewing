@@ -2,6 +2,8 @@ import { describe, expect, test } from 'bun:test'
 import {
 	type ASTNode,
 	type BinaryOp,
+	type ForExpression,
+	type IfExpression,
 	NodeKind,
 	type NumberLiteral,
 	type Operator,
@@ -163,10 +165,6 @@ describe('Parser', () => {
 		expectBinaryOp(node, '||')
 	})
 
-	test('ternary error on missing colon', () => {
-		expect(() => parse('1 ? 2')).toThrow('Expected : in ternary expression')
-	})
-
 	test('parse logical NOT', () => {
 		const node = parse('!5')
 		expectUnaryOp(node, '!')
@@ -318,60 +316,93 @@ describe('Parser', () => {
 		expectNumber((node as BinaryOp).right, 3)
 	})
 
-	// Ternary operator tests
-	test('parse basic ternary', () => {
-		const node = parse('1 ? 2 : 3')
-		expectKind(node, NodeKind.ConditionalExpression)
-		const cond = node as {
-			condition: ASTNode
-			consequent: ASTNode
-			alternate: ASTNode
-		}
-		expectNumber(cond.condition, 1)
-		expectNumber(cond.consequent, 2)
-		expectNumber(cond.alternate, 3)
+	// If expression tests
+	test('parse basic if expression', () => {
+		const node = parse('if true then 2 else 3')
+		expectKind(node, NodeKind.IfExpression)
+		const ifNode = node as IfExpression
+		expectKind(ifNode.condition, NodeKind.BooleanLiteral)
+		expectNumber(ifNode.consequent, 2)
+		expectNumber(ifNode.alternate, 3)
 	})
 
-	test('parse ternary with comparison condition', () => {
-		const node = parse('x > 5 ? 10 : 20')
-		expectKind(node, NodeKind.ConditionalExpression)
-		const cond = node as {
-			condition: ASTNode
-			consequent: ASTNode
-			alternate: ASTNode
-		}
-		expectBinaryOp(cond.condition, '>')
-		expectNumber(cond.consequent, 10)
-		expectNumber(cond.alternate, 20)
+	test('parse if expression with comparison condition', () => {
+		const node = parse('if x > 5 then 10 else 20')
+		expectKind(node, NodeKind.IfExpression)
+		const ifNode = node as IfExpression
+		expectBinaryOp(ifNode.condition, '>')
+		expectNumber(ifNode.consequent, 10)
+		expectNumber(ifNode.alternate, 20)
 	})
 
-	test('parse nested ternary (right-associative)', () => {
-		// x ? y : z ? a : b should parse as x ? y : (z ? a : b)
-		const node = parse('x ? y : z ? a : b')
-		expectKind(node, NodeKind.ConditionalExpression)
-		const cond = node as {
-			condition: ASTNode
-			consequent: ASTNode
-			alternate: ASTNode
-		}
-		expectKind(cond.condition, NodeKind.Identifier)
-		expectKind(cond.consequent, NodeKind.Identifier)
-
-		// Alternate should be another ConditionalExpression
-		expectKind(cond.alternate, NodeKind.ConditionalExpression)
+	test('parse nested if expression (in alternate)', () => {
+		const node = parse('if x then y else if z then a else b')
+		expectKind(node, NodeKind.IfExpression)
+		const ifNode = node as IfExpression
+		expectKind(ifNode.condition, NodeKind.Identifier)
+		expectKind(ifNode.consequent, NodeKind.Identifier)
+		expectKind(ifNode.alternate, NodeKind.IfExpression)
 	})
 
-	test('parse ternary with complex expressions', () => {
-		const node = parse('a + b > c ? d * 2 : e / 2')
-		expectKind(node, NodeKind.ConditionalExpression)
-		const cond = node as {
-			condition: ASTNode
-			consequent: ASTNode
-			alternate: ASTNode
-		}
-		expectBinaryOp(cond.condition, '>')
-		expectBinaryOp(cond.consequent, '*')
-		expectBinaryOp(cond.alternate, '/')
+	test('parse if expression with complex expressions', () => {
+		const node = parse('if a + b > c then d * 2 else e / 2')
+		expectKind(node, NodeKind.IfExpression)
+		const ifNode = node as IfExpression
+		expectBinaryOp(ifNode.condition, '>')
+		expectBinaryOp(ifNode.consequent, '*')
+		expectBinaryOp(ifNode.alternate, '/')
+	})
+
+	test('if expression error on missing then', () => {
+		expect(() => parse('if true 2 else 3')).toThrow(
+			'Expected "then" in if expression',
+		)
+	})
+
+	test('if expression error on missing else', () => {
+		expect(() => parse('if true then 2')).toThrow(
+			'Expected "else" in if expression',
+		)
+	})
+
+	// For expression tests
+	test('parse basic for expression', () => {
+		const node = parse('for x in [1, 2, 3] then x')
+		expectKind(node, NodeKind.ForExpression)
+		const forNode = node as ForExpression
+		expect(forNode.variable).toBe('x')
+		expectKind(forNode.iterable, NodeKind.ArrayLiteral)
+		expect(forNode.guard).toBeNull()
+		expectKind(forNode.body, NodeKind.Identifier)
+	})
+
+	test('parse for expression with when guard', () => {
+		const node = parse('for x in arr when x > 0 then x * 2')
+		expectKind(node, NodeKind.ForExpression)
+		const forNode = node as ForExpression
+		expect(forNode.variable).toBe('x')
+		expectKind(forNode.iterable, NodeKind.Identifier)
+		expect(forNode.guard).not.toBeNull()
+		expectBinaryOp(forNode.guard!, '>')
+		expectBinaryOp(forNode.body, '*')
+	})
+
+	test('for expression error on missing in', () => {
+		expect(() => parse('for x [1, 2] then x')).toThrow(
+			'Expected "in" in for expression',
+		)
+	})
+
+	test('for expression error on missing then', () => {
+		expect(() => parse('for x in [1, 2] x')).toThrow(
+			'Expected "then" in for expression',
+		)
+	})
+
+	test('for expression error on missing identifier', () => {
+		expect(() => parse('for 5 in [1, 2] then x')).toThrow(
+			'Expected identifier after "for"',
+		)
 	})
 
 	// Assignment operator tests
@@ -484,21 +515,11 @@ describe('Parser', () => {
 		expectBinaryOp((right as BinaryOp).left, '*')
 	})
 
-	test('parse ternary with lower precedence than logical OR', () => {
-		// a || b ? c : d should parse as (a || b) ? c : d
-		const node = parse('a || b ? c : d')
-		expectKind(node, NodeKind.ConditionalExpression)
-		expectBinaryOp((node as { condition: ASTNode }).condition, '||')
-	})
-
-	test('parse assignment with lower precedence than ternary', () => {
-		// x = a ? b : c should parse as x = (a ? b : c)
-		const node = parse('x = a ? b : c')
+	test('parse assignment with if expression', () => {
+		// x = if a then b else c should parse as x = (if a then b else c)
+		const node = parse('x = if a then b else c')
 		expectKind(node, NodeKind.Assignment)
-		expectKind(
-			(node as { value: ASTNode }).value,
-			NodeKind.ConditionalExpression,
-		)
+		expectKind((node as { value: ASTNode }).value, NodeKind.IfExpression)
 	})
 
 	// Multi-statement program tests
@@ -607,9 +628,9 @@ describe('Parser', () => {
 		expect((node as { value: boolean }).value).toBe(false)
 	})
 
-	test('parse boolean in ternary condition', () => {
-		const node = parse('true ? 1 : 0')
-		expectKind(node, NodeKind.ConditionalExpression)
+	test('parse boolean in if condition', () => {
+		const node = parse('if true then 1 else 0')
+		expectKind(node, NodeKind.IfExpression)
 		expectKind(
 			(node as { condition: ASTNode }).condition,
 			NodeKind.BooleanLiteral,

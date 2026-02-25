@@ -28,10 +28,11 @@ export const enum NodeKind {
 	UnaryOp,
 	FunctionCall,
 	Assignment,
-	ConditionalExpression,
+	IfExpression,
 	StringLiteral,
 	BooleanLiteral,
 	ArrayLiteral,
+	ForExpression,
 }
 
 /**
@@ -120,14 +121,26 @@ export interface Assignment {
 }
 
 /**
- * Conditional expression (ternary operator: condition ? consequent : alternate)
+ * If expression (if condition then consequent else alternate)
  * Returns consequent if condition is true, otherwise returns alternate
  */
-export interface ConditionalExpression {
-	readonly kind: NodeKind.ConditionalExpression
+export interface IfExpression {
+	readonly kind: NodeKind.IfExpression
 	readonly condition: ASTNode
 	readonly consequent: ASTNode
 	readonly alternate: ASTNode
+}
+
+/**
+ * For expression (for variable in iterable [when guard] then body)
+ * Maps over an array or string, optionally filtering with a guard
+ */
+export interface ForExpression {
+	readonly kind: NodeKind.ForExpression
+	readonly variable: string
+	readonly iterable: ASTNode
+	readonly guard: ASTNode | null
+	readonly body: ASTNode
 }
 
 /**
@@ -144,7 +157,8 @@ export type ASTNode =
 	| UnaryOp
 	| FunctionCall
 	| Assignment
-	| ConditionalExpression
+	| IfExpression
+	| ForExpression
 
 /**
  * Type guard functions for discriminated union narrowing
@@ -189,10 +203,12 @@ export function isAssignment(node: ASTNode): node is Assignment {
 	return node.kind === NodeKind.Assignment
 }
 
-export function isConditionalExpression(
-	node: ASTNode,
-): node is ConditionalExpression {
-	return node.kind === NodeKind.ConditionalExpression
+export function isIfExpression(node: ASTNode): node is IfExpression {
+	return node.kind === NodeKind.IfExpression
+}
+
+export function isForExpression(node: ASTNode): node is ForExpression {
+	return node.kind === NodeKind.ForExpression
 }
 
 /**
@@ -277,18 +293,36 @@ export function assign(name: string, value: ASTNode): Assignment {
 }
 
 /**
- * Create a conditional expression node (ternary operator)
+ * Create an if expression node (if condition then consequent else alternate)
  */
-export function conditional(
+export function ifExpr(
 	condition: ASTNode,
 	consequent: ASTNode,
 	alternate: ASTNode,
-): ConditionalExpression {
+): IfExpression {
 	return {
-		kind: NodeKind.ConditionalExpression,
+		kind: NodeKind.IfExpression,
 		condition,
 		consequent,
 		alternate,
+	}
+}
+
+/**
+ * Create a for expression node (for variable in iterable [when guard] then body)
+ */
+export function forExpr(
+	variable: string,
+	iterable: ASTNode,
+	guard: ASTNode | null,
+	body: ASTNode,
+): ForExpression {
+	return {
+		kind: NodeKind.ForExpression,
+		variable,
+		iterable,
+		guard,
+		body,
 	}
 }
 
@@ -366,8 +400,10 @@ export function getNodeName(node: ASTNode): string {
 			return 'Assignment'
 		case NodeKind.BinaryOp:
 			return 'BinaryOp'
-		case NodeKind.ConditionalExpression:
-			return 'ConditionalExpression'
+		case NodeKind.IfExpression:
+			return 'IfExpression'
+		case NodeKind.ForExpression:
+			return 'ForExpression'
 		case NodeKind.FunctionCall:
 			return 'FunctionCall'
 		case NodeKind.Identifier:

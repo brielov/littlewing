@@ -36,11 +36,29 @@ export const enum TokenKind {
 	RBracket, // ]
 	Eq, // =
 	Comma, // ,
-	Question, // ?
-	Colon, // :
+
+	// Keywords
+	If,
+	Then,
+	Else,
+	For,
+	In,
+	When,
 
 	Eof,
 }
+
+/**
+ * Keyword lookup table for identifier classification
+ */
+const KEYWORDS = new Map<string, TokenKind>([
+	['if', TokenKind.If],
+	['then', TokenKind.Then],
+	['else', TokenKind.Else],
+	['for', TokenKind.For],
+	['in', TokenKind.In],
+	['when', TokenKind.When],
+])
 
 /**
  * Token representation as a tuple for maximum performance
@@ -272,12 +290,6 @@ export function nextToken(cursor: Cursor): Token {
 				return [TokenKind.Ge, start, cursor.pos]
 			}
 			return [TokenKind.Gt, start, cursor.pos]
-		case 0x3f: // ?
-			advance(cursor)
-			return [TokenKind.Question, start, cursor.pos]
-		case 0x3a: // :
-			advance(cursor)
-			return [TokenKind.Colon, start, cursor.pos]
 		case 0x2c: // ,
 			advance(cursor)
 			return [TokenKind.Comma, start, cursor.pos]
@@ -432,5 +444,12 @@ function lexIdentifier(cursor: Cursor): Token {
 	}
 
 	cursor.pos = pos
+
+	const text = source.slice(start, pos)
+	const keywordKind = KEYWORDS.get(text)
+	if (keywordKind !== undefined) {
+		return [keywordKind, start, pos]
+	}
+
 	return [TokenKind.Identifier, start, pos]
 }

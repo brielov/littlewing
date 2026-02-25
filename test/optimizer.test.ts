@@ -298,37 +298,39 @@ describe('Optimizer', () => {
 		expect(() => evaluate(source)).toThrow('Modulo by zero')
 	})
 
-	test('constant folding for ternary (true condition)', () => {
-		const optimized = optimize(parse('true ? 100 : 50'))
+	test('constant folding for if expression (true condition)', () => {
+		const optimized = optimize(parse('if true then 100 else 50'))
 		expect(isNumberLiteral(optimized)).toBe(true)
 		expect((optimized as NumberLiteral).value).toBe(100)
 	})
 
-	test('constant folding for ternary (false condition)', () => {
-		const optimized = optimize(parse('false ? 100 : 50'))
+	test('constant folding for if expression (false condition)', () => {
+		const optimized = optimize(parse('if false then 100 else 50'))
 		expect(isNumberLiteral(optimized)).toBe(true)
 		expect((optimized as NumberLiteral).value).toBe(50)
 	})
 
-	test('ternary with constant comparison folds to boolean then resolves', () => {
-		const optimized1 = optimize(parse('5 > 3 ? 100 : 50'))
+	test('if expression with constant comparison folds to boolean then resolves', () => {
+		const optimized1 = optimize(parse('if 5 > 3 then 100 else 50'))
 		expect(isNumberLiteral(optimized1)).toBe(true)
 		expect((optimized1 as NumberLiteral).value).toBe(100)
 
-		const optimized2 = optimize(parse('5 < 3 ? 100 : 50'))
+		const optimized2 = optimize(parse('if 5 < 3 then 100 else 50'))
 		expect(isNumberLiteral(optimized2)).toBe(true)
 		expect((optimized2 as NumberLiteral).value).toBe(50)
 	})
 
-	test('complex ternary optimization', () => {
-		const source = 'x = 10; y = 5; result = x > y ? 100 : 50; result'
+	test('complex if expression optimization', () => {
+		const source = 'x = 10; y = 5; result = if x > y then 100 else 50; result'
 		const optimized = optimize(parse(source))
 		expect(isProgram(optimized)).toBe(true)
 		expect(evaluate(source)).toBe(100)
 	})
 
-	test('nested ternary optimization', () => {
-		const optimized = optimize(parse('true ? true ? 100 : 200 : 300'))
+	test('nested if expression optimization', () => {
+		const optimized = optimize(
+			parse('if true then if true then 100 else 200 else 300'),
+		)
 		expect(isNumberLiteral(optimized)).toBe(true)
 		expect((optimized as NumberLiteral).value).toBe(100)
 	})
@@ -405,12 +407,12 @@ describe('Optimizer', () => {
 		}
 	})
 
-	test('NOT in conditional expression with boolean literal', () => {
-		const optimized1 = optimize(parse('!false ? 100 : 50'))
+	test('NOT in if expression with boolean literal', () => {
+		const optimized1 = optimize(parse('if !false then 100 else 50'))
 		expect(isNumberLiteral(optimized1)).toBe(true)
 		expect((optimized1 as NumberLiteral).value).toBe(100)
 
-		const optimized2 = optimize(parse('!true ? 100 : 50'))
+		const optimized2 = optimize(parse('if !true then 100 else 50'))
 		expect(isNumberLiteral(optimized2)).toBe(true)
 		expect((optimized2 as NumberLiteral).value).toBe(50)
 	})
@@ -502,8 +504,8 @@ describe('Dead Code Elimination', () => {
 		expect(isFunctionCall(prog.statements[2]!)).toBe(true)
 	})
 
-	test('handles variable used in conditional', () => {
-		const source = 'x = 10; y = 20; z = 30; x > y ? z : 0'
+	test('handles variable used in if expression', () => {
+		const source = 'x = 10; y = 20; z = 30; if x > y then z else 0'
 		const optimized = optimize(parse(source))
 		expect(isProgram(optimized)).toBe(true)
 		const prog = optimized as Program

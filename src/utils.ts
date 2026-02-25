@@ -132,6 +132,24 @@ function concatenateArrays(
 }
 
 /**
+ * Validate that an array is homogeneous
+ */
+export function validateHomogeneousArray(
+	elements: readonly RuntimeValue[],
+): void {
+	if (elements.length <= 1) return
+	const firstType = typeOf(elements[0] as RuntimeValue)
+	for (let i = 1; i < elements.length; i++) {
+		const elemType = typeOf(elements[i] as RuntimeValue)
+		if (elemType !== firstType) {
+			throw new TypeError(
+				`Heterogeneous array: expected ${firstType}, got ${elemType} at index ${i}`,
+			)
+		}
+	}
+}
+
+/**
  * Evaluate a binary operation on two RuntimeValues
  * Shared implementation used by both interpreter and optimizer to ensure consistent semantics
  *
@@ -258,7 +276,6 @@ function numericComparison(
  * Precedence hierarchy:
  * - 0: None
  * - 1: Assignment (=)
- * - 2: Ternary conditional (? :)
  * - 3: Logical OR (||)
  * - 4: Logical AND (&&)
  * - 5: Comparison (==, !=, <, >, <=, >=)
@@ -331,10 +348,16 @@ export function collectAllIdentifiers(node: ASTNode): Set<string> {
 		Assignment: (n, recurse) => {
 			recurse(n.value)
 		},
-		ConditionalExpression: (n, recurse) => {
+		IfExpression: (n, recurse) => {
 			recurse(n.condition)
 			recurse(n.consequent)
 			recurse(n.alternate)
+		},
+		ForExpression: (n, recurse) => {
+			// Do NOT collect the loop variable — it's a binding, not a reference
+			recurse(n.iterable)
+			if (n.guard) recurse(n.guard)
+			recurse(n.body)
 		},
 	})
 
@@ -348,8 +371,6 @@ export function getTokenPrecedence(kind: TokenKind): number {
 	switch (kind) {
 		case TokenKind.Eq:
 			return 1
-		case TokenKind.Question:
-			return 2
 		case TokenKind.Or:
 			return 3
 		case TokenKind.And:

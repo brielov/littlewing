@@ -130,6 +130,49 @@ function parsePrefix(state: ParserState): ASTNode {
 		return ast.array(elements)
 	}
 
+	// If expression
+	if (tokenKind === TokenKind.If) {
+		advance(state) // consume 'if'
+		const condition = parseExpression(state, 0)
+		if (peekKind(state) !== TokenKind.Then) {
+			throw new Error('Expected "then" in if expression')
+		}
+		advance(state) // consume 'then'
+		const consequent = parseExpression(state, 0)
+		if (peekKind(state) !== TokenKind.Else) {
+			throw new Error('Expected "else" in if expression')
+		}
+		advance(state) // consume 'else'
+		const alternate = parseExpression(state, 0)
+		return ast.ifExpr(condition, consequent, alternate)
+	}
+
+	// For expression
+	if (tokenKind === TokenKind.For) {
+		advance(state) // consume 'for'
+		if (peekKind(state) !== TokenKind.Identifier) {
+			throw new Error('Expected identifier after "for"')
+		}
+		const variableName = readText(state.cursor, state.currentToken)
+		advance(state) // consume variable name
+		if (peekKind(state) !== TokenKind.In) {
+			throw new Error('Expected "in" in for expression')
+		}
+		advance(state) // consume 'in'
+		const iterable = parseExpression(state, 0)
+		let guard: ASTNode | null = null
+		if (peekKind(state) === TokenKind.When) {
+			advance(state) // consume 'when'
+			guard = parseExpression(state, 0)
+		}
+		if (peekKind(state) !== TokenKind.Then) {
+			throw new Error('Expected "then" in for expression')
+		}
+		advance(state) // consume 'then'
+		const body = parseExpression(state, 0)
+		return ast.forExpr(variableName, iterable, guard, body)
+	}
+
 	// Number literal
 	if (tokenKind === TokenKind.Number) {
 		const token = state.currentToken
@@ -196,18 +239,6 @@ function parseInfix(
 		advance(state)
 		const value = parseExpression(state, precedence)
 		return ast.assign(identName, value)
-	}
-
-	// Ternary conditional expression (right-associative)
-	if (tokenKind === TokenKind.Question) {
-		advance(state)
-		const consequent = parseExpression(state, 0)
-		if (peekKind(state) !== TokenKind.Colon) {
-			throw new Error('Expected : in ternary expression')
-		}
-		advance(state)
-		const alternate = parseExpression(state, precedence)
-		return ast.conditional(left, consequent, alternate)
 	}
 
 	// Binary operators

@@ -44,7 +44,7 @@ dueDate = ADD_DAYS(today, 30)
 paymentDate = ADD_DAYS(today, 15)
 
 // Calculate discount
-earlyDiscount = paymentDate < dueDate ? total * 0.02 : 0
+earlyDiscount = if paymentDate < dueDate then total * 0.02 else 0
 discountedTotal = total - earlyDiscount
 
 // Apply tax calculation
@@ -58,7 +58,7 @@ monthlyPayment = finalAmount / months
 
 // Business day adjustment
 weekday = GET_WEEKDAY(paymentDate)
-businessDayAdjustment = IS_WEEKEND(paymentDate) ? 2 : 0
+businessDayAdjustment = if IS_WEEKEND(paymentDate) then 2 else 0
 adjustedPaymentDate = ADD_DAYS(paymentDate, businessDayAdjustment)
 
 // Final result

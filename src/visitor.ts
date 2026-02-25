@@ -4,10 +4,11 @@ import {
 	type Assignment,
 	type BinaryOp,
 	type BooleanLiteral,
-	type ConditionalExpression,
+	type ForExpression,
 	type FunctionCall,
 	getNodeName,
 	type Identifier,
+	type IfExpression,
 	NodeKind,
 	type NumberLiteral,
 	type Program,
@@ -36,10 +37,8 @@ export type Visitor<T> = {
 	UnaryOp: (node: UnaryOp, recurse: (n: ASTNode) => T) => T
 	FunctionCall: (node: FunctionCall, recurse: (n: ASTNode) => T) => T
 	Assignment: (node: Assignment, recurse: (n: ASTNode) => T) => T
-	ConditionalExpression: (
-		node: ConditionalExpression,
-		recurse: (n: ASTNode) => T,
-	) => T
+	IfExpression: (node: IfExpression, recurse: (n: ASTNode) => T) => T
+	ForExpression: (node: ForExpression, recurse: (n: ASTNode) => T) => T
 }
 
 /**
@@ -118,9 +117,13 @@ export function visitPartial<T>(
 			return visitor.Assignment
 				? visitor.Assignment(node, recurse)
 				: defaultHandler(node, recurse)
-		case NodeKind.ConditionalExpression:
-			return visitor.ConditionalExpression
-				? visitor.ConditionalExpression(node, recurse)
+		case NodeKind.IfExpression:
+			return visitor.IfExpression
+				? visitor.IfExpression(node, recurse)
+				: defaultHandler(node, recurse)
+		case NodeKind.ForExpression:
+			return visitor.ForExpression
+				? visitor.ForExpression(node, recurse)
 				: defaultHandler(node, recurse)
 	}
 }

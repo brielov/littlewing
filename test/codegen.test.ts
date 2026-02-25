@@ -294,41 +294,77 @@ describe('CodeGenerator', () => {
 		expect(generate(node)).toBe('2 + 3 < 10')
 	})
 
-	test('ternary operator', () => {
-		const node = ast.conditional(
+	test('if expression', () => {
+		const node = ast.ifExpr(
 			ast.greaterThan(ast.number(5), ast.number(3)),
 			ast.number(100),
 			ast.number(50),
 		)
-		expect(generate(node)).toBe('5 > 3 ? 100 : 50')
+		expect(generate(node)).toBe('if 5 > 3 then 100 else 50')
 	})
 
-	test('ternary with complex condition', () => {
-		const node = ast.conditional(
+	test('if expression with complex condition', () => {
+		const node = ast.ifExpr(
 			ast.add(ast.number(2), ast.number(3)),
 			ast.number(100),
 			ast.number(50),
 		)
-		expect(generate(node)).toBe('2 + 3 ? 100 : 50')
+		expect(generate(node)).toBe('if 2 + 3 then 100 else 50')
 	})
 
-	test('nested ternary', () => {
-		const node = ast.conditional(
+	test('nested if expression', () => {
+		const node = ast.ifExpr(
 			ast.boolean(true),
-			ast.conditional(ast.boolean(true), ast.number(100), ast.number(200)),
+			ast.ifExpr(ast.boolean(true), ast.number(100), ast.number(200)),
 			ast.number(300),
 		)
-		expect(generate(node)).toBe('true ? true ? 100 : 200 : 300')
+		expect(generate(node)).toBe(
+			'if true then if true then 100 else 200 else 300',
+		)
 	})
 
-	test('ternary round-trip', () => {
-		const source = 'x > 5 ? 100 : 50'
+	test('if expression round-trip', () => {
+		const source = 'if x > 5 then 100 else 50'
 		const ast1 = parse(source)
 		const code = generate(ast1)
 		const result1 = evaluate(source, { variables: { x: 10 } })
 		const result2 = evaluate(code, { variables: { x: 10 } })
 		expect(result1).toBe(result2)
 		expect(result1).toBe(100)
+	})
+
+	test('for expression', () => {
+		const node = ast.forExpr(
+			'x',
+			ast.identifier('arr'),
+			null,
+			ast.multiply(ast.identifier('x'), ast.number(2)),
+		)
+		expect(generate(node)).toBe('for x in arr then x * 2')
+	})
+
+	test('for expression with guard', () => {
+		const node = ast.forExpr(
+			'x',
+			ast.identifier('arr'),
+			ast.greaterThan(ast.identifier('x'), ast.number(0)),
+			ast.multiply(ast.identifier('x'), ast.number(2)),
+		)
+		expect(generate(node)).toBe('for x in arr when x > 0 then x * 2')
+	})
+
+	test('for expression round-trip', () => {
+		const source = 'for x in arr then x * 2'
+		const ast1 = parse(source)
+		const code = generate(ast1)
+		expect(code).toBe(source)
+	})
+
+	test('for expression with guard round-trip', () => {
+		const source = 'for x in arr when x > 0 then x * 2'
+		const ast1 = parse(source)
+		const code = generate(ast1)
+		expect(code).toBe(source)
 	})
 
 	test('&& operator', () => {
@@ -399,8 +435,8 @@ describe('CodeGenerator', () => {
 		expect(code).toBe(source)
 	})
 
-	test('NOT in conditional', () => {
-		const source = '!x ? 100 : 50'
+	test('NOT in if expression', () => {
+		const source = 'if !x then 100 else 50'
 		const ast1 = parse(source)
 		const code = generate(ast1)
 		const result1 = evaluate(source, { variables: { x: false } })

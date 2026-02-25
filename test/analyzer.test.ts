@@ -140,27 +140,27 @@ describe('extractInputVariables', () => {
 		})
 	})
 
-	describe('conditional expressions', () => {
-		test('extracts variable assigned to conditional with constant condition', () => {
-			const ast = parse('x = 1 ? 100 : 50')
+	describe('if expressions', () => {
+		test('extracts variable assigned to if expression with constant condition', () => {
+			const ast = parse('x = if true then 100 else 50')
 			const inputs = extractInputVariables(ast)
 			expect(inputs).toEqual(['x'])
 		})
 
-		test('extracts variable assigned to conditional with constant expression', () => {
-			const ast = parse('x = 5 > 3 ? 100 : 50')
+		test('extracts variable assigned to if expression with constant comparison', () => {
+			const ast = parse('x = if 5 > 3 then 100 else 50')
 			const inputs = extractInputVariables(ast)
 			expect(inputs).toEqual(['x'])
 		})
 
-		test('excludes variable with conditional that references variable', () => {
-			const ast = parse('x = 10; y = x > 5 ? 100 : 50')
+		test('excludes variable with if expression that references variable', () => {
+			const ast = parse('x = 10; y = if x > 5 then 100 else 50')
 			const inputs = extractInputVariables(ast)
 			expect(inputs).toEqual(['x'])
 		})
 
-		test('excludes variable with conditional that has variable in branches', () => {
-			const ast = parse('x = 10; y = 1 ? x : 50')
+		test('excludes variable with if expression that has variable in branches', () => {
+			const ast = parse('x = 10; y = if true then x else 50')
 			const inputs = extractInputVariables(ast)
 			expect(inputs).toEqual(['x'])
 		})
@@ -288,8 +288,8 @@ describe('extractAssignedVariables', () => {
 		])
 	})
 
-	test('extracts from formula with conditionals', () => {
-		const ast = parse('x = 10; y = x > 5 ? 100 : 50')
+	test('extracts from formula with if expressions', () => {
+		const ast = parse('x = 10; y = if x > 5 then 100 else 50')
 		expect(extractAssignedVariables(ast)).toEqual(['x', 'y'])
 	})
 

@@ -166,7 +166,7 @@ export function optimize(node: ASTNode): ASTNode {
 			return ast.assign(n.name, recurse(n.value))
 		},
 
-		ConditionalExpression: (n, recurse) => {
+		IfExpression: (n, recurse) => {
 			const condition = recurse(n.condition)
 
 			if (isBooleanLiteral(condition)) {
@@ -176,7 +176,14 @@ export function optimize(node: ASTNode): ASTNode {
 			const consequent = recurse(n.consequent)
 			const alternate = recurse(n.alternate)
 
-			return ast.conditional(condition, consequent, alternate)
+			return ast.ifExpr(condition, consequent, alternate)
+		},
+
+		ForExpression: (n, recurse) => {
+			const iterable = recurse(n.iterable)
+			const guard = n.guard ? recurse(n.guard) : null
+			const body = recurse(n.body)
+			return ast.forExpr(n.variable, iterable, guard, body)
 		},
 
 		Program: (n, recurse) => {

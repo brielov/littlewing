@@ -6,6 +6,7 @@ import {
 	assertNumber,
 	evaluateBinaryOperation,
 	typeOf,
+	validateHomogeneousArray,
 } from './utils'
 import { visit } from './visitor'
 
@@ -35,18 +36,7 @@ function evaluateNode(
 
 		ArrayLiteral: (n, recurse) => {
 			const elements = n.elements.map(recurse)
-			// Validate homogeneity
-			if (elements.length > 0) {
-				const firstType = typeOf(elements[0] as RuntimeValue)
-				for (let i = 1; i < elements.length; i++) {
-					const elemType = typeOf(elements[i] as RuntimeValue)
-					if (elemType !== firstType) {
-						throw new TypeError(
-							`Heterogeneous array: expected ${firstType}, got ${elemType} at index ${i}`,
-						)
-					}
-				}
-			}
+			validateHomogeneousArray(elements)
 			return elements
 		},
 
@@ -126,10 +116,51 @@ function evaluateNode(
 			return value
 		},
 
-		ConditionalExpression: (n, recurse) => {
+		IfExpression: (n, recurse) => {
 			const condition = recurse(n.condition)
-			assertBoolean(condition, 'Ternary condition')
+			assertBoolean(condition, 'If condition')
 			return condition ? recurse(n.consequent) : recurse(n.alternate)
+		},
+
+		ForExpression: (n, recurse) => {
+			const iterable = recurse(n.iterable)
+
+			let items: readonly RuntimeValue[]
+			if (Array.isArray(iterable)) {
+				items = iterable
+			} else if (typeof iterable === 'string') {
+				items = Array.from(iterable)
+			} else {
+				throw new TypeError(
+					`For expression expected array or string, got ${typeOf(iterable)}`,
+				)
+			}
+
+			const previousValue = variables.get(n.variable)
+			const hadPreviousValue = variables.has(n.variable)
+
+			const result: RuntimeValue[] = []
+			for (const item of items) {
+				variables.set(n.variable, item)
+
+				if (n.guard) {
+					const guardValue = recurse(n.guard)
+					assertBoolean(guardValue, 'For guard')
+					if (!guardValue) continue
+				}
+
+				result.push(recurse(n.body))
+			}
+
+			// Restore loop variable to previous state
+			if (hadPreviousValue) {
+				variables.set(n.variable, previousValue as RuntimeValue)
+			} else {
+				variables.delete(n.variable)
+			}
+
+			validateHomogeneousArray(result)
+			return result
 		},
 	})
 }

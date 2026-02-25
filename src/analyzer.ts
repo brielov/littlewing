@@ -75,6 +75,16 @@ export function extractAssignedVariables(ast: ASTNode): string[] {
 				// Recurse into the value in case of nested assignments
 				recurse(n.value)
 			},
+			IfExpression: (n, recurse) => {
+				recurse(n.condition)
+				recurse(n.consequent)
+				recurse(n.alternate)
+			},
+			ForExpression: (n, recurse) => {
+				recurse(n.iterable)
+				if (n.guard) recurse(n.guard)
+				recurse(n.body)
+			},
 		},
 		// Default handler: no-op for all other node types
 		() => {},

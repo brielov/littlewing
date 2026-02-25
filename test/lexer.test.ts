@@ -233,13 +233,31 @@ describe('Lexer', () => {
 		expectTokenText(cursor, tokens[1], TokenKind.NotEq, '!=')
 	})
 
-	test('tokenize ternary operator', () => {
-		const source = 'x ? y : z'
-		const cursor = createCursor(source)
-		const tokens = tokenize(source)
+	test('tokenize keywords', () => {
+		const tokens = tokenize('if then else for in when')
+		expectToken(tokens[0], TokenKind.If)
+		expectToken(tokens[1], TokenKind.Then)
+		expectToken(tokens[2], TokenKind.Else)
+		expectToken(tokens[3], TokenKind.For)
+		expectToken(tokens[4], TokenKind.In)
+		expectToken(tokens[5], TokenKind.When)
+	})
 
-		expectTokenText(cursor, tokens[1], TokenKind.Question, '?')
-		expectTokenText(cursor, tokens[3], TokenKind.Colon, ':')
+	test('keywords are case-sensitive', () => {
+		const source = 'IF THEN ELSE FOR IN WHEN'
+		const tokens = tokenize(source)
+		// Uppercase versions are identifiers, not keywords
+		for (let i = 0; i < 6; i++) {
+			expectToken(tokens[i], TokenKind.Identifier)
+		}
+	})
+
+	test('keywords as part of identifiers remain identifiers', () => {
+		const source = 'iffy thenx elsewhere format infix whenever'
+		const tokens = tokenize(source)
+		for (let i = 0; i < 6; i++) {
+			expectToken(tokens[i], TokenKind.Identifier)
+		}
 	})
 
 	test('tokenize && operator', () => {

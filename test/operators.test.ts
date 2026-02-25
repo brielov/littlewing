@@ -143,11 +143,11 @@ describe('Operators', () => {
 			expect(evaluate('false && true || false')).toBe(false) // (false && true) || false
 		})
 
-		test('&& and || with ternary operator', () => {
-			expect(evaluate('true && true ? 100 : 50')).toBe(100)
-			expect(evaluate('false && true ? 100 : 50')).toBe(50)
-			expect(evaluate('false || true ? 100 : 50')).toBe(100)
-			expect(evaluate('false || false ? 100 : 50')).toBe(50)
+		test('&& and || with if expression', () => {
+			expect(evaluate('if true && true then 100 else 50')).toBe(100)
+			expect(evaluate('if false && true then 100 else 50')).toBe(50)
+			expect(evaluate('if false || true then 100 else 50')).toBe(100)
+			expect(evaluate('if false || false then 100 else 50')).toBe(50)
 		})
 
 		test('logical operators in assignment', () => {
@@ -199,85 +199,109 @@ describe('Operators', () => {
 		})
 	})
 
-	describe('Ternary', () => {
-		test('ternary with true condition', () => {
-			expect(evaluate('true ? 100 : 50')).toBe(100)
+	describe('If expression', () => {
+		test('if with true condition', () => {
+			expect(evaluate('if true then 100 else 50')).toBe(100)
 		})
 
-		test('ternary with false condition', () => {
-			expect(evaluate('false ? 100 : 50')).toBe(50)
+		test('if with false condition', () => {
+			expect(evaluate('if false then 100 else 50')).toBe(50)
 		})
 
-		test('ternary with comparison', () => {
-			expect(evaluate('5 > 3 ? 100 : 50')).toBe(100)
-			expect(evaluate('5 < 3 ? 100 : 50')).toBe(50)
-			expect(evaluate('10 == 10 ? 1 : 0')).toBe(1)
+		test('if with comparison', () => {
+			expect(evaluate('if 5 > 3 then 100 else 50')).toBe(100)
+			expect(evaluate('if 5 < 3 then 100 else 50')).toBe(50)
+			expect(evaluate('if 10 == 10 then 1 else 0')).toBe(1)
 		})
 
-		test('ternary with variables', () => {
-			expect(evaluate('x = 10; y = 5; x > y ? 100 : 50')).toBe(100)
-			expect(evaluate('x = 3; y = 7; x > y ? 100 : 50')).toBe(50)
+		test('if with variables', () => {
+			expect(evaluate('x = 10; y = 5; if x > y then 100 else 50')).toBe(100)
+			expect(evaluate('x = 3; y = 7; if x > y then 100 else 50')).toBe(50)
 		})
 
-		test('nested ternary expressions', () => {
-			expect(evaluate('true ? true ? 3 : 4 : 5')).toBe(3)
-			expect(evaluate('false ? true ? 3 : 4 : 5')).toBe(5)
-			expect(evaluate('true ? false ? 3 : 4 : 5')).toBe(4)
+		test('nested if expressions', () => {
+			expect(evaluate('if true then if true then 3 else 4 else 5')).toBe(3)
+			expect(evaluate('if false then if true then 3 else 4 else 5')).toBe(5)
+			expect(evaluate('if true then if false then 3 else 4 else 5')).toBe(4)
 		})
 
-		test('ternary with arithmetic', () => {
-			expect(evaluate('5 > 3 ? 10 + 5 : 20 + 5')).toBe(15)
-			expect(evaluate('5 < 3 ? 10 + 5 : 20 + 5')).toBe(25)
+		test('if with arithmetic', () => {
+			expect(evaluate('if 5 > 3 then 10 + 5 else 20 + 5')).toBe(15)
+			expect(evaluate('if 5 < 3 then 10 + 5 else 20 + 5')).toBe(25)
 		})
 
-		test('ternary result in arithmetic', () => {
-			expect(evaluate('(true ? 10 : 5) * 2')).toBe(20)
-			expect(evaluate('(false ? 10 : 5) * 2')).toBe(10)
+		test('if result in arithmetic', () => {
+			expect(evaluate('(if true then 10 else 5) * 2')).toBe(20)
+			expect(evaluate('(if false then 10 else 5) * 2')).toBe(10)
 		})
 
 		test('multi-level conditional logic', () => {
-			expect(evaluate('age = 15; age < 18 ? 10 : age > 65 ? 8 : 15')).toBe(10)
-			expect(evaluate('age = 70; age < 18 ? 10 : age > 65 ? 8 : 15')).toBe(8)
-			expect(evaluate('age = 30; age < 18 ? 10 : age > 65 ? 8 : 15')).toBe(15)
-		})
-
-		test('ternary in assignment', () => {
-			expect(evaluate('x = 5 > 3 ? 100 : 50; x')).toBe(100)
-			expect(evaluate('x = 5 < 3 ? 100 : 50; x')).toBe(50)
-		})
-
-		test('MAX using ternary', () => {
-			expect(evaluate('a = 10; b = 20; a > b ? a : b')).toBe(20)
-			expect(evaluate('a = 30; b = 20; a > b ? a : b')).toBe(30)
-		})
-
-		test('MIN using ternary', () => {
-			expect(evaluate('a = 10; b = 20; a < b ? a : b')).toBe(10)
-			expect(evaluate('a = 30; b = 20; a < b ? a : b')).toBe(20)
-		})
-
-		test('ternary requires boolean condition', () => {
-			expect(() => evaluate('1 ? 100 : 50')).toThrow(TypeError)
-			expect(() => evaluate('0 ? 100 : 50')).toThrow(TypeError)
-		})
-
-		test('discount calculation with ternary', () => {
 			expect(
 				evaluate(
-					'price = 100; isPremium = true; price * (1 - (isPremium ? 0.2 : 0))',
+					'age = 15; if age < 18 then 10 else if age > 65 then 8 else 15',
+				),
+			).toBe(10)
+			expect(
+				evaluate(
+					'age = 70; if age < 18 then 10 else if age > 65 then 8 else 15',
+				),
+			).toBe(8)
+			expect(
+				evaluate(
+					'age = 30; if age < 18 then 10 else if age > 65 then 8 else 15',
+				),
+			).toBe(15)
+		})
+
+		test('if in assignment', () => {
+			expect(evaluate('x = if 5 > 3 then 100 else 50; x')).toBe(100)
+			expect(evaluate('x = if 5 < 3 then 100 else 50; x')).toBe(50)
+		})
+
+		test('MAX using if', () => {
+			expect(evaluate('a = 10; b = 20; if a > b then a else b')).toBe(20)
+			expect(evaluate('a = 30; b = 20; if a > b then a else b')).toBe(30)
+		})
+
+		test('MIN using if', () => {
+			expect(evaluate('a = 10; b = 20; if a < b then a else b')).toBe(10)
+			expect(evaluate('a = 30; b = 20; if a < b then a else b')).toBe(20)
+		})
+
+		test('if requires boolean condition', () => {
+			expect(() => evaluate('if 1 then 100 else 50')).toThrow(TypeError)
+			expect(() => evaluate('if 0 then 100 else 50')).toThrow(TypeError)
+		})
+
+		test('discount calculation with if', () => {
+			expect(
+				evaluate(
+					'price = 100; isPremium = true; price * (1 - (if isPremium then 0.2 else 0))',
 				),
 			).toBe(80)
 			expect(
 				evaluate(
-					'price = 100; isPremium = false; price * (1 - (isPremium ? 0.2 : 0))',
+					'price = 100; isPremium = false; price * (1 - (if isPremium then 0.2 else 0))',
 				),
 			).toBe(100)
 		})
 
-		test('age-based pricing with ternary', () => {
-			expect(evaluate('age = 12; age < 18 ? 10 : age > 65 ? 8 : 15')).toBe(10)
-			expect(evaluate('age = 70; age < 18 ? 10 : age > 65 ? 8 : 15')).toBe(8)
-			expect(evaluate('age = 35; age < 18 ? 10 : age > 65 ? 8 : 15')).toBe(15)
+		test('age-based pricing with if', () => {
+			expect(
+				evaluate(
+					'age = 12; if age < 18 then 10 else if age > 65 then 8 else 15',
+				),
+			).toBe(10)
+			expect(
+				evaluate(
+					'age = 70; if age < 18 then 10 else if age > 65 then 8 else 15',
+				),
+			).toBe(8)
+			expect(
+				evaluate(
+					'age = 35; if age < 18 then 10 else if age > 65 then 8 else 15',
+				),
+			).toBe(15)
 		})
 	})
 })

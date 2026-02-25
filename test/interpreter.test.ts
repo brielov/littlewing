@@ -257,7 +257,7 @@ describe('Logical NOT operator', () => {
 	})
 
 	test('execute NOT in conditional', () => {
-		expect(evaluate('!false ? 100 : 50')).toBe(100)
+		expect(evaluate('if !false then 100 else 50')).toBe(100)
 	})
 
 	test('execute NOT with comparison', () => {
@@ -282,6 +282,115 @@ describe('Logical NOT operator', () => {
 		expect(() => evaluate('!0')).toThrow(TypeError)
 		expect(() => evaluate('!5')).toThrow(TypeError)
 		expect(() => evaluate('!"hello"')).toThrow(TypeError)
+	})
+})
+
+describe('If expression', () => {
+	test('if with true condition', () => {
+		expect(evaluate('if true then 100 else 50')).toBe(100)
+	})
+
+	test('if with false condition', () => {
+		expect(evaluate('if false then 100 else 50')).toBe(50)
+	})
+
+	test('if with comparison', () => {
+		expect(evaluate('if 5 > 3 then 100 else 50')).toBe(100)
+		expect(evaluate('if 5 < 3 then 100 else 50')).toBe(50)
+	})
+
+	test('if requires boolean condition', () => {
+		expect(() => evaluate('if 1 then 100 else 50')).toThrow(TypeError)
+		expect(() => evaluate('if 0 then 100 else 50')).toThrow(TypeError)
+	})
+
+	test('nested if expressions', () => {
+		expect(evaluate('if true then if true then 3 else 4 else 5')).toBe(3)
+		expect(evaluate('if false then if true then 3 else 4 else 5')).toBe(5)
+		expect(evaluate('if true then if false then 3 else 4 else 5')).toBe(4)
+	})
+
+	test('if in assignment', () => {
+		expect(evaluate('x = if 5 > 3 then 100 else 50; x')).toBe(100)
+	})
+})
+
+describe('For expression', () => {
+	test('basic array iteration', () => {
+		expect(evaluate('for x in [1, 2, 3] then x * 2')).toEqual([2, 4, 6])
+	})
+
+	test('string iteration', () => {
+		expect(evaluate('for c in "abc" then c')).toEqual(['a', 'b', 'c'])
+	})
+
+	test('with when guard', () => {
+		expect(evaluate('for x in [1, 2, 3, 4, 5] when x > 2 then x')).toEqual([
+			3, 4, 5,
+		])
+	})
+
+	test('with when guard and body transformation', () => {
+		expect(evaluate('for x in [1, 2, 3, 4, 5] when x > 2 then x * 10')).toEqual(
+			[30, 40, 50],
+		)
+	})
+
+	test('empty result', () => {
+		expect(evaluate('for x in [] then x')).toEqual([])
+	})
+
+	test('empty result from guard filtering all', () => {
+		expect(evaluate('for x in [1, 2, 3] when false then x')).toEqual([])
+	})
+
+	test('iterable must be array or string', () => {
+		expect(() => evaluate('for x in 5 then x')).toThrow(TypeError)
+		expect(() => evaluate('for x in true then x')).toThrow(TypeError)
+	})
+
+	test('guard must be boolean', () => {
+		expect(() => evaluate('for x in [1, 2] when x then x')).toThrow(TypeError)
+	})
+
+	test('result must be homogeneous', () => {
+		expect(() =>
+			evaluate('for x in [1, 2] then if x == 1 then "one" else 2'),
+		).toThrow(TypeError)
+	})
+
+	test('loop variable scoping — restored after loop', () => {
+		expect(evaluate('x = 99; for x in [1, 2, 3] then x * 2; x')).toBe(99)
+	})
+
+	test('loop variable scoping — deleted if not previously defined', () => {
+		expect(() => evaluate('for x in [1, 2, 3] then x * 2; x')).toThrow(
+			'Undefined variable: x',
+		)
+	})
+
+	test('nested for expressions', () => {
+		// Flatten [[1,2],[3,4]] would require different semantics,
+		// but nesting works for independent iterations
+		expect(
+			evaluate('for x in [1, 2] then for y in [10, 20] then x + y'),
+		).toEqual([
+			[11, 21],
+			[12, 22],
+		])
+	})
+
+	test('for with context variables', () => {
+		expect(
+			evaluate('for x in arr then x + 1', {
+				variables: { arr: [10, 20, 30] },
+			}),
+		).toEqual([11, 21, 31])
+	})
+
+	test('for with string produces string array', () => {
+		const result = evaluate('for c in "hi" then c + c')
+		expect(result).toEqual(['hh', 'ii'])
 	})
 })
 

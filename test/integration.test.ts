@@ -89,7 +89,7 @@ amount = principal * (1 + rate) ^ years
 	})
 
 	test('NOT in discount calculation', () => {
-		const formula = 'price * (!isPremium ? 1 : 0.8)'
+		const formula = 'price * (if !isPremium then 1 else 0.8)'
 		const result1 = evaluate(formula, {
 			variables: { price: 100, isPremium: false },
 		})

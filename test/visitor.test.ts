@@ -6,10 +6,11 @@ import {
 	assign,
 	binaryOp,
 	boolean,
-	conditional,
 	divide,
+	forExpr,
 	functionCall,
 	identifier,
+	ifExpr,
 	isBinaryOp,
 	isNumberLiteral,
 	multiply,
@@ -39,7 +40,8 @@ describe('visit', () => {
 				UnaryOp: () => 0,
 				FunctionCall: () => 0,
 				Assignment: () => 0,
-				ConditionalExpression: () => 0,
+				IfExpression: () => 0,
+				ForExpression: () => 0,
 			})
 			expect(result).toBe(42)
 		})
@@ -57,7 +59,8 @@ describe('visit', () => {
 				UnaryOp: () => '',
 				FunctionCall: () => '',
 				Assignment: () => '',
-				ConditionalExpression: () => '',
+				IfExpression: () => '',
+				ForExpression: () => '',
 			})
 			expect(result).toBe('x')
 		})
@@ -75,7 +78,8 @@ describe('visit', () => {
 				UnaryOp: () => 0,
 				FunctionCall: () => 0,
 				Assignment: () => 0,
-				ConditionalExpression: () => 0,
+				IfExpression: () => 0,
+				ForExpression: () => 0,
 			})
 			expect(result).toBe(5)
 		})
@@ -93,7 +97,8 @@ describe('visit', () => {
 				UnaryOp: (n, recurse) => -recurse(n.argument),
 				FunctionCall: () => 0,
 				Assignment: () => 0,
-				ConditionalExpression: () => 0,
+				IfExpression: () => 0,
+				ForExpression: () => 0,
 			})
 			expect(result).toBe(-5)
 		})
@@ -114,7 +119,8 @@ describe('visit', () => {
 					return `${n.name}(${argsStr})`
 				},
 				Assignment: () => '',
-				ConditionalExpression: () => '',
+				IfExpression: () => '',
+				ForExpression: () => '',
 			})
 			expect(result).toEqual('sum(1,2)')
 		})
@@ -132,13 +138,14 @@ describe('visit', () => {
 				UnaryOp: () => '',
 				FunctionCall: () => '',
 				Assignment: (n, recurse) => `${n.name}=${recurse(n.value)}`,
-				ConditionalExpression: () => '',
+				IfExpression: () => '',
+				ForExpression: () => '',
 			})
 			expect(result).toBe('x=10')
 		})
 
-		test('visits ConditionalExpression node', () => {
-			const node = conditional(boolean(true), number(100), number(200))
+		test('visits IfExpression node', () => {
+			const node = ifExpr(boolean(true), number(100), number(200))
 			const result = visit(node, {
 				Program: () => 0,
 				NumberLiteral: (n) => n.value,
@@ -150,12 +157,38 @@ describe('visit', () => {
 				UnaryOp: () => 0,
 				FunctionCall: () => 0,
 				Assignment: () => 0,
-				ConditionalExpression: (n, recurse) =>
+				IfExpression: (n, recurse) =>
 					recurse(n.condition) !== 0
 						? recurse(n.consequent)
 						: recurse(n.alternate),
+				ForExpression: () => 0,
 			})
 			expect(result).toBe(100)
+		})
+
+		test('visits ForExpression node', () => {
+			const node = forExpr(
+				'x',
+				array([number(1), number(2), number(3)]),
+				null,
+				identifier('x'),
+			)
+			const result = visit(node, {
+				Program: () => '',
+				NumberLiteral: (n) => String(n.value),
+				StringLiteral: (n) => n.value,
+				BooleanLiteral: (n) => String(n.value),
+				ArrayLiteral: (n, recurse) => `[${n.elements.map(recurse).join(', ')}]`,
+				Identifier: (n) => n.name,
+				BinaryOp: () => '',
+				UnaryOp: () => '',
+				FunctionCall: () => '',
+				Assignment: () => '',
+				IfExpression: () => '',
+				ForExpression: (n, recurse) =>
+					`for ${n.variable} in ${recurse(n.iterable)} then ${recurse(n.body)}`,
+			})
+			expect(result).toBe('for x in [1, 2, 3] then x')
 		})
 
 		test('visits Program node', () => {
@@ -172,7 +205,8 @@ describe('visit', () => {
 				UnaryOp: () => 0,
 				FunctionCall: () => 0,
 				Assignment: () => 0,
-				ConditionalExpression: () => 0,
+				IfExpression: () => 0,
+				ForExpression: () => 0,
 			})
 			expect(result).toBe(6)
 		})
@@ -190,7 +224,8 @@ describe('visit', () => {
 				UnaryOp: () => '',
 				FunctionCall: () => '',
 				Assignment: () => '',
-				ConditionalExpression: () => '',
+				IfExpression: () => '',
+				ForExpression: () => '',
 			})
 			expect(result).toBe('hello')
 		})
@@ -208,7 +243,8 @@ describe('visit', () => {
 				UnaryOp: () => false,
 				FunctionCall: () => false,
 				Assignment: () => false,
-				ConditionalExpression: () => false,
+				IfExpression: () => false,
+				ForExpression: () => false,
 			})
 			expect(result).toBe(true)
 		})
@@ -227,7 +263,8 @@ describe('visit', () => {
 				UnaryOp: () => 0,
 				FunctionCall: () => 0,
 				Assignment: () => 0,
-				ConditionalExpression: () => 0,
+				IfExpression: () => 0,
+				ForExpression: () => 0,
 			})
 			expect(result).toBe(6)
 		})
@@ -254,7 +291,8 @@ describe('visit', () => {
 				UnaryOp: () => 0,
 				FunctionCall: () => 0,
 				Assignment: () => 0,
-				ConditionalExpression: () => 0,
+				IfExpression: () => 0,
+				ForExpression: () => 0,
 			})
 			expect(result).toBe(20)
 		})
@@ -282,7 +320,8 @@ describe('visit', () => {
 				UnaryOp: () => 0,
 				FunctionCall: () => 0,
 				Assignment: () => 0,
-				ConditionalExpression: () => 0,
+				IfExpression: () => 0,
+				ForExpression: () => 0,
 			})
 			expect(result).toBe(26) // (3 * 7) + 5
 		})
@@ -321,7 +360,8 @@ describe('visit', () => {
 					variables.set(n.name, val)
 					return val
 				},
-				ConditionalExpression: () => 0,
+				IfExpression: () => 0,
+				ForExpression: () => 0,
 			})
 
 			expect(result).toBe(15)
@@ -345,11 +385,18 @@ describe('visit', () => {
 				UnaryOp: (n, recurse) => unaryOp(n.operator, recurse(n.argument)),
 				FunctionCall: (n, recurse) => functionCall(n.name, n.args.map(recurse)),
 				Assignment: (n, recurse) => assign(n.name, recurse(n.value)),
-				ConditionalExpression: (n, recurse) =>
-					conditional(
+				IfExpression: (n, recurse) =>
+					ifExpr(
 						recurse(n.condition),
 						recurse(n.consequent),
 						recurse(n.alternate),
+					),
+				ForExpression: (n, recurse) =>
+					forExpr(
+						n.variable,
+						recurse(n.iterable),
+						n.guard ? recurse(n.guard) : null,
+						recurse(n.body),
 					),
 			})
 
@@ -389,11 +436,18 @@ describe('visit', () => {
 				UnaryOp: (n, recurse) => unaryOp(n.operator, recurse(n.argument)),
 				FunctionCall: (n, recurse) => functionCall(n.name, n.args.map(recurse)),
 				Assignment: (n, recurse) => assign(n.name, recurse(n.value)),
-				ConditionalExpression: (n, recurse) =>
-					conditional(
+				IfExpression: (n, recurse) =>
+					ifExpr(
 						recurse(n.condition),
 						recurse(n.consequent),
 						recurse(n.alternate),
+					),
+				ForExpression: (n, recurse) =>
+					forExpr(
+						n.variable,
+						recurse(n.iterable),
+						n.guard ? recurse(n.guard) : null,
+						recurse(n.body),
 					),
 			})
 
@@ -421,11 +475,16 @@ describe('visit', () => {
 				FunctionCall: (n, recurse) =>
 					1 + n.args.reduce((sum, arg) => sum + recurse(arg), 0),
 				Assignment: (n, recurse) => 1 + recurse(n.value),
-				ConditionalExpression: (n, recurse) =>
+				IfExpression: (n, recurse) =>
 					1 +
 					recurse(n.condition) +
 					recurse(n.consequent) +
 					recurse(n.alternate),
+				ForExpression: (n, recurse) =>
+					1 +
+					recurse(n.iterable) +
+					(n.guard ? recurse(n.guard) : 0) +
+					recurse(n.body),
 			})
 			expect(count).toBe(5) // 1 add + 1 mul + 3 numbers
 		})
@@ -467,10 +526,16 @@ describe('visit', () => {
 					recurse(n.value)
 					return undefined
 				},
-				ConditionalExpression: (n, recurse) => {
+				IfExpression: (n, recurse) => {
 					recurse(n.condition)
 					recurse(n.consequent)
 					recurse(n.alternate)
+					return undefined
+				},
+				ForExpression: (n, recurse) => {
+					recurse(n.iterable)
+					if (n.guard) recurse(n.guard)
+					recurse(n.body)
 					return undefined
 				},
 			})
@@ -498,12 +563,19 @@ describe('visit', () => {
 				UnaryOp: (n, recurse) => 1 + recurse(n.argument),
 				FunctionCall: (n, recurse) => 1 + Math.max(...n.args.map(recurse), 0),
 				Assignment: (n, recurse) => 1 + recurse(n.value),
-				ConditionalExpression: (n, recurse) =>
+				IfExpression: (n, recurse) =>
 					1 +
 					Math.max(
 						recurse(n.condition),
 						recurse(n.consequent),
 						recurse(n.alternate),
+					),
+				ForExpression: (n, recurse) =>
+					1 +
+					Math.max(
+						recurse(n.iterable),
+						n.guard ? recurse(n.guard) : 0,
+						recurse(n.body),
 					),
 			})
 
@@ -554,11 +626,17 @@ describe('visit', () => {
 					visited.push(`Assignment:${n.name}`)
 					recurse(n.value)
 				},
-				ConditionalExpression: (n, recurse) => {
-					visited.push('ConditionalExpression')
+				IfExpression: (n, recurse) => {
+					visited.push('IfExpression')
 					recurse(n.condition)
 					recurse(n.consequent)
 					recurse(n.alternate)
+				},
+				ForExpression: (n, recurse) => {
+					visited.push('ForExpression')
+					recurse(n.iterable)
+					if (n.guard) recurse(n.guard)
+					recurse(n.body)
 				},
 			})
 
@@ -701,11 +779,18 @@ describe('visitor examples from real use cases', () => {
 				UnaryOp: (n, recurse) => unaryOp(n.operator, recurse(n.argument)),
 				FunctionCall: (n, recurse) => functionCall(n.name, n.args.map(recurse)),
 				Assignment: (n, recurse) => assign(n.name, recurse(n.value)),
-				ConditionalExpression: (n, recurse) =>
-					conditional(
+				IfExpression: (n, recurse) =>
+					ifExpr(
 						recurse(n.condition),
 						recurse(n.consequent),
 						recurse(n.alternate),
+					),
+				ForExpression: (n, recurse) =>
+					forExpr(
+						n.variable,
+						recurse(n.iterable),
+						n.guard ? recurse(n.guard) : null,
+						recurse(n.body),
 					),
 			})
 		}
@@ -760,10 +845,14 @@ describe('visitor examples from real use cases', () => {
 						n.args.forEach(recurse)
 					} else if (n.kind === NodeKind.Assignment) {
 						recurse(n.value)
-					} else if (n.kind === NodeKind.ConditionalExpression) {
+					} else if (n.kind === NodeKind.IfExpression) {
 						recurse(n.condition)
 						recurse(n.consequent)
 						recurse(n.alternate)
+					} else if (n.kind === NodeKind.ForExpression) {
+						recurse(n.iterable)
+						if (n.guard) recurse(n.guard)
+						recurse(n.body)
 					} else if (n.kind === NodeKind.ArrayLiteral) {
 						n.elements.forEach(recurse)
 					}

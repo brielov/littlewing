@@ -102,18 +102,21 @@ export function generate(node: ASTNode): string {
 			return `${n.name} = ${value}`
 		},
 
-		ConditionalExpression: (n, recurse) => {
+		IfExpression: (n, recurse) => {
 			const condition = recurse(n.condition)
 			const consequent = recurse(n.consequent)
 			const alternate = recurse(n.alternate)
+			return `if ${condition} then ${consequent} else ${alternate}`
+		},
 
-			const conditionNeedsParens =
-				isAssignment(n.condition) ||
-				(isBinaryOp(n.condition) &&
-					getOperatorPrecedence(n.condition.operator) <= 2)
-			const conditionCode = conditionNeedsParens ? `(${condition})` : condition
-
-			return `${conditionCode} ? ${consequent} : ${alternate}`
+		ForExpression: (n, recurse) => {
+			const iterable = recurse(n.iterable)
+			const body = recurse(n.body)
+			if (n.guard) {
+				const guard = recurse(n.guard)
+				return `for ${n.variable} in ${iterable} when ${guard} then ${body}`
+			}
+			return `for ${n.variable} in ${iterable} then ${body}`
 		},
 	})
 }
