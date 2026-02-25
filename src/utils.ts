@@ -1,4 +1,3 @@
-import { Temporal } from 'temporal-polyfill'
 import type { ASTNode, Operator } from './ast'
 import { TokenKind } from './lexer'
 import type { RuntimeValue } from './types'
@@ -6,12 +5,16 @@ import { visit } from './visitor'
 
 /**
  * Return the type name of a runtime value
+ * Note: PlainDateTime check must precede PlainDate because PlainDateTime is not an
+ * instance of PlainDate in the Temporal API, but ordering is kept explicit for clarity.
  */
 export function typeOf(value: RuntimeValue): string {
 	if (typeof value === 'number') return 'number'
 	if (typeof value === 'string') return 'string'
 	if (typeof value === 'boolean') return 'boolean'
+	if (value instanceof Temporal.PlainDateTime) return 'datetime'
 	if (value instanceof Temporal.PlainDate) return 'date'
+	if (value instanceof Temporal.PlainTime) return 'time'
 	if (Array.isArray(value)) return 'array'
 	throw new Error(`Unknown runtime value type`)
 }
@@ -27,6 +30,15 @@ export function deepEquals(a: RuntimeValue, b: RuntimeValue): boolean {
 	if (typeof a === 'string' && typeof b === 'string') return a === b
 	if (typeof a === 'boolean' && typeof b === 'boolean') return a === b
 	if (a instanceof Temporal.PlainDate && b instanceof Temporal.PlainDate) {
+		return a.equals(b)
+	}
+	if (a instanceof Temporal.PlainTime && b instanceof Temporal.PlainTime) {
+		return a.equals(b)
+	}
+	if (
+		a instanceof Temporal.PlainDateTime &&
+		b instanceof Temporal.PlainDateTime
+	) {
 		return a.equals(b)
 	}
 	if (Array.isArray(a) && Array.isArray(b)) {
@@ -90,6 +102,64 @@ export function assertDate(
 ): asserts v is Temporal.PlainDate {
 	if (!(v instanceof Temporal.PlainDate)) {
 		throw new TypeError(`${context} expected date, got ${typeOf(v)}`)
+	}
+}
+
+/**
+ * Assert a value is a Temporal.PlainTime, throwing a TypeError if not
+ */
+export function assertTime(
+	v: RuntimeValue,
+	context: string,
+): asserts v is Temporal.PlainTime {
+	if (!(v instanceof Temporal.PlainTime)) {
+		throw new TypeError(`${context} expected time, got ${typeOf(v)}`)
+	}
+}
+
+/**
+ * Assert a value is a Temporal.PlainDateTime, throwing a TypeError if not
+ */
+export function assertDateTime(
+	v: RuntimeValue,
+	context: string,
+): asserts v is Temporal.PlainDateTime {
+	if (!(v instanceof Temporal.PlainDateTime)) {
+		throw new TypeError(`${context} expected datetime, got ${typeOf(v)}`)
+	}
+}
+
+/**
+ * Assert a value is a Temporal.PlainDate or Temporal.PlainDateTime
+ */
+export function assertDateOrDateTime(
+	v: RuntimeValue,
+	context: string,
+): asserts v is Temporal.PlainDate | Temporal.PlainDateTime {
+	if (
+		!(v instanceof Temporal.PlainDate) &&
+		!(v instanceof Temporal.PlainDateTime)
+	) {
+		throw new TypeError(
+			`${context} expected date or datetime, got ${typeOf(v)}`,
+		)
+	}
+}
+
+/**
+ * Assert a value is a Temporal.PlainTime or Temporal.PlainDateTime
+ */
+export function assertTimeOrDateTime(
+	v: RuntimeValue,
+	context: string,
+): asserts v is Temporal.PlainTime | Temporal.PlainDateTime {
+	if (
+		!(v instanceof Temporal.PlainTime) &&
+		!(v instanceof Temporal.PlainDateTime)
+	) {
+		throw new TypeError(
+			`${context} expected time or datetime, got ${typeOf(v)}`,
+		)
 	}
 }
 
@@ -246,6 +316,20 @@ function compareOrdered(
 		right instanceof Temporal.PlainDate
 	) {
 		const cmp = Temporal.PlainDate.compare(left, right)
+		return numericComparison(operator, cmp, 0)
+	}
+	if (
+		left instanceof Temporal.PlainTime &&
+		right instanceof Temporal.PlainTime
+	) {
+		const cmp = Temporal.PlainTime.compare(left, right)
+		return numericComparison(operator, cmp, 0)
+	}
+	if (
+		left instanceof Temporal.PlainDateTime &&
+		right instanceof Temporal.PlainDateTime
+	) {
+		const cmp = Temporal.PlainDateTime.compare(left, right)
 		return numericComparison(operator, cmp, 0)
 	}
 	throw new TypeError(

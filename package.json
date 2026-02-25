@@ -54,12 +54,18 @@
 		"bunup": "^0.15.13",
 		"mitata": "^1.0.34",
 		"simple-git-hooks": "^2.13.1",
+		"temporal-polyfill": "^0.3.0",
+		"temporal-spec": "^0.3.0",
 		"typescript": "^5.9.3"
 	},
 	"peerDependencies": {
+		"temporal-polyfill": ">=0.3.0",
 		"typescript": ">=4.5.0"
 	},
 	"peerDependenciesMeta": {
+		"temporal-polyfill": {
+			"optional": true
+		},
 		"typescript": {
 			"optional": true
 		}
@@ -79,8 +85,5 @@
 	},
 	"simple-git-hooks": {
 		"pre-commit": "bun run lint && bun run type-check"
-	},
-	"dependencies": {
-		"temporal-polyfill": "^0.3.0"
 	}
 }

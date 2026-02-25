@@ -4,20 +4,20 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**littlewing** is a minimal, high-performance multi-type expression language with a complete lexer, parser, and interpreter. It supports five types: numbers, strings, booleans, dates (`Temporal.PlainDate`), and homogeneous arrays. The library provides a functional API for evaluating expressions with variables and custom functions.
+**littlewing** is a minimal, high-performance multi-type expression language with a complete lexer, parser, and interpreter. It supports seven types: numbers, strings, booleans, dates (`Temporal.PlainDate`), times (`Temporal.PlainTime`), datetimes (`Temporal.PlainDateTime`), and homogeneous arrays. The library provides a functional API for evaluating expressions with variables and custom functions.
 
 Key characteristics:
 
-- **Multi-type system** - Five types: `number`, `string`, `boolean`, `Temporal.PlainDate`, `readonly RuntimeValue[]`
+- **Multi-type system** - Seven types: `number`, `string`, `boolean`, `Temporal.PlainDate`, `Temporal.PlainTime`, `Temporal.PlainDateTime`, `readonly RuntimeValue[]`
 - **No implicit coercion** - Explicit conversion via `STR()`, `NUM()`, etc.
 - **Strict boolean logic** - `!`, `&&`, `||`, and `if` conditions require boolean operands
 - **Control flow** - `if/then/else` expressions and `for/in/then` comprehensions (with optional `when` guard)
 - **Deep structural equality** - `[1, 2] == [1, 2]` → `true`; cross-type `==` → `false`
 - **Homogeneous arrays** - `[1, "two"]` is a TypeError
-- **Temporal.PlainDate dates** - Date-only, no time, no timezone
+- **Full Temporal support** - PlainDate (date-only), PlainTime (time-only), PlainDateTime (date+time, no timezone)
 - **O(n) algorithms** - Lexer, parser, interpreter all run in linear time
 - **100% ESM** - No Node.js APIs, optimized for browsers
-- **One runtime dependency** - `temporal-polyfill` for Temporal API
+- **Zero runtime dependencies** - Requires global `Temporal` API (native or user-provided polyfill)
 
 ## Architecture
 
@@ -55,7 +55,7 @@ The codebase follows a **three-stage compilation pipeline**:
 
 ### Key Types and Contracts
 
-- **RuntimeValue** (`src/types.ts`) - `number | string | boolean | Temporal.PlainDate | readonly RuntimeValue[]`
+- **RuntimeValue** (`src/types.ts`) - `number | string | boolean | Temporal.PlainDate | Temporal.PlainTime | Temporal.PlainDateTime | readonly RuntimeValue[]`
 - **ASTNode** (`src/ast.ts`) - Discriminated union of 14 node types:
   - Program, NumberLiteral, StringLiteral, BooleanLiteral, ArrayLiteral, Identifier, BinaryOp, UnaryOp, FunctionCall, Assignment, IfExpression, ForExpression, IndexAccess, RangeExpression
 - **ExecutionContext** (`src/types.ts`) - Provides global `functions` and `variables`
@@ -71,7 +71,7 @@ Type guards (`isNumberLiteral`, `isStringLiteral`, `isBooleanLiteral`, `isArrayL
 | `+` | number+number, string+string, array+array | Add, concatenate, or concat arrays |
 | `-`, `*`, `/`, `%`, `^` | number only | Arithmetic |
 | `==`, `!=` | any types | Deep equality (cross-type → `false`) |
-| `<`, `>`, `<=`, `>=` | number, string, or date (same type) | Ordered comparison |
+| `<`, `>`, `<=`, `>=` | number, string, date, time, or datetime (same type) | Ordered comparison |
 | `&&`, `||` | boolean only | Short-circuit; returns boolean |
 | `!` | boolean only | Logical NOT |
 | `-` (unary) | number only | Negation |
@@ -114,12 +114,14 @@ Type guards (`isNumberLiteral`, `isStringLiteral`, `isBooleanLiteral`, `isArrayL
 
 **Standard Library:**
 
-- `defaultContext` - All 57 built-in functions
+- `defaultContext` - All 78 built-in functions
 - `core` - Type conversion: `STR`, `NUM`, `TYPE`
 - `math` - Math functions (14)
 - `string` - String functions (8)
 - `array` - Array functions (8)
-- `datetime` - Date functions (24)
+- `datetime` - Date functions (24, most also accept PlainDateTime)
+- `time` - Time functions (13)
+- `datetimefull` - DateTime construction/conversion functions (7)
 
 ## Development Commands
 
@@ -168,12 +170,14 @@ src/
 ├── analyzer.ts       # Static analysis utilities
 ├── utils.ts          # Shared utilities (operators, type assertions, equality)
 └── stdlib/
-    ├── index.ts      # Combines all stdlib modules into defaultContext
-    ├── core.ts       # STR, NUM, TYPE
-    ├── math.ts       # Math functions (14)
-    ├── string.ts     # String functions (8)
-    ├── array.ts      # Array functions (8)
-    └── datetime.ts   # Date functions using Temporal.PlainDate (24)
+    ├── index.ts          # Combines all stdlib modules into defaultContext
+    ├── core.ts           # STR, NUM, TYPE
+    ├── math.ts           # Math functions (14)
+    ├── string.ts         # String functions (8)
+    ├── array.ts          # Array functions (8)
+    ├── datetime.ts       # Date functions using Temporal.PlainDate/PlainDateTime (24)
+    ├── time.ts           # Time functions using Temporal.PlainTime/PlainDateTime (13)
+    └── datetimefull.ts   # DateTime construction/conversion functions (7)
 
 test/
 ├── lexer.test.ts           # Lexer tests (numbers, strings, operators, brackets)
@@ -185,7 +189,9 @@ test/
 ├── analyzer.test.ts        # Analyzer tests
 ├── ast.test.ts             # AST builder tests (all 14 node types)
 ├── defaults.test.ts        # Default context tests (all stdlib functions)
-├── date-utils.test.ts      # Date utility tests (Temporal.PlainDate)
+├── date-utils.test.ts      # Date utility tests (Temporal.PlainDate, PlainDateTime)
+├── time.test.ts            # Time function tests (Temporal.PlainTime)
+├── datetime-full.test.ts   # DateTime function tests (Temporal.PlainDateTime)
 ├── integration.test.ts     # Integration tests (full pipeline)
 ├── operators.test.ts       # Operator tests (all operators, all types)
 ├── external-variables.test.ts  # Context override tests
@@ -210,7 +216,7 @@ bench/
 - No implicit `any` types
 - Type guards required for safe union type narrowing
 - `isolatedDeclarations` enabled
-- `RuntimeValue` is a 5-type union requiring explicit type handling
+- `RuntimeValue` is a 7-type union requiring explicit type handling
 
 ### Visitor Pattern
 
@@ -267,7 +273,7 @@ The optimizer (`src/optimizer.ts`) implements constant folding, constant propaga
 
 Tests use Bun's built-in test framework:
 
-- **653 tests** across 14 test files
+- **737 tests** across 16 test files
 - Run a single test file: `bun test test/optimizer.test.ts`
 
 ### Code Style
@@ -330,7 +336,7 @@ interface RangeExpression { readonly kind: NodeKind.RangeExpression; readonly st
 
 ## Built-in Functions Summary
 
-**Total: 57 built-in functions in `defaultContext`**
+**Total: 78 built-in functions in `defaultContext`**
 
 - **Type Conversion (3):** STR, NUM, TYPE
 - **Math (14):** ABS, CEIL, FLOOR, ROUND, SQRT, MIN, MAX, CLAMP, SIN, COS, TAN, LOG, LOG10, EXP
@@ -342,8 +348,16 @@ interface RangeExpression { readonly kind: NodeKind.RangeExpression; readonly st
 - **Date - Differences (4):** DIFFERENCE_IN_DAYS, DIFFERENCE_IN_WEEKS, DIFFERENCE_IN_MONTHS, DIFFERENCE_IN_YEARS
 - **Date - Period Boundaries (6):** START_OF_MONTH, END_OF_MONTH, START_OF_YEAR, END_OF_YEAR, START_OF_WEEK, START_OF_QUARTER
 - **Date - Comparisons (3):** IS_SAME_DAY, IS_WEEKEND, IS_LEAP_YEAR
+- **Time - Core (2):** TIME, NOW_TIME
+- **Time - Extractors (4):** GET_HOUR, GET_MINUTE, GET_SECOND, GET_MILLISECOND
+- **Time - Arithmetic (3):** ADD_HOURS, ADD_MINUTES, ADD_SECONDS
+- **Time - Differences (3):** DIFFERENCE_IN_HOURS, DIFFERENCE_IN_MINUTES, DIFFERENCE_IN_SECONDS
+- **Time - Comparisons (1):** IS_SAME_TIME
+- **DateTime - Core (2):** DATETIME, NOW
+- **DateTime - Conversions (3):** TO_DATE, TO_TIME, COMBINE
+- **DateTime - Day Boundaries (2):** START_OF_DAY, END_OF_DAY
 
-All date functions use `Temporal.PlainDate` (date only, no time, no timezone).
+Date functions use `Temporal.PlainDate` (most also accept `Temporal.PlainDateTime`). Time functions use `Temporal.PlainTime` (most also accept `Temporal.PlainDateTime`). DateTime functions use `Temporal.PlainDateTime`.
 
 ## Build Output
 

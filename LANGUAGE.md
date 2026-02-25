@@ -4,19 +4,19 @@
 
 ## Overview
 
-Littlewing is a **multi-type expression language** with five value types: numbers, strings, booleans, dates, and arrays. It's designed for evaluating expressions, financial calculations, date arithmetic, and conditional logic with type-safe execution.
+Littlewing is a **multi-type expression language** with seven value types: numbers, strings, booleans, dates, times, datetimes, and arrays. It's designed for evaluating expressions, financial calculations, temporal arithmetic, and conditional logic with type-safe execution.
 
 ### Key Features
 
-- **Five types** - Numbers, strings, booleans, dates (Temporal.PlainDate), and homogeneous arrays
+- **Seven types** - Numbers, strings, booleans, dates (`Temporal.PlainDate`), times (`Temporal.PlainTime`), datetimes (`Temporal.PlainDateTime`), and homogeneous arrays
 - **No implicit coercion** - Explicit type conversion via `STR()`, `NUM()`, etc.
 - **Strict boolean logic** - `!`, `&&`, `||`, and `if` conditions require booleans
 - **Control flow** - `if/then/else` expressions and `for/in/then` comprehensions
 - **Bracket indexing** - `arr[0]`, `str[1]`, with negative indexing and chaining
 - **Range expressions** - `1..5` (exclusive), `1..=5` (inclusive)
 - **Deep equality** - `[1, 2] == [1, 2]` evaluates to `true`
-- **Date arithmetic** - Built-in date functions using `Temporal.PlainDate`
-- **Zero dependencies** - Perfect for browser environments (uses `temporal-polyfill`)
+- **Temporal arithmetic** - Built-in date, time, and datetime functions using Temporal API
+- **Zero runtime dependencies** - Requires global `Temporal` API (native or user-provided polyfill)
 - **Linear time execution** - O(n) parsing and evaluation
 - **Context variables** - Runtime value injection
 - **Custom functions** - Extensible with JavaScript functions
@@ -71,7 +71,7 @@ futureValue = principal * (1 + rate) ^ years // → 1157.625
 
 ### Types
 
-Littlewing has five value types:
+Littlewing has seven value types:
 
 | Type | Examples | Description |
 | --- | --- | --- |
@@ -79,6 +79,8 @@ Littlewing has five value types:
 | `string` | `"hello"`, `"line1\nline2"` | Double-quoted, with escape sequences |
 | `boolean` | `true`, `false` | Logical values |
 | `date` | `DATE(2024, 6, 15)` | `Temporal.PlainDate` (no time, no timezone) |
+| `time` | `TIME(14, 30, 0)` | `Temporal.PlainTime` (no date, no timezone) |
+| `datetime` | `DATETIME(2024, 6, 15, 14, 30, 0)` | `Temporal.PlainDateTime` (no timezone) |
 | `array` | `[1, 2, 3]`, `["a", "b"]` | Homogeneous (all elements same type) |
 
 There is **no implicit type coercion**. Use explicit conversion functions:
@@ -167,6 +169,48 @@ Dates can be compared with `<`, `>`, `<=`, `>=`, `==`, `!=`:
 d1 = DATE(2024, 1, 1)
 d2 = DATE(2024, 12, 31)
 d1 < d2 // → true
+```
+
+### Times
+
+Times are `Temporal.PlainTime` values (time only, no date, no timezone):
+
+```
+t = TIME(14, 30, 0)            // 2:30 PM
+now = NOW_TIME()                // current time
+later = ADD_HOURS(t, 3)        // time arithmetic (wraps at midnight)
+```
+
+Times can be compared with `<`, `>`, `<=`, `>=`, `==`, `!=`:
+
+```
+t1 = TIME(10, 0, 0)
+t2 = TIME(14, 0, 0)
+t1 < t2 // → true
+```
+
+### DateTimes
+
+DateTimes are `Temporal.PlainDateTime` values (date + time, no timezone):
+
+```
+dt = DATETIME(2024, 6, 15, 14, 30, 0) // June 15, 2024 at 2:30 PM
+now = NOW()                            // current date and time
+d = TO_DATE(dt)                        // extract date portion
+t = TO_TIME(dt)                        // extract time portion
+combined = COMBINE(d, t)              // combine date + time into datetime
+```
+
+DateTimes are fully supported by date functions (extractors, arithmetic, period boundaries) and time functions (extractors, arithmetic). The input type is preserved:
+
+```
+// Date functions preserve datetime type
+ADD_DAYS(dt, 7)      // → PlainDateTime (7 days later, same time)
+START_OF_MONTH(dt)   // → PlainDateTime (first day of month, same time)
+
+// Time functions work on datetime
+GET_HOUR(dt)         // → 14
+ADD_HOURS(dt, 5)     // → PlainDateTime (date may change)
 ```
 
 ### Arrays
@@ -300,10 +344,10 @@ All comparisons return `boolean` (`true` or `false`):
 | --- | --- | --- | --- | --- |
 | `==` | Equal | any (deep equality) | `5 == 5` | `true` |
 | `!=` | Not equal | any (deep equality) | `5 != 3` | `true` |
-| `<` | Less than | number, string, date | `3 < 5` | `true` |
-| `>` | Greater than | number, string, date | `5 > 3` | `true` |
-| `<=` | Less or equal | number, string, date | `3 <= 3` | `true` |
-| `>=` | Greater or equal | number, string, date | `5 >= 3` | `true` |
+| `<` | Less than | number, string, date, time, datetime | `3 < 5` | `true` |
+| `>` | Greater than | number, string, date, time, datetime | `5 > 3` | `true` |
+| `<=` | Less or equal | number, string, date, time, datetime | `3 <= 3` | `true` |
+| `>=` | Greater or equal | number, string, date, time, datetime | `5 >= 3` | `true` |
 
 Deep equality for arrays: `[1, 2] == [1, 2]` → `true`
 
@@ -477,7 +521,7 @@ Note: Bracket indexing (`arr[0]`, `arr[-1]`) is generally preferred over `ARR_IN
 
 ### Date Functions (24 functions)
 
-All date functions operate on `Temporal.PlainDate` values (date only, no time, no timezone).
+Date functions operate on `Temporal.PlainDate` values. Most also accept `Temporal.PlainDateTime` (preserving the input type). `TODAY()` and `DATE()` return `PlainDate` only.
 
 #### Core Date Functions
 
@@ -486,7 +530,7 @@ All date functions operate on `Temporal.PlainDate` values (date only, no time, n
 | `TODAY()` | Current date | `TODAY()` → today's date |
 | `DATE(y, m, d)` | Create date | `DATE(2024, 6, 15)` → June 15, 2024 |
 
-#### Component Extractors
+#### Component Extractors (date or datetime)
 
 | Function | Description | Returns |
 | --- | --- | --- |
@@ -497,7 +541,7 @@ All date functions operate on `Temporal.PlainDate` values (date only, no time, n
 | `GET_DAY_OF_YEAR(d)` | Get day of year | 1-366 |
 | `GET_QUARTER(d)` | Get quarter | 1-4 |
 
-#### Date Arithmetic
+#### Date Arithmetic (date or datetime, preserves type)
 
 | Function | Description | Example |
 | --- | --- | --- |
@@ -505,7 +549,7 @@ All date functions operate on `Temporal.PlainDate` values (date only, no time, n
 | `ADD_MONTHS(d, n)` | Add months | `ADD_MONTHS(d, 2)` → 2 months later |
 | `ADD_YEARS(d, n)` | Add years | `ADD_YEARS(d, 1)` → 1 year later |
 
-#### Date Differences
+#### Date Differences (same type required)
 
 | Function | Description |
 | --- | --- |
@@ -514,7 +558,7 @@ All date functions operate on `Temporal.PlainDate` values (date only, no time, n
 | `DIFFERENCE_IN_MONTHS(d1, d2)` | Absolute difference in whole months |
 | `DIFFERENCE_IN_YEARS(d1, d2)` | Absolute difference in whole years |
 
-#### Start/End of Period
+#### Start/End of Period (date or datetime, preserves type)
 
 | Function | Description |
 | --- | --- |
@@ -525,17 +569,73 @@ All date functions operate on `Temporal.PlainDate` values (date only, no time, n
 | `START_OF_WEEK(d)` | Monday of the week |
 | `START_OF_QUARTER(d)` | First day of quarter |
 
-#### Date Comparisons
+#### Date Comparisons (date or datetime)
 
 | Function | Description | Returns |
 | --- | --- | --- |
-| `IS_SAME_DAY(d1, d2)` | Same calendar day | `boolean` |
+| `IS_SAME_DAY(d1, d2)` | Same calendar day (mixed date+datetime OK) | `boolean` |
 | `IS_WEEKEND(d)` | Saturday or Sunday | `boolean` |
 | `IS_LEAP_YEAR(d)` | Leap year check | `boolean` |
 | `d1 < d2` | Before (use operators) | `boolean` |
 | `d1 > d2` | After (use operators) | `boolean` |
 
-### Date Examples
+### Time Functions (13 functions)
+
+Time functions operate on `Temporal.PlainTime` values. Extractors and arithmetic also accept `Temporal.PlainDateTime`.
+
+#### Core Time Functions
+
+| Function | Description | Example |
+| --- | --- | --- |
+| `TIME(h, m, s)` | Create time | `TIME(14, 30, 0)` → 2:30 PM |
+| `NOW_TIME()` | Current time | `NOW_TIME()` → current wall-clock time |
+
+#### Time Extractors (time or datetime)
+
+| Function | Description | Returns |
+| --- | --- | --- |
+| `GET_HOUR(t)` | Get hour | 0-23 |
+| `GET_MINUTE(t)` | Get minute | 0-59 |
+| `GET_SECOND(t)` | Get second | 0-59 |
+| `GET_MILLISECOND(t)` | Get millisecond | 0-999 |
+
+#### Time Arithmetic (time or datetime, preserves type)
+
+| Function | Description | Notes |
+| --- | --- | --- |
+| `ADD_HOURS(t, n)` | Add hours | PlainTime wraps at midnight |
+| `ADD_MINUTES(t, n)` | Add minutes | PlainTime wraps at midnight |
+| `ADD_SECONDS(t, n)` | Add seconds | PlainTime wraps at midnight |
+
+#### Time Differences (same type required)
+
+| Function | Description |
+| --- | --- |
+| `DIFFERENCE_IN_HOURS(t1, t2)` | Absolute difference in hours |
+| `DIFFERENCE_IN_MINUTES(t1, t2)` | Absolute difference in minutes |
+| `DIFFERENCE_IN_SECONDS(t1, t2)` | Absolute difference in seconds |
+
+#### Time Comparisons
+
+| Function | Description | Returns |
+| --- | --- | --- |
+| `IS_SAME_TIME(t1, t2)` | Same time-of-day (mixed time+datetime OK) | `boolean` |
+
+### DateTime Functions (7 functions)
+
+DateTime functions for construction and conversion using `Temporal.PlainDateTime`.
+
+| Function | Description | Example |
+| --- | --- | --- |
+| `DATETIME(y, mo, d, h, mi, s)` | Create datetime | `DATETIME(2024, 6, 15, 14, 30, 0)` |
+| `NOW()` | Current datetime | `NOW()` → current date and time |
+| `TO_DATE(dt)` | Extract date portion | `TO_DATE(dt)` → `PlainDate` |
+| `TO_TIME(dt)` | Extract time portion | `TO_TIME(dt)` → `PlainTime` |
+| `COMBINE(d, t)` | Combine date + time | `COMBINE(d, t)` → `PlainDateTime` |
+| `START_OF_DAY(dt)` | Midnight (00:00:00) | `START_OF_DAY(dt)` |
+| `END_OF_DAY(dt)` | End of day (23:59:59.999...) | `END_OF_DAY(dt)` |
+
+### Temporal Examples
 
 ```
 // Create and compare dates
@@ -555,6 +655,20 @@ GET_WEEKDAY(today) // → 1-7
 // Period boundaries
 monthStart = START_OF_MONTH(today)
 monthEnd = END_OF_MONTH(today)
+
+// Time operations
+meeting = TIME(14, 30, 0)
+endTime = ADD_HOURS(meeting, 1) // → 15:30:00
+GET_HOUR(meeting) // → 14
+
+// DateTime operations
+event = DATETIME(2024, 6, 15, 14, 30, 0)
+eventDate = TO_DATE(event) // → 2024-06-15
+eventTime = TO_TIME(event) // → 14:30:00
+dayStart = START_OF_DAY(event) // → 2024-06-15T00:00:00
+
+// Combine date + time
+appt = COMBINE(DATE(2024, 12, 25), TIME(10, 0, 0))
 ```
 
 ## External Variables and Functions

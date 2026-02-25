@@ -1,13 +1,15 @@
-import type { Temporal } from 'temporal-polyfill'
+/// <reference types="temporal-spec/global" />
 
 /**
- * Runtime value type - numbers, strings, booleans, dates, and homogeneous arrays
+ * Runtime value type - numbers, strings, booleans, dates, times, datetimes, and homogeneous arrays
  */
 export type RuntimeValue =
 	| number
 	| string
 	| boolean
 	| Temporal.PlainDate
+	| Temporal.PlainTime
+	| Temporal.PlainDateTime
 	| readonly RuntimeValue[]
 
 /**
