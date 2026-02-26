@@ -51,37 +51,37 @@ describe("Time Functions", () => {
 	describe("EXTRACTORS", () => {
 		const t = new Temporal.PlainTime(14, 30, 45, 123);
 
-		test("GET_HOUR()", () => {
-			expect(evaluate("GET_HOUR(t)", ctx({ t }))).toBe(14);
+		test("HOUR()", () => {
+			expect(evaluate("HOUR(t)", ctx({ t }))).toBe(14);
 		});
 
-		test("GET_MINUTE()", () => {
-			expect(evaluate("GET_MINUTE(t)", ctx({ t }))).toBe(30);
+		test("MINUTE()", () => {
+			expect(evaluate("MINUTE(t)", ctx({ t }))).toBe(30);
 		});
 
-		test("GET_SECOND()", () => {
-			expect(evaluate("GET_SECOND(t)", ctx({ t }))).toBe(45);
+		test("SECOND()", () => {
+			expect(evaluate("SECOND(t)", ctx({ t }))).toBe(45);
 		});
 
-		test("GET_MILLISECOND()", () => {
-			expect(evaluate("GET_MILLISECOND(t)", ctx({ t }))).toBe(123);
+		test("MILLISECOND()", () => {
+			expect(evaluate("MILLISECOND(t)", ctx({ t }))).toBe(123);
 		});
 
 		test("extractors work on PlainDateTime", () => {
 			const dt = new Temporal.PlainDateTime(2024, 6, 15, 9, 15, 30, 500);
-			expect(evaluate("GET_HOUR(dt)", ctx({ dt }))).toBe(9);
-			expect(evaluate("GET_MINUTE(dt)", ctx({ dt }))).toBe(15);
-			expect(evaluate("GET_SECOND(dt)", ctx({ dt }))).toBe(30);
-			expect(evaluate("GET_MILLISECOND(dt)", ctx({ dt }))).toBe(500);
+			expect(evaluate("HOUR(dt)", ctx({ dt }))).toBe(9);
+			expect(evaluate("MINUTE(dt)", ctx({ dt }))).toBe(15);
+			expect(evaluate("SECOND(dt)", ctx({ dt }))).toBe(30);
+			expect(evaluate("MILLISECOND(dt)", ctx({ dt }))).toBe(500);
 		});
 
 		test("extractors reject date", () => {
 			const d = new Temporal.PlainDate(2024, 6, 15);
-			expect(() => evaluate("GET_HOUR(d)", ctx({ d }))).toThrow(TypeError);
+			expect(() => evaluate("HOUR(d)", ctx({ d }))).toThrow(TypeError);
 		});
 
 		test("extractors reject number", () => {
-			expect(() => evaluate("GET_HOUR(5)", defaultContext)).toThrow(TypeError);
+			expect(() => evaluate("HOUR(5)", defaultContext)).toThrow(TypeError);
 		});
 	});
 

@@ -48,10 +48,11 @@ const sections: Array<{ title: string; items: Array<[string, string]> }> = [
 		items: [
 			["type", 'STR(42), NUM("3"), TYPE(x)'],
 			["math", "ABS, CEIL, FLOOR, ROUND, SQRT, MIN, MAX, CLAMP"],
-			["string", "STR_LEN, STR_UPPER, STR_LOWER, STR_TRIM, STR_SPLIT"],
-			["array", "ARR_LEN, ARR_PUSH, ARR_SORT, ARR_SUM, ARR_JOIN"],
-			["date", "TODAY(), GET_YEAR, ADD_DAYS, DIFFERENCE_IN_DAYS"],
-			["time", "NOW_TIME(), GET_HOUR, ADD_HOURS"],
+			["polymorphic", "LEN, SLICE, CONTAINS, REVERSE, INDEX_OF"],
+			["string", "STR_UPPER, STR_LOWER, STR_TRIM, STR_SPLIT"],
+			["array", "ARR_SORT, ARR_SUM, ARR_JOIN, ARR_UNIQUE"],
+			["date", "TODAY(), YEAR, ADD_DAYS, DIFFERENCE_IN_DAYS"],
+			["time", "NOW_TIME(), HOUR, ADD_HOURS"],
 		],
 	},
 	{

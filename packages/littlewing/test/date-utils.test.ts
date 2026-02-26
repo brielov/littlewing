@@ -51,55 +51,55 @@ describe("Date Utils", () => {
 	describe("COMPONENT EXTRACTORS", () => {
 		const d = new Temporal.PlainDate(2024, 6, 15);
 
-		test("GET_YEAR() extracts year", () => {
-			expect(evaluate("GET_YEAR(d)", dateCtx({ d }))).toBe(2024);
+		test("YEAR() extracts year", () => {
+			expect(evaluate("YEAR(d)", dateCtx({ d }))).toBe(2024);
 		});
 
-		test("GET_MONTH() extracts month (1-based)", () => {
-			expect(evaluate("GET_MONTH(d)", dateCtx({ d }))).toBe(6);
+		test("MONTH() extracts month (1-based)", () => {
+			expect(evaluate("MONTH(d)", dateCtx({ d }))).toBe(6);
 		});
 
-		test("GET_DAY() extracts day", () => {
-			expect(evaluate("GET_DAY(d)", dateCtx({ d }))).toBe(15);
+		test("DAY() extracts day", () => {
+			expect(evaluate("DAY(d)", dateCtx({ d }))).toBe(15);
 		});
 
-		test("GET_WEEKDAY() extracts day of week (1=Mon, 7=Sun)", () => {
+		test("WEEKDAY() extracts day of week (1=Mon, 7=Sun)", () => {
 			// 2024-06-15 is a Saturday
-			expect(evaluate("GET_WEEKDAY(d)", dateCtx({ d }))).toBe(6);
+			expect(evaluate("WEEKDAY(d)", dateCtx({ d }))).toBe(6);
 		});
 
-		test("GET_DAY_OF_YEAR - Jan 1 is day 1", () => {
+		test("DAY_OF_YEAR - Jan 1 is day 1", () => {
 			const jan1 = new Temporal.PlainDate(2024, 1, 1);
-			expect(evaluate("GET_DAY_OF_YEAR(d)", dateCtx({ d: jan1 }))).toBe(1);
+			expect(evaluate("DAY_OF_YEAR(d)", dateCtx({ d: jan1 }))).toBe(1);
 		});
 
-		test("GET_DAY_OF_YEAR - Dec 31 in leap year is day 366", () => {
+		test("DAY_OF_YEAR - Dec 31 in leap year is day 366", () => {
 			const dec31 = new Temporal.PlainDate(2024, 12, 31);
-			expect(evaluate("GET_DAY_OF_YEAR(d)", dateCtx({ d: dec31 }))).toBe(366);
+			expect(evaluate("DAY_OF_YEAR(d)", dateCtx({ d: dec31 }))).toBe(366);
 		});
 
-		test("GET_DAY_OF_YEAR - Dec 31 in non-leap year is day 365", () => {
+		test("DAY_OF_YEAR - Dec 31 in non-leap year is day 365", () => {
 			const dec31 = new Temporal.PlainDate(2023, 12, 31);
-			expect(evaluate("GET_DAY_OF_YEAR(d)", dateCtx({ d: dec31 }))).toBe(365);
+			expect(evaluate("DAY_OF_YEAR(d)", dateCtx({ d: dec31 }))).toBe(365);
 		});
 
-		test("GET_DAY_OF_YEAR - Feb 29 in leap year is day 60", () => {
+		test("DAY_OF_YEAR - Feb 29 in leap year is day 60", () => {
 			const feb29 = new Temporal.PlainDate(2024, 2, 29);
-			expect(evaluate("GET_DAY_OF_YEAR(d)", dateCtx({ d: feb29 }))).toBe(60);
+			expect(evaluate("DAY_OF_YEAR(d)", dateCtx({ d: feb29 }))).toBe(60);
 		});
 
-		test("GET_QUARTER", () => {
+		test("QUARTER", () => {
 			const q1 = new Temporal.PlainDate(2024, 2, 15);
-			expect(evaluate("GET_QUARTER(d)", dateCtx({ d: q1 }))).toBe(1);
+			expect(evaluate("QUARTER(d)", dateCtx({ d: q1 }))).toBe(1);
 
 			const q2 = new Temporal.PlainDate(2024, 5, 15);
-			expect(evaluate("GET_QUARTER(d)", dateCtx({ d: q2 }))).toBe(2);
+			expect(evaluate("QUARTER(d)", dateCtx({ d: q2 }))).toBe(2);
 
 			const q3 = new Temporal.PlainDate(2024, 8, 15);
-			expect(evaluate("GET_QUARTER(d)", dateCtx({ d: q3 }))).toBe(3);
+			expect(evaluate("QUARTER(d)", dateCtx({ d: q3 }))).toBe(3);
 
 			const q4 = new Temporal.PlainDate(2024, 11, 15);
-			expect(evaluate("GET_QUARTER(d)", dateCtx({ d: q4 }))).toBe(4);
+			expect(evaluate("QUARTER(d)", dateCtx({ d: q4 }))).toBe(4);
 		});
 	});
 
@@ -438,7 +438,7 @@ describe("Date Utils", () => {
 
 		test("Check if date is in Q1", () => {
 			const d = new Temporal.PlainDate(2024, 2, 15);
-			expect(evaluate("GET_QUARTER(d) == 1", dateCtx({ d }))).toBe(true);
+			expect(evaluate("QUARTER(d) == 1", dateCtx({ d }))).toBe(true);
 		});
 	});
 
@@ -446,30 +446,30 @@ describe("Date Utils", () => {
 		const dt = new Temporal.PlainDateTime(2024, 6, 15, 14, 30, 0);
 
 		describe("EXTRACTORS with PlainDateTime", () => {
-			test("GET_YEAR()", () => {
-				expect(evaluate("GET_YEAR(dt)", dateCtx({ dt }))).toBe(2024);
+			test("YEAR()", () => {
+				expect(evaluate("YEAR(dt)", dateCtx({ dt }))).toBe(2024);
 			});
 
-			test("GET_MONTH()", () => {
-				expect(evaluate("GET_MONTH(dt)", dateCtx({ dt }))).toBe(6);
+			test("MONTH()", () => {
+				expect(evaluate("MONTH(dt)", dateCtx({ dt }))).toBe(6);
 			});
 
-			test("GET_DAY()", () => {
-				expect(evaluate("GET_DAY(dt)", dateCtx({ dt }))).toBe(15);
+			test("DAY()", () => {
+				expect(evaluate("DAY(dt)", dateCtx({ dt }))).toBe(15);
 			});
 
-			test("GET_WEEKDAY()", () => {
+			test("WEEKDAY()", () => {
 				// 2024-06-15 is a Saturday
-				expect(evaluate("GET_WEEKDAY(dt)", dateCtx({ dt }))).toBe(6);
+				expect(evaluate("WEEKDAY(dt)", dateCtx({ dt }))).toBe(6);
 			});
 
-			test("GET_DAY_OF_YEAR()", () => {
+			test("DAY_OF_YEAR()", () => {
 				const jan1 = new Temporal.PlainDateTime(2024, 1, 1, 12, 0, 0);
-				expect(evaluate("GET_DAY_OF_YEAR(dt)", dateCtx({ dt: jan1 }))).toBe(1);
+				expect(evaluate("DAY_OF_YEAR(dt)", dateCtx({ dt: jan1 }))).toBe(1);
 			});
 
-			test("GET_QUARTER()", () => {
-				expect(evaluate("GET_QUARTER(dt)", dateCtx({ dt }))).toBe(2);
+			test("QUARTER()", () => {
+				expect(evaluate("QUARTER(dt)", dateCtx({ dt }))).toBe(2);
 			});
 		});
 

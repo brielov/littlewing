@@ -122,12 +122,12 @@ Type guards (`isNumberLiteral`, `isStringLiteral`, `isBooleanLiteral`, `isArrayL
 
 **Standard Library:**
 
-- `defaultContext` - All 85 built-in functions
-- `core` - Type conversion: `STR`, `NUM`, `TYPE`
+- `defaultContext` - All 82 built-in functions
+- `core` - Type conversion and polymorphic collection functions (8)
 - `math` - Math functions (14)
-- `string` - String functions (12)
-- `array` - Array functions (12)
-- `datetime` - Date functions (24, most also accept PlainDateTime)
+- `string` - String functions (8)
+- `array` - Array functions (7)
+- `datetime` - Date functions (25, most also accept PlainDateTime)
 - `time` - Time functions (13)
 - `datetimefull` - DateTime construction/conversion functions (7)
 
@@ -185,11 +185,11 @@ This is a **Bun workspaces monorepo** with two packages:
 │   │   │   ├── utils.ts          # Shared utilities (operators, type assertions, equality)
 │   │   │   └── stdlib/
 │   │   │       ├── index.ts          # Combines all stdlib modules into defaultContext
-│   │   │       ├── core.ts           # STR, NUM, TYPE
+│   │   │       ├── core.ts           # Type conversion + polymorphic functions (8)
 │   │   │       ├── math.ts           # Math functions (14)
-│   │   │       ├── string.ts         # String functions (12)
-│   │   │       ├── array.ts          # Array functions (12)
-│   │   │       ├── datetime.ts       # Date functions (24)
+│   │   │       ├── string.ts         # String functions (8)
+│   │   │       ├── array.ts          # Array functions (7)
+│   │   │       ├── datetime.ts       # Date functions (25)
 │   │   │       ├── time.ts           # Time functions (13)
 │   │   │       └── datetimefull.ts   # DateTime functions (7)
 │   │   └── test/                 # 17 test files, 852 tests
@@ -406,20 +406,20 @@ interface Placeholder {
 
 ## Built-in Functions Summary
 
-**Total: 85 built-in functions in `defaultContext`**
+**Total: 82 built-in functions in `defaultContext`**
 
-- **Type Conversion (3):** STR, NUM, TYPE
+- **Core (8):** STR, NUM, TYPE, LEN, SLICE, CONTAINS, REVERSE, INDEX_OF
 - **Math (14):** ABS, CEIL, FLOOR, ROUND, SQRT, MIN, MAX, CLAMP, SIN, COS, TAN, LOG, LOG10, EXP
-- **String (12):** STR_LEN, STR_UPPER, STR_LOWER, STR_TRIM, STR_SLICE, STR_CONTAINS, STR_INDEX_OF, STR_SPLIT, STR_REPLACE, STR_STARTS_WITH, STR_ENDS_WITH, STR_REPEAT
-- **Array (12):** ARR_LEN, ARR_PUSH, ARR_SLICE, ARR_CONTAINS, ARR_REVERSE, ARR_SORT, ARR_UNIQUE, ARR_FLAT, ARR_JOIN, ARR_SUM, ARR_MIN, ARR_MAX
+- **String (8):** STR_UPPER, STR_LOWER, STR_TRIM, STR_SPLIT, STR_REPLACE, STR_STARTS_WITH, STR_ENDS_WITH, STR_REPEAT
+- **Array (7):** ARR_SORT, ARR_UNIQUE, ARR_FLAT, ARR_JOIN, ARR_SUM, ARR_MIN, ARR_MAX
 - **Date - Core (2):** TODAY, DATE
-- **Date - Extractors (6):** GET_YEAR, GET_MONTH, GET_DAY, GET_WEEKDAY, GET_DAY_OF_YEAR, GET_QUARTER
+- **Date - Extractors (6):** YEAR, MONTH, DAY, WEEKDAY, DAY_OF_YEAR, QUARTER
 - **Date - Arithmetic (3):** ADD_DAYS, ADD_MONTHS, ADD_YEARS
 - **Date - Differences (4):** DIFFERENCE_IN_DAYS, DIFFERENCE_IN_WEEKS, DIFFERENCE_IN_MONTHS, DIFFERENCE_IN_YEARS
 - **Date - Period Boundaries (6):** START_OF_MONTH, END_OF_MONTH, START_OF_YEAR, END_OF_YEAR, START_OF_WEEK, START_OF_QUARTER
-- **Date - Comparisons (3):** IS_SAME_DAY, IS_WEEKEND, IS_LEAP_YEAR
+- **Date - Comparisons (4):** IS_SAME_DAY, IS_WEEKEND, IS_LEAP_YEAR, AGE
 - **Time - Core (2):** TIME, NOW_TIME
-- **Time - Extractors (4):** GET_HOUR, GET_MINUTE, GET_SECOND, GET_MILLISECOND
+- **Time - Extractors (4):** HOUR, MINUTE, SECOND, MILLISECOND
 - **Time - Arithmetic (3):** ADD_HOURS, ADD_MINUTES, ADD_SECONDS
 - **Time - Differences (3):** DIFFERENCE_IN_HOURS, DIFFERENCE_IN_MINUTES, DIFFERENCE_IN_SECONDS
 - **Time - Comparisons (1):** IS_SAME_TIME

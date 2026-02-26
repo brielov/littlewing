@@ -33,48 +33,48 @@ export const DATE = (year: RuntimeValue, month: RuntimeValue, day: RuntimeValue)
 /**
  * Get the year from a date or datetime
  */
-export const GET_YEAR = (date: RuntimeValue): RuntimeValue => {
-	assertDateOrDateTime(date, "GET_YEAR");
+export const YEAR = (date: RuntimeValue): RuntimeValue => {
+	assertDateOrDateTime(date, "YEAR");
 	return date.year;
 };
 
 /**
  * Get the month from a date or datetime (1-based: 1 = January, 12 = December)
  */
-export const GET_MONTH = (date: RuntimeValue): RuntimeValue => {
-	assertDateOrDateTime(date, "GET_MONTH");
+export const MONTH = (date: RuntimeValue): RuntimeValue => {
+	assertDateOrDateTime(date, "MONTH");
 	return date.month;
 };
 
 /**
  * Get the day of month from a date or datetime (1-31)
  */
-export const GET_DAY = (date: RuntimeValue): RuntimeValue => {
-	assertDateOrDateTime(date, "GET_DAY");
+export const DAY = (date: RuntimeValue): RuntimeValue => {
+	assertDateOrDateTime(date, "DAY");
 	return date.day;
 };
 
 /**
  * Get the day of week from a date or datetime (1 = Monday, 7 = Sunday)
  */
-export const GET_WEEKDAY = (date: RuntimeValue): RuntimeValue => {
-	assertDateOrDateTime(date, "GET_WEEKDAY");
+export const WEEKDAY = (date: RuntimeValue): RuntimeValue => {
+	assertDateOrDateTime(date, "WEEKDAY");
 	return date.dayOfWeek;
 };
 
 /**
  * Get the day of year (1-366) from a date or datetime
  */
-export const GET_DAY_OF_YEAR = (date: RuntimeValue): RuntimeValue => {
-	assertDateOrDateTime(date, "GET_DAY_OF_YEAR");
+export const DAY_OF_YEAR = (date: RuntimeValue): RuntimeValue => {
+	assertDateOrDateTime(date, "DAY_OF_YEAR");
 	return date.dayOfYear;
 };
 
 /**
  * Get the quarter (1-4) from a date or datetime
  */
-export const GET_QUARTER = (date: RuntimeValue): RuntimeValue => {
-	assertDateOrDateTime(date, "GET_QUARTER");
+export const QUARTER = (date: RuntimeValue): RuntimeValue => {
+	assertDateOrDateTime(date, "QUARTER");
 	return Math.ceil(date.month / 3);
 };
 
@@ -281,4 +281,29 @@ export const IS_WEEKEND = (date: RuntimeValue): RuntimeValue => {
 export const IS_LEAP_YEAR = (date: RuntimeValue): RuntimeValue => {
 	assertDateOrDateTime(date, "IS_LEAP_YEAR");
 	return date.inLeapYear;
+};
+
+/**
+ * Calculate age in complete years from a birth date.
+ * Accepts PlainDate or PlainDateTime (only the date portion is used).
+ * Optional second argument specifies the reference date (defaults to today).
+ */
+export const AGE = (birthDate: RuntimeValue, ...rest: RuntimeValue[]): RuntimeValue => {
+	assertDateOrDateTime(birthDate, "AGE");
+	const birth = birthDate instanceof Temporal.PlainDateTime ? birthDate.toPlainDate() : birthDate;
+
+	let reference: Temporal.PlainDate;
+	if (rest.length > 0) {
+		const ref = rest[0] as RuntimeValue;
+		assertDateOrDateTime(ref, "AGE");
+		reference = ref instanceof Temporal.PlainDateTime ? ref.toPlainDate() : ref;
+	} else {
+		reference = Temporal.Now.plainDateISO();
+	}
+
+	if (Temporal.PlainDate.compare(birth, reference) > 0) {
+		throw new RangeError("AGE requires birth date to be on or before reference date");
+	}
+
+	return birth.until(reference, { largestUnit: "year" }).years;
 };

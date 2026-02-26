@@ -119,12 +119,97 @@ describe("Default Context Functions", () => {
 		});
 	});
 
-	describe("String Functions", () => {
-		test("STR_LEN", () => {
-			expect(evaluate('STR_LEN("hello")', defaultContext)).toBe(5);
-			expect(evaluate('STR_LEN("")', defaultContext)).toBe(0);
+	describe("Polymorphic Functions", () => {
+		test("LEN with strings", () => {
+			expect(evaluate('LEN("hello")', defaultContext)).toBe(5);
+			expect(evaluate('LEN("")', defaultContext)).toBe(0);
 		});
 
+		test("LEN with arrays", () => {
+			expect(evaluate("LEN([1, 2, 3])", defaultContext)).toBe(3);
+			expect(evaluate("LEN([])", defaultContext)).toBe(0);
+		});
+
+		test("LEN throws on non-string/array", () => {
+			expect(() => evaluate("LEN(42)", defaultContext)).toThrow(TypeError);
+			expect(() => evaluate("LEN(true)", defaultContext)).toThrow(TypeError);
+		});
+
+		test("SLICE with strings", () => {
+			expect(evaluate('SLICE("hello", 1, 3)', defaultContext)).toBe("el");
+			expect(evaluate('SLICE("hello", 1)', defaultContext)).toBe("ello");
+		});
+
+		test("SLICE with arrays", () => {
+			expect(evaluate("SLICE([1, 2, 3, 4], 1, 3)", defaultContext)).toEqual([2, 3]);
+			expect(evaluate("SLICE([1, 2, 3], 1)", defaultContext)).toEqual([2, 3]);
+		});
+
+		test("SLICE throws on non-string/array", () => {
+			expect(() => evaluate("SLICE(42, 0)", defaultContext)).toThrow(TypeError);
+		});
+
+		test("CONTAINS with strings", () => {
+			expect(evaluate('CONTAINS("hello world", "world")', defaultContext)).toBe(true);
+			expect(evaluate('CONTAINS("hello world", "xyz")', defaultContext)).toBe(false);
+		});
+
+		test("CONTAINS with arrays", () => {
+			expect(evaluate("CONTAINS([1, 2, 3], 2)", defaultContext)).toBe(true);
+			expect(evaluate("CONTAINS([1, 2, 3], 5)", defaultContext)).toBe(false);
+		});
+
+		test("CONTAINS with arrays uses deep equality", () => {
+			expect(evaluate("CONTAINS([[1, 2], [3]], [1, 2])", defaultContext)).toBe(true);
+			expect(evaluate("CONTAINS([[1, 2], [3]], [4])", defaultContext)).toBe(false);
+		});
+
+		test("CONTAINS string search requires string", () => {
+			expect(() => evaluate('CONTAINS("hello", 42)', defaultContext)).toThrow(TypeError);
+		});
+
+		test("CONTAINS throws on non-string/array", () => {
+			expect(() => evaluate("CONTAINS(42, 1)", defaultContext)).toThrow(TypeError);
+		});
+
+		test("REVERSE with strings", () => {
+			expect(evaluate('REVERSE("hello")', defaultContext)).toBe("olleh");
+			expect(evaluate('REVERSE("")', defaultContext)).toBe("");
+		});
+
+		test("REVERSE with arrays", () => {
+			expect(evaluate("REVERSE([1, 2, 3])", defaultContext)).toEqual([3, 2, 1]);
+			expect(evaluate("REVERSE([])", defaultContext)).toEqual([]);
+		});
+
+		test("REVERSE throws on non-string/array", () => {
+			expect(() => evaluate("REVERSE(42)", defaultContext)).toThrow(TypeError);
+		});
+
+		test("INDEX_OF with strings", () => {
+			expect(evaluate('INDEX_OF("hello world", "world")', defaultContext)).toBe(6);
+			expect(evaluate('INDEX_OF("hello", "xyz")', defaultContext)).toBe(-1);
+		});
+
+		test("INDEX_OF with arrays", () => {
+			expect(evaluate("INDEX_OF([10, 20, 30], 20)", defaultContext)).toBe(1);
+			expect(evaluate("INDEX_OF([10, 20, 30], 99)", defaultContext)).toBe(-1);
+		});
+
+		test("INDEX_OF with arrays uses deep equality", () => {
+			expect(evaluate("INDEX_OF([[1], [2], [3]], [2])", defaultContext)).toBe(1);
+		});
+
+		test("INDEX_OF string search requires string", () => {
+			expect(() => evaluate('INDEX_OF("hello", 42)', defaultContext)).toThrow(TypeError);
+		});
+
+		test("INDEX_OF throws on non-string/array", () => {
+			expect(() => evaluate("INDEX_OF(42, 1)", defaultContext)).toThrow(TypeError);
+		});
+	});
+
+	describe("String Functions", () => {
 		test("STR_UPPER and STR_LOWER", () => {
 			expect(evaluate('STR_UPPER("hello")', defaultContext)).toBe("HELLO");
 			expect(evaluate('STR_LOWER("HELLO")', defaultContext)).toBe("hello");
@@ -132,21 +217,6 @@ describe("Default Context Functions", () => {
 
 		test("STR_TRIM", () => {
 			expect(evaluate('STR_TRIM("  hello  ")', defaultContext)).toBe("hello");
-		});
-
-		test("STR_CONTAINS", () => {
-			expect(evaluate('STR_CONTAINS("hello world", "world")', defaultContext)).toBe(true);
-			expect(evaluate('STR_CONTAINS("hello world", "xyz")', defaultContext)).toBe(false);
-		});
-
-		test("STR_INDEX_OF", () => {
-			expect(evaluate('STR_INDEX_OF("hello world", "world")', defaultContext)).toBe(6);
-			expect(evaluate('STR_INDEX_OF("hello", "xyz")', defaultContext)).toBe(-1);
-		});
-
-		test("STR_SLICE", () => {
-			expect(evaluate('STR_SLICE("hello", 1, 3)', defaultContext)).toBe("el");
-			expect(evaluate('STR_SLICE("hello", 1)', defaultContext)).toBe("ello");
 		});
 
 		test("STR_SPLIT", () => {
@@ -181,35 +251,11 @@ describe("Default Context Functions", () => {
 		});
 
 		test("string functions throw TypeError on non-string", () => {
-			expect(() => evaluate("STR_LEN(42)", defaultContext)).toThrow(TypeError);
 			expect(() => evaluate("STR_UPPER(true)", defaultContext)).toThrow(TypeError);
 		});
 	});
 
 	describe("Array Functions", () => {
-		test("ARR_LEN", () => {
-			expect(evaluate("ARR_LEN([1, 2, 3])", defaultContext)).toBe(3);
-			expect(evaluate("ARR_LEN([])", defaultContext)).toBe(0);
-		});
-
-		test("ARR_PUSH", () => {
-			expect(evaluate("ARR_PUSH([1, 2], 3)", defaultContext)).toEqual([1, 2, 3]);
-		});
-
-		test("ARR_SLICE", () => {
-			expect(evaluate("ARR_SLICE([1, 2, 3, 4], 1, 3)", defaultContext)).toEqual([2, 3]);
-			expect(evaluate("ARR_SLICE([1, 2, 3], 1)", defaultContext)).toEqual([2, 3]);
-		});
-
-		test("ARR_CONTAINS", () => {
-			expect(evaluate("ARR_CONTAINS([1, 2, 3], 2)", defaultContext)).toBe(true);
-			expect(evaluate("ARR_CONTAINS([1, 2, 3], 5)", defaultContext)).toBe(false);
-		});
-
-		test("ARR_REVERSE", () => {
-			expect(evaluate("ARR_REVERSE([1, 2, 3])", defaultContext)).toEqual([3, 2, 1]);
-		});
-
 		test("ARR_SORT with numbers", () => {
 			expect(evaluate("ARR_SORT([3, 1, 2])", defaultContext)).toEqual([1, 2, 3]);
 		});
@@ -273,7 +319,7 @@ describe("Default Context Functions", () => {
 		});
 
 		test("array functions throw TypeError on non-array", () => {
-			expect(() => evaluate("ARR_LEN(42)", defaultContext)).toThrow(TypeError);
+			expect(() => evaluate("ARR_SORT(42)", defaultContext)).toThrow(TypeError);
 		});
 	});
 
@@ -292,14 +338,14 @@ describe("Default Context Functions", () => {
 			expect(date.day).toBe(15);
 		});
 
-		test("GET_YEAR, GET_MONTH, GET_DAY", () => {
+		test("YEAR, MONTH, DAY", () => {
 			const ctx = {
 				...defaultContext,
 				variables: { d: new Temporal.PlainDate(2024, 6, 15) },
 			};
-			expect(evaluate("GET_YEAR(d)", ctx)).toBe(2024);
-			expect(evaluate("GET_MONTH(d)", ctx)).toBe(6);
-			expect(evaluate("GET_DAY(d)", ctx)).toBe(15);
+			expect(evaluate("YEAR(d)", ctx)).toBe(2024);
+			expect(evaluate("MONTH(d)", ctx)).toBe(6);
+			expect(evaluate("DAY(d)", ctx)).toBe(15);
 		});
 
 		test("ADD_DAYS", () => {
@@ -329,8 +375,87 @@ describe("Default Context Functions", () => {
 			).toBe(false);
 		});
 
+		test("AGE calculates complete years", () => {
+			const ref = new Temporal.PlainDate(2024, 6, 15);
+			const ctx = { ...defaultContext, variables: { ref } };
+
+			// Exactly 30 years
+			expect(evaluate("AGE(DATE(1994, 6, 15), ref)", ctx)).toBe(30);
+
+			// One day before 30th birthday
+			expect(evaluate("AGE(DATE(1994, 6, 16), ref)", ctx)).toBe(29);
+
+			// One day after 30th birthday
+			expect(evaluate("AGE(DATE(1994, 6, 14), ref)", ctx)).toBe(30);
+
+			// Same day (newborn)
+			expect(evaluate("AGE(ref, ref)", ctx)).toBe(0);
+		});
+
+		test("AGE handles leap year birthdays", () => {
+			// Born on Feb 29 (leap day)
+			const birth = new Temporal.PlainDate(2000, 2, 29);
+
+			// On Feb 28, 2004 (day before leap birthday) → age 3
+			expect(
+				evaluate("AGE(b, ref)", {
+					...defaultContext,
+					variables: { b: birth, ref: new Temporal.PlainDate(2004, 2, 28) },
+				}),
+			).toBe(3);
+
+			// On Feb 29, 2004 (exact leap birthday) → age 4
+			expect(
+				evaluate("AGE(b, ref)", {
+					...defaultContext,
+					variables: { b: birth, ref: new Temporal.PlainDate(2004, 2, 29) },
+				}),
+			).toBe(4);
+
+			// On Mar 1, 2001 (non-leap year, day after Feb 28) → age 1
+			expect(
+				evaluate("AGE(b, ref)", {
+					...defaultContext,
+					variables: { b: birth, ref: new Temporal.PlainDate(2001, 3, 1) },
+				}),
+			).toBe(1);
+		});
+
+		test("AGE accepts PlainDateTime arguments", () => {
+			const birth = new Temporal.PlainDateTime(1990, 3, 20, 10, 30, 0);
+			const ref = new Temporal.PlainDateTime(2024, 6, 15, 14, 0, 0);
+			expect(
+				evaluate("AGE(b, r)", {
+					...defaultContext,
+					variables: { b: birth, r: ref },
+				}),
+			).toBe(34);
+		});
+
+		test("AGE allows mixed date and datetime", () => {
+			const birth = new Temporal.PlainDate(1990, 3, 20);
+			const ref = new Temporal.PlainDateTime(2024, 6, 15, 14, 0, 0);
+			expect(
+				evaluate("AGE(b, r)", {
+					...defaultContext,
+					variables: { b: birth, r: ref },
+				}),
+			).toBe(34);
+		});
+
+		test("AGE throws on future birth date", () => {
+			expect(() => evaluate("AGE(DATE(2030, 1, 1), DATE(2024, 1, 1))", defaultContext)).toThrow(
+				RangeError,
+			);
+		});
+
+		test("AGE throws on non-date argument", () => {
+			expect(() => evaluate("AGE(42)", defaultContext)).toThrow(TypeError);
+			expect(() => evaluate('AGE(DATE(2000, 1, 1), "hello")', defaultContext)).toThrow(TypeError);
+		});
+
 		test("date functions throw TypeError on non-date", () => {
-			expect(() => evaluate("GET_YEAR(42)", defaultContext)).toThrow(TypeError);
+			expect(() => evaluate("YEAR(42)", defaultContext)).toThrow(TypeError);
 			expect(() => evaluate('ADD_DAYS("hello", 1)', defaultContext)).toThrow(TypeError);
 		});
 	});

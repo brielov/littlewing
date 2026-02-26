@@ -37,32 +37,32 @@ export const NOW_TIME = (): RuntimeValue => Temporal.Now.plainTimeISO();
 /**
  * Get the hour (0-23) from a time or datetime
  */
-export const GET_HOUR = (t: RuntimeValue): RuntimeValue => {
-	assertTimeOrDateTime(t, "GET_HOUR");
+export const HOUR = (t: RuntimeValue): RuntimeValue => {
+	assertTimeOrDateTime(t, "HOUR");
 	return t.hour;
 };
 
 /**
  * Get the minute (0-59) from a time or datetime
  */
-export const GET_MINUTE = (t: RuntimeValue): RuntimeValue => {
-	assertTimeOrDateTime(t, "GET_MINUTE");
+export const MINUTE = (t: RuntimeValue): RuntimeValue => {
+	assertTimeOrDateTime(t, "MINUTE");
 	return t.minute;
 };
 
 /**
  * Get the second (0-59) from a time or datetime
  */
-export const GET_SECOND = (t: RuntimeValue): RuntimeValue => {
-	assertTimeOrDateTime(t, "GET_SECOND");
+export const SECOND = (t: RuntimeValue): RuntimeValue => {
+	assertTimeOrDateTime(t, "SECOND");
 	return t.second;
 };
 
 /**
  * Get the millisecond (0-999) from a time or datetime
  */
-export const GET_MILLISECOND = (t: RuntimeValue): RuntimeValue => {
-	assertTimeOrDateTime(t, "GET_MILLISECOND");
+export const MILLISECOND = (t: RuntimeValue): RuntimeValue => {
+	assertTimeOrDateTime(t, "MILLISECOND");
 	return t.millisecond;
 };
 

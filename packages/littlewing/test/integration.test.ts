@@ -122,7 +122,7 @@ amount = principal * (1 + rate) ^ years
 	});
 
 	test("multi-type with default context", () => {
-		const result = evaluate('STR_LEN("hello")', defaultContext);
+		const result = evaluate('LEN("hello")', defaultContext);
 		expect(result).toBe(5);
 	});
 });

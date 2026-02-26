@@ -37,7 +37,7 @@ quantities = [5, 12, 3, 20, 8]
 unit_prices = [29.99, 9.50, 149.00, 4.75, 32.00]
 
 // Compute each line total using index
-line_totals = for i in 0..ARR_LEN(quantities) then quantities[i] * unit_prices[i]
+line_totals = for i in 0..LEN(quantities) then quantities[i] * unit_prices[i]
 
 subtotal = ROUND(ARR_SUM(line_totals))
 tax_rate = if subtotal > 500 then 0.08 else 0.06
@@ -89,7 +89,7 @@ quarter_start = START_OF_QUARTER(start)
 days_into_quarter = DIFFERENCE_IN_DAYS(quarter_start, start)
 
 // Check if deadline is in same quarter
-same_quarter = GET_QUARTER(start) == GET_QUARTER(deadline)
+same_quarter = QUARTER(start) == QUARTER(deadline)
 
 if same_quarter
   then "Deadline is in the same quarter (" + STR(total_days) + " days)"
@@ -101,7 +101,7 @@ if same_quarter
 		source: `// Statistical analysis
 data = [23, 45, 12, 67, 34, 89, 15, 56, 42, 71]
 
-count = ARR_LEN(data)
+count = LEN(data)
 total = ARR_SUM(data)
 mean = total / count
 
@@ -114,7 +114,7 @@ std_dev = ROUND(SQRT(variance))
 outliers = for x in data when ABS(x - mean) > 2 * std_dev then x
 sorted = ARR_SORT(data)
 
-"mean=" + STR(ROUND(mean)) + " std=" + STR(std_dev) + " outliers=" + STR(ARR_LEN(outliers))`,
+"mean=" + STR(ROUND(mean)) + " std=" + STR(std_dev) + " outliers=" + STR(LEN(outliers))`,
 	},
 	{
 		title: "FizzBuzz",
@@ -171,7 +171,7 @@ eng_count = for d in departments when d == "Engineering" into n = 0 then n + 1
 ARR_JOIN([
   "Departments: " + ARR_JOIN(unique_depts, ", "),
   "Engineering team size: " + STR(eng_count),
-  "Total employees: " + STR(ARR_LEN(rows))
+  "Total employees: " + STR(LEN(rows))
 ], "\n")`,
 	},
 	{
@@ -232,7 +232,7 @@ matrix = [[8, 3, 14], [1, 9, 6], [11, 2, 7]]
 // Flatten, sort, and analyze
 flat = ARR_FLAT(matrix)
 sorted = ARR_SORT(flat)
-above_avg = for x in flat when x > ARR_SUM(flat) / ARR_LEN(flat) then x
+above_avg = for x in flat when x > ARR_SUM(flat) / LEN(flat) then x
 
 // Find min/max per row
 row_mins = for row in matrix then ARR_MIN(row)
@@ -240,7 +240,7 @@ row_maxs = for row in matrix then ARR_MAX(row)
 
 global_range = ARR_MAX(flat) - ARR_MIN(flat)
 
-"range=" + STR(global_range) + " above_avg=" + STR(ARR_LEN(above_avg))`,
+"range=" + STR(global_range) + " above_avg=" + STR(LEN(above_avg))`,
 	},
 ];
 

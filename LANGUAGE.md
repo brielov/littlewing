@@ -215,7 +215,7 @@ ADD_DAYS(dt, 7)      // → PlainDateTime (7 days later, same time)
 START_OF_MONTH(dt)   // → PlainDateTime (first day of month, same time)
 
 // Time functions work on datetime
-GET_HOUR(dt)         // → 14
+HOUR(dt)             // → 14
 ADD_HOURS(dt, 5)     // → PlainDateTime (date may change)
 ```
 
@@ -556,17 +556,27 @@ principal * (1 + rate) ^ years // → 1157.625
 | `MAX(...)`         | Maximum value      | `MAX(3, 1, 5)` → `5`         |
 | `CLAMP(val, a, b)` | Constrain to range | `CLAMP(150, 0, 100)` → `100` |
 
-### String Functions (12 functions)
+### Polymorphic Functions (5 functions)
+
+These functions accept both strings and arrays:
+
+| Function                | Description     | String Example                      | Array Example                      |
+| ----------------------- | --------------- | ----------------------------------- | ---------------------------------- |
+| `LEN(x)`                | Length          | `LEN("hello")` → `5`                | `LEN([1, 2, 3])` → `3`             |
+| `SLICE(x, start, end?)` | Extract section | `SLICE("hello", 1, 3)` → `"el"`     | `SLICE([1, 2, 3], 1)` → `[2, 3]`   |
+| `CONTAINS(x, search)`   | Contains check  | `CONTAINS("hello", "ell")` → `true` | `CONTAINS([1, 2], 2)` → `true`     |
+| `REVERSE(x)`            | Reverse         | `REVERSE("hello")` → `"olleh"`      | `REVERSE([1, 2, 3])` → `[3, 2, 1]` |
+| `INDEX_OF(x, search)`   | Find index      | `INDEX_OF("hello", "ll")` → `2`     | `INDEX_OF([10, 20], 20)` → `1`     |
+
+Note: `CONTAINS` and `INDEX_OF` use substring matching for strings and deep equality for arrays. `INDEX_OF` returns `-1` if not found.
+
+### String Functions (8 functions)
 
 | Function                       | Description        | Example                                      |
 | ------------------------------ | ------------------ | -------------------------------------------- |
-| `STR_LEN(s)`                   | String length      | `STR_LEN("hello")` → `5`                     |
 | `STR_UPPER(s)`                 | Uppercase          | `STR_UPPER("hello")` → `"HELLO"`             |
 | `STR_LOWER(s)`                 | Lowercase          | `STR_LOWER("HELLO")` → `"hello"`             |
 | `STR_TRIM(s)`                  | Trim whitespace    | `STR_TRIM("  hi  ")` → `"hi"`                |
-| `STR_SLICE(s, start, end?)`    | Substring          | `STR_SLICE("hello", 1, 3)` → `"el"`          |
-| `STR_CONTAINS(s, search)`      | Contains check     | `STR_CONTAINS("hello", "ell")` → `true`      |
-| `STR_INDEX_OF(s, search)`      | Find index         | `STR_INDEX_OF("hello", "ll")` → `2`          |
 | `STR_SPLIT(s, sep)`            | Split by separator | `STR_SPLIT("a,b,c", ",")` → `["a","b","c"]`  |
 | `STR_REPLACE(s, search, repl)` | Replace first      | `STR_REPLACE("hello", "l", "r")` → `"herlo"` |
 | `STR_STARTS_WITH(s, prefix)`   | Prefix check       | `STR_STARTS_WITH("hello", "he")` → `true`    |
@@ -575,26 +585,21 @@ principal * (1 + rate) ^ years // → 1157.625
 
 Note: Use bracket indexing for character access: `"hello"[0]` → `"h"`, `"hello"[-1]` → `"o"`.
 
-### Array Functions (12 functions)
+### Array Functions (7 functions)
 
-| Function                    | Description       | Example                                  |
-| --------------------------- | ----------------- | ---------------------------------------- |
-| `ARR_LEN(a)`                | Array length      | `ARR_LEN([1, 2, 3])` → `3`               |
-| `ARR_PUSH(a, v)`            | Append element    | `ARR_PUSH([1, 2], 3)` → `[1, 2, 3]`      |
-| `ARR_SLICE(a, start, end?)` | Sub-array         | `ARR_SLICE([1, 2, 3], 1)` → `[2, 3]`     |
-| `ARR_CONTAINS(a, v)`        | Contains check    | `ARR_CONTAINS([1, 2], 2)` → `true`       |
-| `ARR_REVERSE(a)`            | Reverse array     | `ARR_REVERSE([1, 2, 3])` → `[3, 2, 1]`   |
-| `ARR_SORT(a)`               | Sort ascending    | `ARR_SORT([3, 1, 2])` → `[1, 2, 3]`      |
-| `ARR_UNIQUE(a)`             | Deduplicate       | `ARR_UNIQUE([1, 2, 2, 3])` → `[1, 2, 3]` |
-| `ARR_FLAT(a)`               | Flatten one level | `ARR_FLAT([[1, 2], [3]])` → `[1, 2, 3]`  |
-| `ARR_JOIN(a, sep)`          | Join to string    | `ARR_JOIN(["a", "b"], "-")` → `"a-b"`    |
-| `ARR_SUM(a)`                | Sum numbers       | `ARR_SUM([10, 20, 30])` → `60`           |
-| `ARR_MIN(a)`                | Minimum element   | `ARR_MIN([3, 1, 2])` → `1`               |
-| `ARR_MAX(a)`                | Maximum element   | `ARR_MAX([3, 1, 2])` → `3`               |
+| Function           | Description       | Example                                  |
+| ------------------ | ----------------- | ---------------------------------------- |
+| `ARR_SORT(a)`      | Sort ascending    | `ARR_SORT([3, 1, 2])` → `[1, 2, 3]`      |
+| `ARR_UNIQUE(a)`    | Deduplicate       | `ARR_UNIQUE([1, 2, 2, 3])` → `[1, 2, 3]` |
+| `ARR_FLAT(a)`      | Flatten one level | `ARR_FLAT([[1, 2], [3]])` → `[1, 2, 3]`  |
+| `ARR_JOIN(a, sep)` | Join to string    | `ARR_JOIN(["a", "b"], "-")` → `"a-b"`    |
+| `ARR_SUM(a)`       | Sum numbers       | `ARR_SUM([10, 20, 30])` → `60`           |
+| `ARR_MIN(a)`       | Minimum element   | `ARR_MIN([3, 1, 2])` → `1`               |
+| `ARR_MAX(a)`       | Maximum element   | `ARR_MAX([3, 1, 2])` → `3`               |
 
-Note: Use bracket indexing for element access: `arr[0]`, `arr[-1]`. `ARR_SORT` supports numbers, strings, dates, times, and datetimes. `ARR_MIN`/`ARR_MAX` support the same types. `ARR_FLAT` requires all elements to be arrays; result is validated for homogeneity. `ARR_JOIN` requires all elements to be strings.
+Note: Use `arr + [item]` for appending elements. Use bracket indexing for element access: `arr[0]`, `arr[-1]`. `ARR_SORT` supports numbers, strings, dates, times, and datetimes. `ARR_MIN`/`ARR_MAX` support the same types. `ARR_FLAT` requires all elements to be arrays; result is validated for homogeneity. `ARR_JOIN` requires all elements to be strings.
 
-### Date Functions (24 functions)
+### Date Functions (25 functions)
 
 Date functions operate on `Temporal.PlainDate` values. Most also accept `Temporal.PlainDateTime` (preserving the input type). `TODAY()` and `DATE()` return `PlainDate` only.
 
@@ -607,14 +612,14 @@ Date functions operate on `Temporal.PlainDate` values. Most also accept `Tempora
 
 #### Component Extractors (date or datetime)
 
-| Function             | Description      | Returns                  |
-| -------------------- | ---------------- | ------------------------ |
-| `GET_YEAR(d)`        | Get year         | 2024                     |
-| `GET_MONTH(d)`       | Get month        | 1-12                     |
-| `GET_DAY(d)`         | Get day of month | 1-31                     |
-| `GET_WEEKDAY(d)`     | Get day of week  | 1-7 (1=Monday, 7=Sunday) |
-| `GET_DAY_OF_YEAR(d)` | Get day of year  | 1-366                    |
-| `GET_QUARTER(d)`     | Get quarter      | 1-4                      |
+| Function         | Description      | Returns                  |
+| ---------------- | ---------------- | ------------------------ |
+| `YEAR(d)`        | Get year         | 2024                     |
+| `MONTH(d)`       | Get month        | 1-12                     |
+| `DAY(d)`         | Get day of month | 1-31                     |
+| `WEEKDAY(d)`     | Get day of week  | 1-7 (1=Monday, 7=Sunday) |
+| `DAY_OF_YEAR(d)` | Get day of year  | 1-366                    |
+| `QUARTER(d)`     | Get quarter      | 1-4                      |
 
 #### Date Arithmetic (date or datetime, preserves type)
 
@@ -651,6 +656,7 @@ Date functions operate on `Temporal.PlainDate` values. Most also accept `Tempora
 | `IS_SAME_DAY(d1, d2)` | Same calendar day (mixed date+datetime OK) | `boolean` |
 | `IS_WEEKEND(d)`       | Saturday or Sunday                         | `boolean` |
 | `IS_LEAP_YEAR(d)`     | Leap year check                            | `boolean` |
+| `AGE(birth, ref?)`    | Age in complete years (defaults to today)  | `number`  |
 | `d1 < d2`             | Before (use operators)                     | `boolean` |
 | `d1 > d2`             | After (use operators)                      | `boolean` |
 
@@ -667,12 +673,12 @@ Time functions operate on `Temporal.PlainTime` values. Extractors and arithmetic
 
 #### Time Extractors (time or datetime)
 
-| Function             | Description     | Returns |
-| -------------------- | --------------- | ------- |
-| `GET_HOUR(t)`        | Get hour        | 0-23    |
-| `GET_MINUTE(t)`      | Get minute      | 0-59    |
-| `GET_SECOND(t)`      | Get second      | 0-59    |
-| `GET_MILLISECOND(t)` | Get millisecond | 0-999   |
+| Function         | Description     | Returns |
+| ---------------- | --------------- | ------- |
+| `HOUR(t)`        | Get hour        | 0-23    |
+| `MINUTE(t)`      | Get minute      | 0-59    |
+| `SECOND(t)`      | Get second      | 0-59    |
+| `MILLISECOND(t)` | Get millisecond | 0-999   |
 
 #### Time Arithmetic (time or datetime, preserves type)
 
@@ -725,7 +731,7 @@ nextMonth = ADD_MONTHS(today, 1)
 // Check properties
 IS_WEEKEND(today) // → true or false
 IS_LEAP_YEAR(DATE(2024, 1, 1)) // → true
-GET_WEEKDAY(today) // → 1-7
+WEEKDAY(today) // → 1-7
 
 // Period boundaries
 monthStart = START_OF_MONTH(today)
@@ -734,7 +740,7 @@ monthEnd = END_OF_MONTH(today)
 // Time operations
 meeting = TIME(14, 30, 0)
 endTime = ADD_HOURS(meeting, 1) // → 15:30:00
-GET_HOUR(meeting) // → 14
+HOUR(meeting) // → 14
 
 // DateTime operations
 event = DATETIME(2024, 6, 15, 14, 30, 0)
@@ -864,7 +870,7 @@ expensive = for p in prices when p > 50 then p // → [75, 100]
 total = for p in prices into sum = 0 then sum + p // → 260
 
 // Generate sequences
-indices = 0..ARR_LEN(prices) // → [0, 1, 2, 3, 4]
+indices = 0..LEN(prices) // → [0, 1, 2, 3, 4]
 ```
 
 ### Data Validation
@@ -886,8 +892,8 @@ isExcellent = score >= 90  // → false
 // String manipulation
 greeting = STR_UPPER("hello") // → "HELLO"
 msg = "hello world"
-hasWorld = STR_CONTAINS(msg, "world") // → true
-first = STR_SLICE(msg, 0, 5) // → "hello"
+hasWorld = CONTAINS(msg, "world") // → true
+first = SLICE(msg, 0, 5) // → "hello"
 initial = msg[0] // → "h"
 
 // Type conversion
