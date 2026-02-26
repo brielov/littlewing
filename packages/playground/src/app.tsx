@@ -1,6 +1,7 @@
 import { generate, parse } from "littlewing";
 import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
 import { Editor } from "./editor.tsx";
+import { HelpDialog } from "./help-dialog.tsx";
 import { Sidebar } from "./sidebar.tsx";
 import { useEvaluation } from "./use-evaluation.ts";
 
@@ -120,15 +121,18 @@ export function App() {
 				>
 					littlewing
 				</span>
-				<button
-					type="button"
-					onClick={formatSource}
-					className="cursor-pointer text-xs"
-					style={{ color: "var(--color-fg-muted)" }}
-					title="Format code"
-				>
-					Format
-				</button>
+				<div className="flex items-center gap-3">
+					<button
+						type="button"
+						onClick={formatSource}
+						className="cursor-pointer text-xs"
+						style={{ color: "var(--color-fg-muted)" }}
+						title="Format code"
+					>
+						Format
+					</button>
+					<HelpDialog />
+				</div>
 			</header>
 			<main className="flex min-h-0 flex-1">
 				<div className="flex min-h-0 min-w-0" style={{ flex: "7 1 0%" }}>
