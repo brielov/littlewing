@@ -449,6 +449,15 @@ function buildAstEntries(node: ASTNode): AstEntry {
 			children: [
 				{ label: "iterable", children: [recurse(n.iterable)] },
 				...(n.guard ? [{ label: "guard", children: [recurse(n.guard)] }] : []),
+				...(n.accumulator
+					? [
+							{
+								label: "accumulator",
+								value: n.accumulator.name,
+								children: [recurse(n.accumulator.initial)],
+							},
+						]
+					: []),
 				{ label: "body", children: [recurse(n.body)] },
 			],
 		}),
@@ -472,11 +481,11 @@ function buildAstEntries(node: ASTNode): AstEntry {
 
 function AstNode({ node }: { node: ASTNode }) {
 	const entry = buildAstEntries(node);
-	return <AstEntryNode entry={entry} defaultOpen />;
+	return <AstEntryNode entry={entry} />;
 }
 
-function AstEntryNode({ entry, defaultOpen = false }: { entry: AstEntry; defaultOpen?: boolean }) {
-	const [open, setOpen] = useState(defaultOpen);
+function AstEntryNode({ entry }: { entry: AstEntry }) {
+	const [open, setOpen] = useState(false);
 	const hasChildren = entry.children && entry.children.length > 0;
 
 	const monoStyle = { fontFamily: '"Maple Mono", monospace' };
@@ -504,7 +513,7 @@ function AstEntryNode({ entry, defaultOpen = false }: { entry: AstEntry; default
 				<div className="ml-3" style={{ borderLeft: "1px solid var(--color-border)" }}>
 					<div className="ml-2">
 						{entry.children!.map((child, i) => (
-							<AstEntryNode key={i} entry={child} defaultOpen />
+							<AstEntryNode key={i} entry={child} />
 						))}
 					</div>
 				</div>

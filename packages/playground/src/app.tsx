@@ -1,6 +1,7 @@
 import { generate, parse } from "littlewing";
 import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
 import { Editor } from "./editor.tsx";
+import { ExamplesDialog } from "./examples-dialog.tsx";
 import { HelpDialog } from "./help-dialog.tsx";
 import { Sidebar } from "./sidebar.tsx";
 import { useEvaluation } from "./use-evaluation.ts";
@@ -112,16 +113,18 @@ export function App() {
 					borderBottom: "1px solid var(--color-border)",
 				}}
 			>
-				<span
-					className="text-sm font-semibold tracking-tight"
+				<a
+					href={window.location.pathname}
+					className="text-sm font-semibold tracking-tight no-underline"
 					style={{
 						fontFamily: '"Maple Mono", monospace',
 						color: "var(--color-fg)",
 					}}
 				>
 					littlewing
-				</span>
+				</a>
 				<div className="flex items-center gap-3">
+					<ExamplesDialog onSelect={setSource} />
 					<button
 						type="button"
 						onClick={formatSource}
