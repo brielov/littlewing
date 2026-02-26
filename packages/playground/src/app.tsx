@@ -1,70 +1,80 @@
-import { defaultContext, evaluate } from "littlewing";
-import { type ChangeEvent, useCallback, useState } from "react";
+import { generate, parse } from "littlewing";
+import { useCallback, useState, useSyncExternalStore } from "react";
+import { Editor } from "./editor.tsx";
+import { Sidebar } from "./sidebar.tsx";
+import { useEvaluation } from "./use-evaluation.ts";
 
-const INITIAL_SOURCE = `// Try littlewing expressions here
-x = 10
-y = 20
-x + y`;
+const INITIAL_SOURCE = `// littlewing playground
+price = 100
+tax_rate = 0.08
+discount = 15
 
-function formatResult(value: unknown): string {
-	if (Array.isArray(value)) {
-		return `[${value.map(formatResult).join(", ")}]`;
-	}
-	if (typeof value === "string") {
-		return `"${value}"`;
-	}
-	return String(value);
+subtotal = price - discount
+tax = subtotal * tax_rate
+total = subtotal + tax
+
+if total > 100 then "expensive" else "affordable"`;
+
+const darkQuery = window.matchMedia("(prefers-color-scheme: dark)");
+
+function subscribeToDarkMode(callback: () => void): () => void {
+	darkQuery.addEventListener("change", callback);
+	return () => darkQuery.removeEventListener("change", callback);
+}
+
+function getIsDark(): boolean {
+	return darkQuery.matches;
 }
 
 export function App() {
 	const [source, setSource] = useState(INITIAL_SOURCE);
-	const [result, setResult] = useState(() => run(INITIAL_SOURCE));
+	const isDark = useSyncExternalStore(subscribeToDarkMode, getIsDark);
+	const evaluation = useEvaluation(source);
 
-	function run(code: string): { ok: true; value: string } | { ok: false; error: string } {
+	const formatSource = useCallback(() => {
 		try {
-			const value = evaluate(code, defaultContext);
-			return { ok: true, value: formatResult(value) };
-		} catch (err) {
-			return { ok: false, error: err instanceof Error ? err.message : String(err) };
+			setSource(generate(parse(source)));
+		} catch {
+			// Source has parse errors — silently ignore
 		}
-	}
+	}, [source]);
 
-	const handleChange = useCallback((e: ChangeEvent<HTMLTextAreaElement>) => {
-		const code = e.target.value;
-		setSource(code);
-		setResult(run(code));
-	}, []);
+	const monacoTheme = isDark ? "tomorrow-night" : "tomorrow";
 
 	return (
-		<div className="flex h-screen flex-col bg-zinc-950 text-zinc-100">
-			<header className="flex items-center justify-between border-b border-zinc-800 px-6 py-3">
-				<h1 className="text-lg font-semibold tracking-tight">littlewing playground</h1>
+		<div className="flex h-full flex-col" style={{ backgroundColor: "var(--color-bg)" }}>
+			<header
+				className="flex shrink-0 items-center justify-between px-4"
+				style={{
+					height: 44,
+					borderBottom: "1px solid var(--color-border)",
+				}}
+			>
+				<span
+					className="text-sm font-semibold tracking-tight"
+					style={{
+						fontFamily: '"Maple Mono", monospace',
+						color: "var(--color-fg)",
+					}}
+				>
+					littlewing
+				</span>
+				<button
+					type="button"
+					onClick={formatSource}
+					className="cursor-pointer text-xs"
+					style={{ color: "var(--color-fg-muted)" }}
+					title="Format code"
+				>
+					Format
+				</button>
 			</header>
 			<main className="flex min-h-0 flex-1">
-				<div className="flex flex-1 flex-col border-r border-zinc-800">
-					<div className="border-b border-zinc-800 px-4 py-2 text-xs font-medium uppercase tracking-wider text-zinc-500">
-						Input
-					</div>
-					<textarea
-						className="flex-1 resize-none bg-transparent p-4 font-mono text-sm leading-relaxed text-zinc-100 outline-none placeholder:text-zinc-600"
-						value={source}
-						onChange={handleChange}
-						placeholder="Enter an expression..."
-						spellCheck={false}
-						autoFocus
-					/>
+				<div className="flex min-h-0 min-w-0" style={{ flex: "7 1 0%" }}>
+					<Editor value={source} onChange={setSource} theme={monacoTheme} />
 				</div>
-				<div className="flex flex-1 flex-col">
-					<div className="border-b border-zinc-800 px-4 py-2 text-xs font-medium uppercase tracking-wider text-zinc-500">
-						Output
-					</div>
-					<div className="flex-1 p-4 font-mono text-sm leading-relaxed">
-						{result.ok ? (
-							<span className="text-emerald-400">{result.value}</span>
-						) : (
-							<span className="text-red-400">{result.error}</span>
-						)}
-					</div>
+				<div className="min-h-0" style={{ flex: "3 1 0%" }}>
+					<Sidebar evaluation={evaluation} />
 				</div>
 			</main>
 		</div>
