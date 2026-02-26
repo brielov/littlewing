@@ -65,6 +65,19 @@ function getIsDark(): boolean {
 	return darkQuery.matches;
 }
 
+// --- Desktop breakpoint (matches Tailwind md: = 768px) ---
+
+const desktopQuery = window.matchMedia("(min-width: 768px)");
+
+function subscribeToDesktop(callback: () => void): () => void {
+	desktopQuery.addEventListener("change", callback);
+	return () => desktopQuery.removeEventListener("change", callback);
+}
+
+function getIsDesktop(): boolean {
+	return desktopQuery.matches;
+}
+
 type MobileView = "editor" | "results";
 
 export function App() {
@@ -72,6 +85,7 @@ export function App() {
 	const [ready, setReady] = useState(false);
 	const [mobileView, setMobileView] = useState<MobileView>("editor");
 	const isDark = useSyncExternalStore(subscribeToDarkMode, getIsDark);
+	const isDesktop = useSyncExternalStore(subscribeToDesktop, getIsDesktop);
 
 	// Restore source from URL hash on mount
 	useEffect(() => {
@@ -154,45 +168,56 @@ export function App() {
 				</div>
 			</header>
 
-			{/* Desktop layout: side-by-side 7:3 split */}
-			<main className="hidden min-h-0 flex-1 md:flex">
-				<div className="flex min-h-0 min-w-0" style={{ flex: "7 1 0%" }}>
-					<Editor value={source} onChange={setSource} theme={monacoTheme} />
-				</div>
-				<div
-					className="min-h-0"
-					style={{ flex: "3 1 0%", borderLeft: "1px solid var(--color-border)" }}
-				>
-					<Sidebar evaluation={evaluation} />
-				</div>
-			</main>
-
-			{/* Mobile layout: single panel switched by tab bar */}
-			<main className="flex min-h-0 flex-1 flex-col md:hidden">
-				<div className={`min-h-0 flex-1 ${mobileView === "editor" ? "flex" : "hidden"}`}>
-					<Editor value={source} onChange={setSource} theme={monacoTheme} />
-				</div>
-				<div className={`min-h-0 flex-1 ${mobileView === "results" ? "flex" : "hidden"}`}>
-					<Sidebar evaluation={evaluation} />
-				</div>
-			</main>
-
-			{/* Mobile tab bar */}
-			<nav
-				className="flex shrink-0 md:hidden"
-				style={{
-					height: 44,
-					borderTop: "1px solid var(--color-border)",
-					backgroundColor: "var(--color-bg)",
-				}}
-			>
-				<TabButton active={mobileView === "editor"} onClick={() => setMobileView("editor")}>
-					Editor
-				</TabButton>
-				<TabButton active={mobileView === "results"} onClick={() => setMobileView("results")}>
-					Results
-				</TabButton>
-			</nav>
+			{isDesktop ? (
+				<main className="flex min-h-0 flex-1 flex-row">
+					<div className="flex min-h-0 min-w-0 flex-[7_1_0%]">
+						<Editor
+							value={source}
+							onChange={setSource}
+							theme={monacoTheme}
+							diagnostics={evaluation.diagnostics}
+							scope={evaluation.scope}
+						/>
+					</div>
+					<div
+						className="flex min-h-0 flex-[3_1_0%] border-l"
+						style={{ borderColor: "var(--color-border)" }}
+					>
+						<Sidebar evaluation={evaluation} />
+					</div>
+				</main>
+			) : (
+				<>
+					<main className="flex min-h-0 flex-1">
+						{mobileView === "editor" ? (
+							<Editor
+								value={source}
+								onChange={setSource}
+								theme={monacoTheme}
+								diagnostics={evaluation.diagnostics}
+								scope={evaluation.scope}
+							/>
+						) : (
+							<Sidebar evaluation={evaluation} />
+						)}
+					</main>
+					<nav
+						className="flex shrink-0"
+						style={{
+							height: 44,
+							borderTop: "1px solid var(--color-border)",
+							backgroundColor: "var(--color-bg)",
+						}}
+					>
+						<TabButton active={mobileView === "editor"} onClick={() => setMobileView("editor")}>
+							Editor
+						</TabButton>
+						<TabButton active={mobileView === "results"} onClick={() => setMobileView("results")}>
+							Results
+						</TabButton>
+					</nav>
+				</>
+			)}
 		</div>
 	);
 }

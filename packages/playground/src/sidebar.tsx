@@ -91,13 +91,18 @@ function VariableRow({
 }: VariableRowProps) {
 	const isOverridden = override !== undefined;
 	const currentValue = isOverridden ? override : defaultValue;
+	const inputId = `var-${name}`;
 
 	return (
 		<div className="flex flex-col gap-1">
 			<div className="flex items-center gap-2">
-				<span className="text-xs font-medium" style={{ fontFamily: '"Maple Mono", monospace' }}>
+				<label
+					htmlFor={inputId}
+					className="text-xs font-medium"
+					style={{ fontFamily: '"Maple Mono", monospace' }}
+				>
 					{name}
-				</span>
+				</label>
 				<TypeBadge type={type} />
 				{isOverridden && (
 					<button
@@ -106,12 +111,14 @@ function VariableRow({
 						className="ml-auto cursor-pointer text-xs"
 						style={{ color: "var(--color-fg-muted)" }}
 						title="Reset to default"
+						aria-label={`Reset ${name} to default`}
 					>
 						&times;
 					</button>
 				)}
 			</div>
 			<VariableInput
+				inputId={inputId}
 				name={name}
 				type={type}
 				currentValue={currentValue}
@@ -136,13 +143,14 @@ function TypeBadge({ type }: { type: string }) {
 }
 
 interface VariableInputProps {
+	inputId: string;
 	name: string;
 	type: string;
 	currentValue: RuntimeValue;
 	setOverride: (name: string, value: RuntimeValue) => void;
 }
 
-function VariableInput({ name, type, currentValue, setOverride }: VariableInputProps) {
+function VariableInput({ inputId, name, type, currentValue, setOverride }: VariableInputProps) {
 	const inputStyle = {
 		backgroundColor: "var(--color-bg-secondary)",
 		color: "var(--color-fg)",
@@ -154,6 +162,7 @@ function VariableInput({ name, type, currentValue, setOverride }: VariableInputP
 		case "number":
 			return (
 				<input
+					id={inputId}
 					type="number"
 					className="rounded px-2 py-1 text-xs"
 					style={inputStyle}
@@ -170,6 +179,7 @@ function VariableInput({ name, type, currentValue, setOverride }: VariableInputP
 		case "string":
 			return (
 				<input
+					id={inputId}
 					type="text"
 					className="rounded px-2 py-1 text-xs"
 					style={inputStyle}
@@ -181,10 +191,12 @@ function VariableInput({ name, type, currentValue, setOverride }: VariableInputP
 		case "boolean":
 			return (
 				<button
+					id={inputId}
 					type="button"
 					onClick={() => setOverride(name, !currentValue)}
 					className="cursor-pointer rounded px-2 py-1 text-left text-xs"
 					style={inputStyle}
+					aria-label={`Toggle ${name}`}
 				>
 					{String(currentValue)}
 				</button>
@@ -193,6 +205,7 @@ function VariableInput({ name, type, currentValue, setOverride }: VariableInputP
 		case "date":
 			return (
 				<input
+					id={inputId}
 					type="date"
 					className="rounded px-2 py-1 text-xs"
 					style={inputStyle}
@@ -208,6 +221,7 @@ function VariableInput({ name, type, currentValue, setOverride }: VariableInputP
 		case "time":
 			return (
 				<input
+					id={inputId}
 					type="time"
 					className="rounded px-2 py-1 text-xs"
 					step="1"
@@ -224,6 +238,7 @@ function VariableInput({ name, type, currentValue, setOverride }: VariableInputP
 		case "datetime":
 			return (
 				<input
+					id={inputId}
 					type="datetime-local"
 					className="rounded px-2 py-1 text-xs"
 					step="1"
@@ -238,7 +253,14 @@ function VariableInput({ name, type, currentValue, setOverride }: VariableInputP
 			);
 
 		case "array":
-			return <ExpressionInput name={name} currentValue={currentValue} setOverride={setOverride} />;
+			return (
+				<ExpressionInput
+					inputId={inputId}
+					name={name}
+					currentValue={currentValue}
+					setOverride={setOverride}
+				/>
+			);
 
 		default:
 			return (
@@ -256,10 +278,12 @@ function VariableInput({ name, type, currentValue, setOverride }: VariableInputP
 }
 
 function ExpressionInput({
+	inputId,
 	name,
 	currentValue,
 	setOverride,
 }: {
+	inputId: string;
 	name: string;
 	currentValue: RuntimeValue;
 	setOverride: (name: string, value: RuntimeValue) => void;
@@ -288,6 +312,7 @@ function ExpressionInput({
 
 	return (
 		<input
+			id={inputId}
 			type="text"
 			className="rounded px-2 py-1 text-xs"
 			style={{
@@ -561,23 +586,39 @@ function AstEntryNode({ entry }: { entry: AstEntry }) {
 
 	return (
 		<div className="text-xs" style={monoStyle}>
-			<div
-				className="flex items-center gap-1 py-0.5"
-				style={{ cursor: hasChildren ? "pointer" : "default" }}
-				onClick={hasChildren ? () => setOpen((o) => !o) : undefined}
-			>
-				{hasChildren ? (
+			{hasChildren ? (
+				<button
+					type="button"
+					className="flex items-center gap-1 py-0.5 text-left"
+					style={{
+						cursor: "pointer",
+						width: "100%",
+						border: "none",
+						background: "transparent",
+						padding: 0,
+						color: "inherit",
+					}}
+					onClick={() => setOpen((o) => !o)}
+					aria-expanded={open}
+					aria-label={`Toggle ${entry.label}`}
+				>
 					<span className="inline-block w-3 text-center" style={{ color: "var(--color-fg-muted)" }}>
 						{open ? "\u25BE" : "\u25B8"}
 					</span>
-				) : (
+					<span style={{ color: "var(--color-accent)" }}>{entry.label}</span>
+					{entry.value !== undefined && (
+						<span style={{ color: "var(--color-fg-muted)" }}>{entry.value}</span>
+					)}
+				</button>
+			) : (
+				<div className="flex items-center gap-1 py-0.5">
 					<span className="inline-block w-3" />
-				)}
-				<span style={{ color: "var(--color-accent)" }}>{entry.label}</span>
-				{entry.value !== undefined && (
-					<span style={{ color: "var(--color-fg-muted)" }}>{entry.value}</span>
-				)}
-			</div>
+					<span style={{ color: "var(--color-accent)" }}>{entry.label}</span>
+					{entry.value !== undefined && (
+						<span style={{ color: "var(--color-fg-muted)" }}>{entry.value}</span>
+					)}
+				</div>
+			)}
 			{open && hasChildren && (
 				<div className="ml-3" style={{ borderLeft: "1px solid var(--color-border)" }}>
 					<div className="ml-2">

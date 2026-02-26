@@ -41,6 +41,7 @@ export function Dialog({ trigger, title, children }: DialogProps) {
 						onClick={close}
 						className="cursor-pointer text-lg leading-none"
 						style={{ color: "var(--color-fg-muted)" }}
+						aria-label="Close dialog"
 					>
 						&times;
 					</button>

@@ -1,3 +1,5 @@
+import { ParseError } from "./errors";
+
 /**
  * Token types for the lexer
  * Represents all valid tokens in the language
@@ -317,7 +319,7 @@ export function nextToken(cursor: Cursor): Token {
 				}
 				return [TokenKind.DotDot, start, cursor.pos];
 			}
-			throw new Error(`Unexpected character '${String.fromCharCode(ch)}' at position ${start}`);
+			throw new ParseError(`Unexpected character '${String.fromCharCode(ch)}'`, start, cursor.pos);
 		case 0x2c: // ,
 			advance(cursor);
 			return [TokenKind.Comma, start, cursor.pos];
@@ -330,7 +332,7 @@ export function nextToken(cursor: Cursor): Token {
 				advance(cursor);
 				return [TokenKind.And, start, cursor.pos];
 			}
-			throw new Error(`Unexpected character '${String.fromCharCode(ch)}' at position ${start}`);
+			throw new ParseError(`Unexpected character '${String.fromCharCode(ch)}'`, start, cursor.pos);
 		case 0x7c: // |
 			advance(cursor);
 			if (peek(cursor) === 0x7c) {
@@ -341,12 +343,13 @@ export function nextToken(cursor: Cursor): Token {
 				advance(cursor);
 				return [TokenKind.Pipe, start, cursor.pos];
 			}
-			throw new Error(`Unexpected character '${String.fromCharCode(ch)}' at position ${start}`);
+			throw new ParseError(`Unexpected character '${String.fromCharCode(ch)}'`, start, cursor.pos);
 		case 0x3f: // ?
 			advance(cursor);
 			return [TokenKind.Question, start, cursor.pos];
 		default:
-			throw new Error(`Unexpected character '${String.fromCharCode(ch)}' at position ${start}`);
+			advance(cursor);
+			throw new ParseError(`Unexpected character '${String.fromCharCode(ch)}'`, start, cursor.pos);
 	}
 }
 
@@ -372,7 +375,7 @@ function lexString(cursor: Cursor): Token {
 		}
 	}
 
-	throw new Error(`Unterminated string at position ${start}`);
+	throw new ParseError("Unterminated string", start, cursor.pos);
 }
 
 /**

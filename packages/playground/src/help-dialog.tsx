@@ -78,6 +78,7 @@ export function HelpDialog() {
 					className="cursor-pointer text-xs"
 					style={{ color: "var(--color-fg-muted)" }}
 					title="Language reference"
+					aria-label="Open language reference"
 				>
 					?
 				</button>

@@ -5,6 +5,9 @@
 // Analyzer
 export { extractAssignedVariables, extractInputVariables } from "./analyzer";
 
+// Errors
+export { ParseError, toLineColumn } from "./errors";
+
 // AST builders
 export * as ast from "./ast";
 // AST types and type guards
