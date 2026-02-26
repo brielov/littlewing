@@ -22,6 +22,9 @@ evaluate("for x in 1..=5 then x ^ 2"); // → [1, 4, 9, 16, 25]
 
 // Reduce with accumulator
 evaluate("for x in [1, 2, 3, 4] into sum = 0 then sum + x"); // → 10
+
+// Pipe operator — chain values through functions
+evaluate("-5 |> ABS(?) |> STR(?)", defaultContext); // → "5"
 ```
 
 ## Features
@@ -31,6 +34,7 @@ evaluate("for x in [1, 2, 3, 4] into sum = 0 then sum + x"); // → 10
 - **Strict boolean logic** — `!`, `&&`, `||`, and `if` conditions require booleans
 - **Control flow** — `if/then/else` expressions and `for/in/then` comprehensions with optional `when` guard and `into` accumulator
 - **Bracket indexing** — `arr[0]`, `str[-1]`, with chaining (`matrix[0][1]`)
+- **Pipe operator** — `x |> FUN(?) |> OTHER(?, 1)` chains values through function calls
 - **Range expressions** — `1..5` (exclusive), `1..=5` (inclusive)
 - **Deep equality** — `[1, 2] == [1, 2]` → `true`; cross-type `==` → `false`
 - **85 built-in functions** — Math, string, array, date, time, and datetime operations
@@ -81,6 +85,11 @@ evaluate("1..=5"); // → [1, 2, 3, 4, 5]
 evaluate("for x in 1..=5 then x * 2"); // → [2, 4, 6, 8, 10]
 evaluate("for x in 1..=10 when x % 2 == 0 then x"); // → [2, 4, 6, 8, 10]
 evaluate("for x in [1, 2, 3] into sum = 0 then sum + x"); // → 6
+
+// Pipe operator
+evaluate("-42 |> ABS(?)", defaultContext); // → 42
+evaluate("150 |> CLAMP(?, 0, 100)", defaultContext); // → 100
+evaluate("-3 |> ABS(?) |> STR(?)", defaultContext); // → "3"
 ```
 
 ### With Built-in Functions
@@ -231,7 +240,7 @@ extractInputVariables(ast); // → ["price"]
 
 #### `visit<T>(node: ASTNode, visitor: Visitor<T>): T`
 
-Exhaustively visit every node in an AST. All 14 node types must be handled.
+Exhaustively visit every node in an AST. All 16 node types must be handled.
 
 ```typescript
 import { visit, parse } from "littlewing";
@@ -253,6 +262,9 @@ const count = visit(parse("2 + 3"), {
 		1 + recurse(n.iterable) + (n.guard ? recurse(n.guard) : 0) + recurse(n.body),
 	IndexAccess: (n, recurse) => 1 + recurse(n.object) + recurse(n.index),
 	RangeExpression: (n, recurse) => 1 + recurse(n.start) + recurse(n.end),
+	PipeExpression: (n, recurse) =>
+		1 + recurse(n.value) + n.args.reduce((s, arg) => s + recurse(arg), 0),
+	Placeholder: () => 1,
 });
 ```
 
@@ -283,7 +295,7 @@ generate(
 
 **Available builders:**
 
-- Core: `program()`, `number()`, `string()`, `boolean()`, `array()`, `identifier()`, `binaryOp()`, `unaryOp()`, `functionCall()`, `assign()`, `ifExpr()`, `forExpr()`, `indexAccess()`, `rangeExpr()`
+- Core: `program()`, `number()`, `string()`, `boolean()`, `array()`, `identifier()`, `binaryOp()`, `unaryOp()`, `functionCall()`, `assign()`, `ifExpr()`, `forExpr()`, `indexAccess()`, `rangeExpr()`, `pipeExpr()`, `placeholder()`
 - Arithmetic: `add()`, `subtract()`, `multiply()`, `divide()`, `modulo()`, `exponentiate()`, `negate()`
 - Comparison: `equals()`, `notEquals()`, `lessThan()`, `greaterThan()`, `lessEqual()`, `greaterEqual()`
 - Logical: `logicalAnd()`, `logicalOr()`, `logicalNot()`

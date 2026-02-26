@@ -12,10 +12,13 @@ tax_rate = 0.08
 discount = 15
 
 subtotal = price - discount
-tax = subtotal * tax_rate
+tax = ROUND(subtotal * tax_rate)
 total = subtotal + tax
 
-if total > 100 then "expensive" else "affordable"`;
+// Pipe operator chains values through functions
+label = total |> ROUND(?) |> STR(?)
+
+if total > 100 then "Total: $" + label + " (expensive)" else "Total: $" + label + " (affordable)"`;
 
 // --- URL hash encoding (gzip + base64url) ---
 

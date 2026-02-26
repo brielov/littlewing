@@ -30,6 +30,8 @@ export {
 	isIfExpression,
 	isIndexAccess,
 	isNumberLiteral,
+	isPipeExpression,
+	isPlaceholder,
 	isProgram,
 	isRangeExpression,
 	isStringLiteral,
@@ -37,6 +39,8 @@ export {
 	NodeKind,
 	type NumberLiteral,
 	type Operator,
+	type PipeExpression,
+	type Placeholder,
 	type Program,
 	type RangeExpression,
 	type StringLiteral,
@@ -69,4 +73,4 @@ export {
 } from "./utils";
 
 // Visitor pattern
-export { type Visitor, visit, visitPartial } from "./visitor";
+export { type Visitor, type VisitorHandler, visit, visitPartial } from "./visitor";

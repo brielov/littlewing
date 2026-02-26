@@ -93,6 +93,12 @@ export function extractAssignedVariables(ast: ASTNode): string[] {
 				recurse(n.start);
 				recurse(n.end);
 			},
+			PipeExpression: (n, recurse) => {
+				recurse(n.value);
+				for (const arg of n.args) {
+					recurse(arg);
+				}
+			},
 		},
 		// Default handler: no-op for all other node types
 		() => {},
@@ -140,6 +146,8 @@ function containsExternalReference(node: ASTNode, boundVars: ReadonlySet<string>
 		},
 		IndexAccess: (n, recurse) => recurse(n.object) || recurse(n.index),
 		RangeExpression: (n, recurse) => recurse(n.start) || recurse(n.end),
+		PipeExpression: (n, recurse) => recurse(n.value) || n.args.some(recurse),
+		Placeholder: () => false,
 	});
 }
 

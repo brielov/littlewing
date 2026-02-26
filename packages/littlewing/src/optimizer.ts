@@ -106,6 +106,8 @@ function mightHaveSideEffects(node: ASTNode): boolean {
 		BinaryOp: (n, recurse) => recurse(n.left) || recurse(n.right),
 		UnaryOp: (n, recurse) => recurse(n.argument),
 		FunctionCall: () => true,
+		PipeExpression: () => true,
+		Placeholder: () => false,
 		Assignment: () => true,
 		IfExpression: (n, recurse) =>
 			recurse(n.condition) || recurse(n.consequent) || recurse(n.alternate),
@@ -247,6 +249,11 @@ function collectReferencedIdentifiers(node: ASTNode, ids: Set<string>): void {
 			recurse(n.start);
 			recurse(n.end);
 		},
+		PipeExpression: (n, recurse) => {
+			recurse(n.value);
+			for (const a of n.args) recurse(a);
+		},
+		Placeholder: () => {},
 	});
 }
 
@@ -299,6 +306,11 @@ function collectForLoopVars(node: ASTNode, vars: Set<string>): void {
 			recurse(n.start);
 			recurse(n.end);
 		},
+		PipeExpression: (n, recurse) => {
+			recurse(n.value);
+			for (const a of n.args) recurse(a);
+		},
+		Placeholder: () => {},
 	});
 }
 
@@ -352,6 +364,11 @@ function countAssignments(node: ASTNode, counts: Map<string, number>): void {
 			recurse(n.start);
 			recurse(n.end);
 		},
+		PipeExpression: (n, recurse) => {
+			recurse(n.value);
+			for (const a of n.args) recurse(a);
+		},
+		Placeholder: () => {},
 	});
 }
 
@@ -404,6 +421,9 @@ function substituteIdentifiers(node: ASTNode, knownValues: ReadonlyMap<string, A
 			preserveComments(n, ast.indexAccess(recurse(n.object), recurse(n.index))),
 		RangeExpression: (n, recurse) =>
 			preserveComments(n, ast.rangeExpr(recurse(n.start), recurse(n.end), n.inclusive)),
+		PipeExpression: (n, recurse) =>
+			preserveComments(n, ast.pipeExpr(recurse(n.value), n.name, n.args.map(recurse))),
+		Placeholder: (n) => n,
 	});
 }
 
@@ -610,6 +630,14 @@ function fold(node: ASTNode): ASTNode {
 
 			return preserveComments(n, ast.rangeExpr(start, end, n.inclusive));
 		},
+
+		PipeExpression: (n, recurse) => {
+			const value = recurse(n.value);
+			const optimizedArgs = n.args.map(recurse);
+			return preserveComments(n, ast.pipeExpr(value, n.name, optimizedArgs));
+		},
+
+		Placeholder: (n) => n,
 
 		Program: (n, recurse) => {
 			const optimizedStatements = n.statements.map(recurse);

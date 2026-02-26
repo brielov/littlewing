@@ -11,6 +11,7 @@ Key characteristics:
 - **Multi-type system** - Seven types: `number`, `string`, `boolean`, `Temporal.PlainDate`, `Temporal.PlainTime`, `Temporal.PlainDateTime`, `readonly RuntimeValue[]`
 - **No implicit coercion** - Explicit conversion via `STR()`, `NUM()`, etc.
 - **Strict boolean logic** - `!`, `&&`, `||`, and `if` conditions require boolean operands
+- **Pipe operator** - `x |> FUN(?) |> OTHER(?, 1)` chains values through function calls using `?` placeholders
 - **Control flow** - `if/then/else` expressions, `for/in/then` comprehensions (with optional `when` guard and `into` accumulator)
 - **Deep structural equality** - `[1, 2] == [1, 2]` → `true`; cross-type `==` → `false`
 - **Homogeneous arrays** - `[1, "two"]` is a TypeError
@@ -29,14 +30,17 @@ The codebase follows a **three-stage compilation pipeline**:
    - Handles string literals with escape sequences (`\"`, `\\`, `\n`, `\t`)
    - Handles bracket tokens (`[`, `]`) for array literals and index access
    - Handles range tokens (`..`, `..=`) for range expressions
+   - Handles pipe token (`|>`) and placeholder token (`?`)
    - Skips whitespace, semicolons, and single-line comments (`//`) automatically
    - `true` and `false` are parsed as identifiers and handled in the parser
 
 2. **Parser** (`packages/littlewing/src/parser.ts`) - Builds an Abstract Syntax Tree (AST)
    - Pratt parsing (top-down operator precedence climbing)
-   - Supports: unary > exponentiation > mult/div/mod > add/sub > range > comparison > logical AND > logical OR > assignment
+   - Supports: unary > exponentiation > mult/div/mod > add/sub > range > comparison > logical AND > logical OR > pipe > assignment
    - Postfix bracket indexing (`arr[0]`, `str[1]`) with chaining support (`a[0][1]`, `f()[0]`)
    - `if/then/else` and `for/in/then` are prefix expressions (not infix), parsed in prefix position
+   - Pipe expressions: `x |> FUN(?)` parsed as infix with precedence 2 (above assignment, below `||`), left-associative
+   - `?` placeholder token only valid inside pipe step arguments; parser validates at least one `?` per pipe step
    - Keywords: `if`, `then`, `else`, `for`, `in`, `when`, `into` — have no precedence, naturally terminate sub-expressions
    - Handles string literals, boolean literals (`true`/`false` in prefix position), array literals (`[...]`)
    - `true`/`false` cannot be used as assignment targets
@@ -52,18 +56,19 @@ The codebase follows a **three-stage compilation pipeline**:
    - `for` with `into name = init`: reduce/fold mode, returns final accumulator value
    - `!` operator requires boolean, `-` operator requires number
    - Validates homogeneous array elements at construction time
+   - Pipe expressions (`|>`) evaluate piped value, substitute `?` placeholders with the result, then call the function
    - Supports custom functions and variables via `ExecutionContext`
 
 ### Key Types and Contracts
 
 - **RuntimeValue** (`packages/littlewing/src/types.ts`) - `number | string | boolean | Temporal.PlainDate | Temporal.PlainTime | Temporal.PlainDateTime | readonly RuntimeValue[]`
-- **ASTNode** (`packages/littlewing/src/ast.ts`) - Discriminated union of 14 node types:
-  - Program, NumberLiteral, StringLiteral, BooleanLiteral, ArrayLiteral, Identifier, BinaryOp, UnaryOp, FunctionCall, Assignment, IfExpression, ForExpression, IndexAccess, RangeExpression
+- **ASTNode** (`packages/littlewing/src/ast.ts`) - Discriminated union of 16 node types:
+  - Program, NumberLiteral, StringLiteral, BooleanLiteral, ArrayLiteral, Identifier, BinaryOp, UnaryOp, FunctionCall, Assignment, IfExpression, ForExpression, IndexAccess, RangeExpression, PipeExpression, Placeholder
 - **ExecutionContext** (`packages/littlewing/src/types.ts`) - Provides global `functions` and `variables`
   - Functions: `(...args: RuntimeValue[]) => RuntimeValue`
   - Variables: `Record<string, RuntimeValue>`
 
-Type guards (`isNumberLiteral`, `isStringLiteral`, `isBooleanLiteral`, `isArrayLiteral`, `isBinaryOp`, etc.) enable safe pattern matching on the ASTNode union.
+Type guards (`isNumberLiteral`, `isStringLiteral`, `isBooleanLiteral`, `isArrayLiteral`, `isBinaryOp`, `isPipeExpression`, etc.) enable safe pattern matching on the ASTNode union.
 
 ### Operator Semantics
 
@@ -79,6 +84,7 @@ Type guards (`isNumberLiteral`, `isStringLiteral`, `isBooleanLiteral`, `isArrayL
 | `[]`                    | array or string                                     | Bracket indexing (zero-based, negative OK) |
 | `..`                    | number                                              | Exclusive range (`1..4` → `[1, 2, 3]`)     |
 | `..=`                   | number                                              | Inclusive range (`1..=3` → `[1, 2, 3]`)    |
+| `\|>`                   | any value `\|>` FUNCTION(?)                         | Pipe value through function call           |
 
 ### Public API
 
@@ -94,20 +100,21 @@ Type guards (`isNumberLiteral`, `isStringLiteral`, `isBooleanLiteral`, `isArrayL
 
 **Builders (`ast` namespace):**
 
-- Core: `program()`, `number()`, `string()`, `boolean()`, `array()`, `identifier()`, `binaryOp()`, `unaryOp()`, `functionCall()`, `assign()`, `ifExpr()`, `forExpr()`, `indexAccess()`, `rangeExpr()`
+- Core: `program()`, `number()`, `string()`, `boolean()`, `array()`, `identifier()`, `binaryOp()`, `unaryOp()`, `functionCall()`, `assign()`, `ifExpr()`, `forExpr()`, `indexAccess()`, `rangeExpr()`, `pipeExpr()`, `placeholder()`
 - Arithmetic: `add()`, `subtract()`, `multiply()`, `divide()`, `modulo()`, `exponentiate()`, `negate()`
 - Comparison: `equals()`, `notEquals()`, `lessThan()`, `greaterThan()`, `lessEqual()`, `greaterEqual()`
 - Logical: `logicalAnd()`, `logicalOr()`, `logicalNot()`
 
 **Visitor Pattern:**
 
-- `visit<T>(node, visitor)` - Exhaustive visitor requiring handlers for all 14 node types
+- `visit<T>(node, visitor)` - Exhaustive visitor requiring handlers for all 16 node types
 - `visitPartial<T>(node, visitor, defaultHandler)` - Partial visitor with fallback
 - `Visitor<T>` - Type definition for visitor objects
+- `VisitorHandler<N, T>` - Type alias for individual handler signatures: `(node: N, recurse: (n: ASTNode) => T) => T`
 
 **Type Guards:**
 
-- `isProgram()`, `isNumberLiteral()`, `isStringLiteral()`, `isBooleanLiteral()`, `isArrayLiteral()`, `isIdentifier()`, `isBinaryOp()`, `isUnaryOp()`, `isFunctionCall()`, `isAssignment()`, `isIfExpression()`, `isForExpression()`, `isIndexAccess()`, `isRangeExpression()`
+- `isProgram()`, `isNumberLiteral()`, `isStringLiteral()`, `isBooleanLiteral()`, `isArrayLiteral()`, `isIdentifier()`, `isBinaryOp()`, `isUnaryOp()`, `isFunctionCall()`, `isAssignment()`, `isIfExpression()`, `isForExpression()`, `isIndexAccess()`, `isRangeExpression()`, `isPipeExpression()`, `isPlaceholder()`
 
 **Utilities:**
 
@@ -185,7 +192,7 @@ This is a **Bun workspaces monorepo** with two packages:
 │   │   │       ├── datetime.ts       # Date functions (24)
 │   │   │       ├── time.ts           # Time functions (13)
 │   │   │       └── datetimefull.ts   # DateTime functions (7)
-│   │   └── test/                 # 16 test files, 784 tests
+│   │   └── test/                 # 17 test files, 852 tests
 │   └── playground/           # Private web app
 │       ├── package.json
 │       ├── tsconfig.json
@@ -213,7 +220,7 @@ The codebase uses a centralized visitor pattern for AST traversal, implemented i
 
 **Two visitor functions:**
 
-1. **`visit<T>(node, visitor)`** - Exhaustive visitor requiring all 14 node type handlers
+1. **`visit<T>(node, visitor)`** - Exhaustive visitor requiring all 16 node type handlers
 2. **`visitPartial<T>(node, visitor, defaultHandler)`** - Partial visitor with fallback
 
 **Used by:** interpreter, optimizer, codegen, analyzer
@@ -244,6 +251,9 @@ const count = visit(ast, {
 		recurse(n.body),
 	IndexAccess: (n, recurse) => 1 + recurse(n.object) + recurse(n.index),
 	RangeExpression: (n, recurse) => 1 + recurse(n.start) + recurse(n.end),
+	PipeExpression: (n, recurse) =>
+		1 + recurse(n.value) + n.args.reduce((sum, arg) => sum + recurse(arg), 0),
+	Placeholder: () => 1,
 });
 ```
 
@@ -268,7 +278,7 @@ The optimizer (`packages/littlewing/src/optimizer.ts`) implements constant foldi
 
 Tests use Bun's built-in test framework:
 
-- **784 tests** across 16 test files
+- **852 tests** across 17 test files
 - Run a single test file: `bun test packages/littlewing/test/optimizer.test.ts`
 
 ### Code Style
@@ -311,7 +321,7 @@ Tests use Bun's built-in test framework:
 ## AST Node Types Reference
 
 ```typescript
-// 14 readonly object-based AST node types
+// 16 readonly object-based AST node types
 
 interface Program {
 	readonly kind: NodeKind.Program;
@@ -382,6 +392,15 @@ interface RangeExpression {
 	readonly start: ASTNode;
 	readonly end: ASTNode;
 	readonly inclusive: boolean;
+}
+interface PipeExpression {
+	readonly kind: NodeKind.PipeExpression;
+	readonly value: ASTNode;
+	readonly name: string;
+	readonly args: readonly ASTNode[];
+}
+interface Placeholder {
+	readonly kind: NodeKind.Placeholder;
 }
 ```
 

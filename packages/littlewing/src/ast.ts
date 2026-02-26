@@ -44,6 +44,8 @@ export const enum NodeKind {
 	ForExpression,
 	IndexAccess,
 	RangeExpression,
+	PipeExpression,
+	Placeholder,
 }
 
 /**
@@ -176,6 +178,24 @@ export interface RangeExpression extends ASTNodeBase {
 }
 
 /**
+ * Pipe expression (value |> FUN(?, arg))
+ * Chains a value through a function call where ? marks the insertion point
+ */
+export interface PipeExpression extends ASTNodeBase {
+	readonly kind: NodeKind.PipeExpression;
+	readonly value: ASTNode;
+	readonly name: string;
+	readonly args: readonly ASTNode[];
+}
+
+/**
+ * Placeholder (?) used inside pipe expression arguments
+ */
+export interface Placeholder extends ASTNodeBase {
+	readonly kind: NodeKind.Placeholder;
+}
+
+/**
  * AST Node - discriminated union of all node types
  */
 export type ASTNode =
@@ -192,7 +212,9 @@ export type ASTNode =
 	| IfExpression
 	| ForExpression
 	| IndexAccess
-	| RangeExpression;
+	| RangeExpression
+	| PipeExpression
+	| Placeholder;
 
 /**
  * Type guard functions for discriminated union narrowing
@@ -251,6 +273,14 @@ export function isIndexAccess(node: ASTNode): node is IndexAccess {
 
 export function isRangeExpression(node: ASTNode): node is RangeExpression {
 	return node.kind === NodeKind.RangeExpression;
+}
+
+export function isPipeExpression(node: ASTNode): node is PipeExpression {
+	return node.kind === NodeKind.PipeExpression;
+}
+
+export function isPlaceholder(node: ASTNode): node is Placeholder {
+	return node.kind === NodeKind.Placeholder;
 }
 
 /**
@@ -374,6 +404,20 @@ export function rangeExpr(start: ASTNode, end: ASTNode, inclusive: boolean): Ran
 }
 
 /**
+ * Create a pipe expression node (value |> FUN(?, arg))
+ */
+export function pipeExpr(value: ASTNode, name: string, args: readonly ASTNode[]): PipeExpression {
+	return { kind: NodeKind.PipeExpression, value, name, args };
+}
+
+/**
+ * Create a placeholder node (?) for use in pipe expression arguments
+ */
+export function placeholder(): Placeholder {
+	return { kind: NodeKind.Placeholder };
+}
+
+/**
  * Convenience functions for common operations
  */
 
@@ -471,6 +515,10 @@ export function getNodeName(node: ASTNode): string {
 			return "IndexAccess";
 		case NodeKind.RangeExpression:
 			return "RangeExpression";
+		case NodeKind.PipeExpression:
+			return "PipeExpression";
+		case NodeKind.Placeholder:
+			return "Placeholder";
 		default:
 			throw new Error(`Unknown node kind: ${(node as ASTNode).kind}`);
 	}

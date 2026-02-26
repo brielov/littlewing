@@ -622,4 +622,85 @@ describe("CodeGenerator", () => {
 		const code = generate(ast1);
 		expect(code).toBe("// setup\nx = 5 // assign x\ny = x + 10");
 	});
+
+	// Parenthesization edge cases: greedy-tail nodes as left operands
+	test("if expression as binary left operand wraps in parens", () => {
+		const node = ast.add(
+			ast.ifExpr(ast.boolean(true), ast.number(1), ast.number(2)),
+			ast.number(3),
+		);
+		expect(generate(node)).toBe("(if true then 1 else 2) + 3");
+	});
+
+	test("for expression as binary left operand wraps in parens", () => {
+		const node = ast.add(
+			ast.forExpr("x", ast.array([ast.number(1)]), null, null, ast.identifier("x")),
+			ast.number(3),
+		);
+		expect(generate(node)).toBe("(for x in [1] then x) + 3");
+	});
+
+	test("assignment as binary left operand wraps in parens", () => {
+		const node = ast.add(ast.assign("x", ast.number(5)), ast.number(3));
+		expect(generate(node)).toBe("(x = 5) + 3");
+	});
+
+	test("range as binary left operand wraps in parens when needed", () => {
+		const node = ast.add(ast.rangeExpr(ast.number(1), ast.number(5), false), ast.number(3));
+		expect(generate(node)).toBe("(1..5) + 3");
+	});
+
+	test("range as binary left operand no parens for low-precedence parent", () => {
+		const node = ast.logicalOr(
+			ast.rangeExpr(ast.number(1), ast.number(5), false),
+			ast.boolean(true),
+		);
+		expect(generate(node)).toBe("1..5 || true");
+	});
+
+	// Parenthesization edge cases: low-precedence infix as right operands
+	test("assignment as binary right operand wraps in parens", () => {
+		const node = ast.add(ast.number(3), ast.assign("x", ast.number(5)));
+		expect(generate(node)).toBe("3 + (x = 5)");
+	});
+
+	test("range as binary right operand wraps in parens when needed", () => {
+		const node = ast.add(ast.number(3), ast.rangeExpr(ast.number(1), ast.number(5), false));
+		expect(generate(node)).toBe("3 + (1..5)");
+	});
+
+	test("range as binary right operand no parens for low-precedence parent", () => {
+		const node = ast.logicalOr(
+			ast.boolean(true),
+			ast.rangeExpr(ast.number(1), ast.number(5), false),
+		);
+		expect(generate(node)).toBe("true || 1..5");
+	});
+
+	// Parenthesization edge cases: greedy-tail nodes in range start
+	test("if expression as range start wraps in parens", () => {
+		const node = ast.rangeExpr(
+			ast.ifExpr(ast.boolean(true), ast.number(1), ast.number(5)),
+			ast.number(10),
+			false,
+		);
+		expect(generate(node)).toBe("(if true then 1 else 5)..10");
+	});
+
+	test("assignment as range start wraps in parens", () => {
+		const node = ast.rangeExpr(ast.assign("x", ast.number(5)), ast.number(10), false);
+		expect(generate(node)).toBe("(x = 5)..10");
+	});
+
+	// Parenthesization edge cases: low-precedence infix in range end
+	test("assignment as range end wraps in parens", () => {
+		const node = ast.rangeExpr(ast.number(1), ast.assign("x", ast.number(5)), false);
+		expect(generate(node)).toBe("1..(x = 5)");
+	});
+
+	// Parenthesization edge cases: unary argument
+	test("range as unary argument wraps in parens", () => {
+		const node = ast.negate(ast.rangeExpr(ast.number(1), ast.number(5), false));
+		expect(generate(node)).toBe("-(1..5)");
+	});
 });

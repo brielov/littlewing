@@ -24,6 +24,7 @@ const sections: Array<{ title: string; items: Array<[string, string]> }> = [
 			["range", "1..5 (exclusive), 1..=5 (inclusive)"],
 			["index", 'arr[0], str[-1], "abc"[1]'],
 			["concat", '"a" + "b", [1] + [2]'],
+			["pipe", "x |> ABS(?) |> STR(?)"],
 		],
 	},
 	{
@@ -58,6 +59,7 @@ const sections: Array<{ title: string; items: Array<[string, string]> }> = [
 		items: [
 			["no coercion", "types don't auto-convert; use STR() or NUM()"],
 			["strict booleans", "&&, ||, if, and ! require boolean operands"],
+			["pipe operator", "? marks where the piped value goes; at least one required"],
 			["deep equality", "[1, 2] == [1, 2] is true"],
 			["comments", "// single-line comments"],
 			["share", "the URL updates automatically as you type"],

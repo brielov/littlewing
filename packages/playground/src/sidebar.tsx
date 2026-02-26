@@ -533,6 +533,18 @@ function buildAstEntries(node: ASTNode): AstEntry {
 				{ label: "end", children: [recurse(n.end)] },
 			],
 		}),
+		PipeExpression: (n, recurse) => ({
+			label: "PipeExpression",
+			value: n.name,
+			children: [
+				{ label: "value", children: [recurse(n.value)] },
+				...(n.args.length > 0 ? n.args.map(recurse) : []),
+			],
+		}),
+		Placeholder: () => ({
+			label: "Placeholder",
+			value: "?",
+		}),
 	});
 }
 

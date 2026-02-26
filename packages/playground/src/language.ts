@@ -24,6 +24,7 @@ export function registerLittlewingLanguage(monaco: Monaco): void {
 			">=",
 			"&&",
 			"||",
+			"|>",
 			"+",
 			"-",
 			"*",
@@ -67,6 +68,8 @@ export function registerLittlewingLanguage(monaco: Monaco): void {
 				[/[=!<>]=/, "operator"],
 				[/&&/, "operator"],
 				[/\|\|/, "operator"],
+				[/\|>/, "operator"],
+				[/\?/, "operator"],
 				[/[+\-*/%^=!<>]/, "operator"],
 
 				// Brackets

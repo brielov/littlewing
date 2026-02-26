@@ -424,6 +424,36 @@ function parseInfix(state: ParserState, left: ASTNode, precedence: number): ASTN
 		return ast.rangeExpr(left, right, inclusive);
 	}
 
+	// Pipe operator
+	if (tokenKind === TokenKind.Pipe) {
+		advance(state); // consume |>
+		if (peekKind(state) !== TokenKind.Identifier) {
+			throw new Error("Expected function name after |>");
+		}
+		const name = readText(state.cursor, state.currentToken);
+		advance(state); // consume function name
+		if (peekKind(state) !== TokenKind.LParen) {
+			throw new Error("Expected ( after function name in pipe expression");
+		}
+		advance(state); // consume (
+		const args = parsePipeArguments(state);
+		if (peekKind(state) !== TokenKind.RParen) {
+			throw new Error("Expected closing parenthesis");
+		}
+		advance(state); // consume )
+		let hasPlaceholder = false;
+		for (const arg of args) {
+			if (arg.kind === NodeKind.Placeholder) {
+				hasPlaceholder = true;
+				break;
+			}
+		}
+		if (!hasPlaceholder) {
+			throw new Error("Pipe expression requires at least one ? placeholder");
+		}
+		return ast.pipeExpr(left, name, args);
+	}
+
 	// Binary operators
 	if (isBinaryOperator(tokenKind)) {
 		const operator = readText(state.cursor, state.currentToken) as Operator;
@@ -450,6 +480,30 @@ function parseFunctionArguments(state: ParserState): ASTNode[] {
 	}
 
 	return args;
+}
+
+function parsePipeArguments(state: ParserState): ASTNode[] {
+	if (peekKind(state) === TokenKind.RParen) {
+		return [];
+	}
+
+	const args: ASTNode[] = [];
+	args.push(parsePipeArg(state));
+
+	while (peekKind(state) === TokenKind.Comma) {
+		advance(state);
+		args.push(parsePipeArg(state));
+	}
+
+	return args;
+}
+
+function parsePipeArg(state: ParserState): ASTNode {
+	if (peekKind(state) === TokenKind.Question) {
+		advance(state); // consume ?
+		return ast.placeholder();
+	}
+	return parseExpression(state, 0);
 }
 
 const UNARY_PRECEDENCE = 8;

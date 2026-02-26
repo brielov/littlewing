@@ -12,6 +12,8 @@ import {
 	type IndexAccess,
 	NodeKind,
 	type NumberLiteral,
+	type PipeExpression,
+	type Placeholder,
 	type Program,
 	type RangeExpression,
 	type StringLiteral,
@@ -19,30 +21,39 @@ import {
 } from "./ast";
 
 /**
+ * A single visitor handler: receives a narrowed node and a recurse function.
+ *
+ * @template N The specific AST node type this handler accepts
+ * @template T The return type shared across all handlers
+ */
+export type VisitorHandler<N, T> = (node: N, recurse: (n: ASTNode) => T) => T;
+
+/**
  * Type-safe visitor pattern for AST traversal.
  *
- * A visitor is an object with handler functions for each AST node type.
- * Each handler receives:
- * - The node (correctly typed based on node.type)
- * - A recurse function to visit child nodes with the same visitor
+ * A visitor is an object with one handler per AST node type.
+ * Each handler receives the narrowed node and a `recurse` function
+ * for visiting child nodes with the same visitor.
  *
  * @template T The return type of visitor handlers
  */
 export type Visitor<T> = {
-	Program: (node: Program, recurse: (n: ASTNode) => T) => T;
-	NumberLiteral: (node: NumberLiteral, recurse: (n: ASTNode) => T) => T;
-	StringLiteral: (node: StringLiteral, recurse: (n: ASTNode) => T) => T;
-	BooleanLiteral: (node: BooleanLiteral, recurse: (n: ASTNode) => T) => T;
-	ArrayLiteral: (node: ArrayLiteral, recurse: (n: ASTNode) => T) => T;
-	Identifier: (node: Identifier, recurse: (n: ASTNode) => T) => T;
-	BinaryOp: (node: BinaryOp, recurse: (n: ASTNode) => T) => T;
-	UnaryOp: (node: UnaryOp, recurse: (n: ASTNode) => T) => T;
-	FunctionCall: (node: FunctionCall, recurse: (n: ASTNode) => T) => T;
-	Assignment: (node: Assignment, recurse: (n: ASTNode) => T) => T;
-	IfExpression: (node: IfExpression, recurse: (n: ASTNode) => T) => T;
-	ForExpression: (node: ForExpression, recurse: (n: ASTNode) => T) => T;
-	IndexAccess: (node: IndexAccess, recurse: (n: ASTNode) => T) => T;
-	RangeExpression: (node: RangeExpression, recurse: (n: ASTNode) => T) => T;
+	Program: VisitorHandler<Program, T>;
+	NumberLiteral: VisitorHandler<NumberLiteral, T>;
+	StringLiteral: VisitorHandler<StringLiteral, T>;
+	BooleanLiteral: VisitorHandler<BooleanLiteral, T>;
+	ArrayLiteral: VisitorHandler<ArrayLiteral, T>;
+	Identifier: VisitorHandler<Identifier, T>;
+	BinaryOp: VisitorHandler<BinaryOp, T>;
+	UnaryOp: VisitorHandler<UnaryOp, T>;
+	FunctionCall: VisitorHandler<FunctionCall, T>;
+	Assignment: VisitorHandler<Assignment, T>;
+	IfExpression: VisitorHandler<IfExpression, T>;
+	ForExpression: VisitorHandler<ForExpression, T>;
+	IndexAccess: VisitorHandler<IndexAccess, T>;
+	RangeExpression: VisitorHandler<RangeExpression, T>;
+	PipeExpression: VisitorHandler<PipeExpression, T>;
+	Placeholder: VisitorHandler<Placeholder, T>;
 };
 
 /**
@@ -76,7 +87,7 @@ export function visit<T>(node: ASTNode, visitor: Visitor<T>): T {
 export function visitPartial<T>(
 	node: ASTNode,
 	visitor: Partial<Visitor<T>>,
-	defaultHandler: (node: ASTNode, recurse: (n: ASTNode) => T) => T,
+	defaultHandler: VisitorHandler<ASTNode, T>,
 ): T {
 	const recurse = (n: ASTNode): T => visitPartial(n, visitor, defaultHandler);
 
@@ -126,6 +137,14 @@ export function visitPartial<T>(
 		case NodeKind.RangeExpression:
 			return visitor.RangeExpression
 				? visitor.RangeExpression(node, recurse)
+				: defaultHandler(node, recurse);
+		case NodeKind.PipeExpression:
+			return visitor.PipeExpression
+				? visitor.PipeExpression(node, recurse)
+				: defaultHandler(node, recurse);
+		case NodeKind.Placeholder:
+			return visitor.Placeholder
+				? visitor.Placeholder(node, recurse)
 				: defaultHandler(node, recurse);
 	}
 }

@@ -41,6 +41,10 @@ export const enum TokenKind {
 	Eq, // =
 	Comma, // ,
 
+	// Pipe
+	Pipe, // |>
+	Question, // ?
+
 	// Keywords
 	If,
 	Then,
@@ -333,7 +337,14 @@ export function nextToken(cursor: Cursor): Token {
 				advance(cursor);
 				return [TokenKind.Or, start, cursor.pos];
 			}
+			if (peek(cursor) === 0x3e) {
+				advance(cursor);
+				return [TokenKind.Pipe, start, cursor.pos];
+			}
 			throw new Error(`Unexpected character '${String.fromCharCode(ch)}' at position ${start}`);
+		case 0x3f: // ?
+			advance(cursor);
+			return [TokenKind.Question, start, cursor.pos];
 		default:
 			throw new Error(`Unexpected character '${String.fromCharCode(ch)}' at position ${start}`);
 	}

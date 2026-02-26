@@ -368,6 +368,7 @@ export function buildRange(start: number, end: number, inclusive: boolean): read
  * Precedence hierarchy:
  * - 0: None
  * - 1: Assignment (=)
+ * - 2: Pipe (|>)
  * - 3: Logical OR (||)
  * - 4: Logical AND (&&)
  * - 5: Comparison (==, !=, <, >, <=, >=)
@@ -461,6 +462,13 @@ export function collectAllIdentifiers(node: ASTNode): Set<string> {
 			recurse(n.start);
 			recurse(n.end);
 		},
+		PipeExpression: (n, recurse) => {
+			recurse(n.value);
+			for (const arg of n.args) {
+				recurse(arg);
+			}
+		},
+		Placeholder: () => {},
 	});
 
 	return identifiers;
@@ -473,6 +481,8 @@ export function getTokenPrecedence(kind: TokenKind): number {
 	switch (kind) {
 		case TokenKind.Eq:
 			return 1;
+		case TokenKind.Pipe:
+			return 2;
 		case TokenKind.Or:
 			return 3;
 		case TokenKind.And:

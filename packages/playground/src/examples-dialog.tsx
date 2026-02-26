@@ -197,6 +197,33 @@ billable = ROUND(total_minutes / 60 * hourly_rate)
 STR(hours) + "h " + STR(mins) + "m worked = $" + STR(billable)`,
 	},
 	{
+		title: "Data Pipeline",
+		description: "Chain transformations with the pipe operator",
+		source: `// Pipe operator: value |> FUNC(?) chains through functions
+// ? marks where the piped value is inserted
+
+// Basic chaining
+raw_score = -73
+normalized = raw_score |> ABS(?) |> CLAMP(?, 0, 100)
+
+// Pipes work great with string processing
+label = normalized |> STR(?) |> STR_UPPER(?)
+
+// Multi-step data transformation
+data = [15, -8, 42, -3, 27, -19, 33]
+result = for x in data when x > 0 into sum = 0 then sum + x
+summary = result |> STR(?)
+
+// Pipes compose naturally with everything
+grade = normalized |> CLAMP(?, 0, 100)
+rating = if grade >= 90 then "A"
+  else if grade >= 80 then "B"
+  else if grade >= 70 then "C"
+  else "D"
+
+"Score: " + label + " → Grade: " + rating`,
+	},
+	{
 		title: "Matrix Flatten & Search",
 		description: "Work with nested arrays using flat, sort, and filter",
 		source: `// Nested data processing

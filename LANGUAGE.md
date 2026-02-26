@@ -12,6 +12,7 @@ Littlewing is a **multi-type expression language** with seven value types: numbe
 - **No implicit coercion** - Explicit type conversion via `STR()`, `NUM()`, etc.
 - **Strict boolean logic** - `!`, `&&`, `||`, and `if` conditions require booleans
 - **Control flow** - `if/then/else` expressions and `for/in/then` comprehensions with optional `when` guard and `into` accumulator
+- **Pipe operator** - `x |> FUN(?) |> OTHER(?, 1)` chains values through function calls
 - **Bracket indexing** - `arr[0]`, `str[1]`, with negative indexing and chaining
 - **Range expressions** - `1..5` (exclusive), `1..=5` (inclusive)
 - **Deep equality** - `[1, 2] == [1, 2]` evaluates to `true`
@@ -55,6 +56,11 @@ last = items[-1]   // → 30
 
 // Range expressions
 nums = 1..=5 // → [1, 2, 3, 4, 5]
+
+// Pipe operator — chain values through functions
+-5 |> ABS(?)                   // → 5
+-5 |> ABS(?) |> STR(?)         // → "5"
+150 |> CLAMP(?, 0, 100)        // → 100
 
 // For comprehensions
 doubled = for x in 1..=5 then x * 2 // → [2, 4, 6, 8, 10]
@@ -453,6 +459,35 @@ for x in [] into sum = 0 then sum + x // → 0
 
 The accumulator variable is scoped to the loop body and not accessible outside.
 
+#### Pipe Expressions
+
+Syntax: `value |> FUNCTION(args...)` where `?` marks where the piped value is inserted.
+
+The pipe operator chains a value through one or more function calls. Each step must contain at least one `?` placeholder. Multiple `?` in the same step all receive the same piped value.
+
+```
+// Basic pipe
+-5 |> ABS(?) // → 5 (equivalent to ABS(-5))
+
+// Chained pipes
+-3 |> ABS(?) |> STR(?) // → "3" (equivalent to STR(ABS(-3)))
+
+// Placeholder in any argument position
+150 |> CLAMP(?, 0, 100) // → 100 (equivalent to CLAMP(150, 0, 100))
+10 |> ADD(5, ?)          // → 15 (equivalent to ADD(5, 10))
+
+// Multiple placeholders (same value injected into all)
+5 |> ADD(?, ?) // → 10 (equivalent to ADD(5, 5))
+
+// With expressions on the left
+2 + 3 |> ABS(?) // → 5 (parsed as (2 + 3) |> ABS(?))
+
+// Store result in a variable
+result = -7 |> ABS(?) // result = 7
+```
+
+The `?` token is only valid inside pipe step arguments. Using `?` outside a pipe expression is a syntax error. Each pipe step must be a function call with at least one `?`.
+
 ### Operator Precedence
 
 From highest to lowest (use parentheses to override):
@@ -466,7 +501,8 @@ From highest to lowest (use parentheses to override):
 7. **Comparisons:** `<`, `>`, `<=`, `>=`, `==`, `!=`
 8. **Logical AND:** `x && y`
 9. **Logical OR:** `x || y`
-10. **Assignment:** `x = y` (right-associative)
+10. **Pipe:** `x |> FUN(?)` (left-associative)
+11. **Assignment:** `x = y` (right-associative)
 
 ```
 // Examples showing precedence

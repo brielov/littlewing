@@ -1,4 +1,5 @@
 import type { ASTNode } from "./ast";
+import { NodeKind } from "./ast";
 import { parse } from "./parser";
 import type { ExecutionContext, RuntimeValue } from "./types";
 import {
@@ -21,7 +22,7 @@ function evaluateNode(
 	variables: Map<string, RuntimeValue>,
 	externalVariables: Set<string>,
 ): RuntimeValue {
-	return visit(node, {
+	return visit<RuntimeValue>(node, {
 		Program: (n, recurse) => {
 			let result: RuntimeValue = 0;
 			for (const statement of n.statements) {
@@ -143,6 +144,25 @@ function evaluateNode(
 			assertNumber(start, "Range start");
 			assertNumber(end, "Range end");
 			return buildRange(start, end, n.inclusive);
+		},
+
+		PipeExpression: (n, recurse) => {
+			const pipedValue = recurse(n.value);
+			const fn = context.functions?.[n.name];
+			if (fn === undefined) {
+				throw new Error(`Undefined function: ${n.name}`);
+			}
+			if (typeof fn !== "function") {
+				throw new Error(`${n.name} is not a function`);
+			}
+			const evaluatedArgs = n.args.map((arg) =>
+				arg.kind === NodeKind.Placeholder ? pipedValue : recurse(arg),
+			);
+			return fn(...evaluatedArgs);
+		},
+
+		Placeholder: () => {
+			throw new Error("Placeholder outside pipe expression");
 		},
 
 		ForExpression: (n, recurse) => {
