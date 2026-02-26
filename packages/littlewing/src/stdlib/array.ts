@@ -185,7 +185,7 @@ export const ARR_MIN = (a: RuntimeValue): RuntimeValue => {
 	if (a.length === 0) {
 		throw new RangeError("ARR_MIN: array is empty");
 	}
-	return findExtreme(a, "ARR_MIN", 1);
+	return findExtreme(a, "ARR_MIN", -1);
 };
 
 /**
@@ -198,19 +198,19 @@ export const ARR_MAX = (a: RuntimeValue): RuntimeValue => {
 	if (a.length === 0) {
 		throw new RangeError("ARR_MAX: array is empty");
 	}
-	return findExtreme(a, "ARR_MAX", -1);
+	return findExtreme(a, "ARR_MAX", 1);
 };
 
 /**
  * Find the extreme (min or max) element of a homogeneous array.
- * direction: -1 for min, 1 for max
+ * direction: 1 for max (keep larger), -1 for min (keep smaller)
  */
-function findExtreme(a: readonly RuntimeValue[], context: string, direction: -1 | 1): RuntimeValue {
+function findExtreme(a: readonly RuntimeValue[], context: string, direction: 1 | -1): RuntimeValue {
 	let best = a[0] as RuntimeValue;
 
 	for (let i = 1; i < a.length; i++) {
 		const elem = a[i] as RuntimeValue;
-		const cmp = compareValues(best, elem, context);
+		const cmp = compareValues(elem, best, context);
 		if (cmp * direction > 0) {
 			best = elem;
 		}

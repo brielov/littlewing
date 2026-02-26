@@ -42,7 +42,7 @@ function eliminateDeadCode(program: Program): Program {
 		if (i === statements.length - 1) {
 			keptIndices.push(i);
 			const identifiers = collectAllIdentifiers(stmt);
-			for (const id of Array.from(identifiers)) {
+			for (const id of identifiers) {
 				liveVars.add(id);
 			}
 			continue;
@@ -52,14 +52,14 @@ function eliminateDeadCode(program: Program): Program {
 			if (liveVars.has(stmt.name)) {
 				keptIndices.push(i);
 				const identifiers = collectAllIdentifiers(stmt.value);
-				for (const id of Array.from(identifiers)) {
+				for (const id of identifiers) {
 					liveVars.add(id);
 				}
 			}
 		} else {
 			keptIndices.push(i);
 			const identifiers = collectAllIdentifiers(stmt);
-			for (const id of Array.from(identifiers)) {
+			for (const id of identifiers) {
 				liveVars.add(id);
 			}
 		}

@@ -321,7 +321,7 @@ export function resolveIndex(
 		throw new TypeError(`Index must be an integer, got ${index}`);
 	}
 
-	const len = typeof target === "string" ? target.length : target.length;
+	const len = target.length;
 	const resolved = index < 0 ? len + index : index;
 
 	if (resolved < 0 || resolved >= len) {
