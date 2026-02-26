@@ -14,7 +14,7 @@ Thank you for your interest in contributing to our project! This guide will help
 2. Clone your fork: `git clone https://github.com/brielov/littlewing.git`
 3. Navigate to the project directory: `cd littlewing`
 4. Install dependencies: `bun install`
-5. Start development: `bun run dev`
+5. Start development: `bun run --cwd packages/littlewing dev`
 
 ## Development Workflow
 

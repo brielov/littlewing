@@ -141,6 +141,16 @@ export function App() {
 						Format
 					</button>
 					<HelpDialog />
+					<a
+						href="https://github.com/brielov/littlewing"
+						target="_blank"
+						rel="noopener noreferrer"
+						className="text-xs"
+						style={{ color: "var(--color-fg-muted)" }}
+						title="GitHub repository"
+					>
+						GitHub
+					</a>
 				</div>
 			</header>
 

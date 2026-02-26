@@ -386,7 +386,7 @@ Littlewing provides just enough: expressions with multiple types, variables, and
 bun install     # Install dependencies
 bun test        # Run tests
 bun run build   # Build
-bun run dev     # Watch mode
+bun run --cwd packages/littlewing dev   # Watch mode
 ```
 
 For detailed development docs, see [CLAUDE.md](./CLAUDE.md).
