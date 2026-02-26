@@ -40,3 +40,29 @@ body {
 	background-color: var(--color-bg);
 	color: var(--color-fg);
 }
+
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+	-webkit-appearance: none;
+	margin: 0;
+}
+
+input[type="number"] {
+	-moz-appearance: textfield;
+}
+
+input[type="date"]::-webkit-calendar-picker-indicator,
+input[type="time"]::-webkit-calendar-picker-indicator,
+input[type="datetime-local"]::-webkit-calendar-picker-indicator {
+	display: none;
+	-webkit-appearance: none;
+}
+
+::selection {
+	background-color: color-mix(in srgb, var(--color-accent) 30%, transparent);
+}
+
+:focus-visible {
+	outline: 1.5px solid var(--color-accent);
+	outline-offset: -1.5px;
+}
