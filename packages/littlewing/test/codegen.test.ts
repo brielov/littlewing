@@ -225,7 +225,7 @@ describe("CodeGenerator", () => {
 			ast.add(ast.identifier("x"), ast.identifier("y")),
 		]);
 		const code = generate(node);
-		expect(code).toBe("x = 5; y = 10; x + y");
+		expect(code).toBe("x = 5\ny = 10\nx + y");
 	});
 
 	test("generated code is syntactically valid", () => {
@@ -518,5 +518,70 @@ describe("CodeGenerator", () => {
 		const ast1 = parse(source);
 		const code = generate(ast1);
 		expect(code).toBe(source);
+	});
+
+	test("comment preservation roundtrip", () => {
+		const source = "// compute sum\nx = 5\ny = 10\nx + y";
+		const ast1 = parse(source);
+		const code = generate(ast1);
+		expect(code).toBe("// compute sum\nx = 5\ny = 10\nx + y");
+	});
+
+	test("trailing comments after last statement", () => {
+		const source = "x = 5\ny = 10\n// final comment";
+		const ast1 = parse(source);
+		const code = generate(ast1);
+		expect(code).toBe("x = 5\ny = 10\n// final comment");
+	});
+
+	test("multiple comments before a single statement", () => {
+		const source = "// line one\n// line two\nx + y";
+		const ast1 = parse(source);
+		const code = generate(ast1);
+		expect(code).toBe("// line one\n// line two\nx + y");
+	});
+
+	test("comments survive parse → generate cycle", () => {
+		const source = "// first\nx = 5\n// second\ny = x + 10\ny";
+		const ast1 = parse(source);
+		const code1 = generate(ast1);
+		const ast2 = parse(code1);
+		const code2 = generate(ast2);
+		expect(code1).toBe(code2);
+	});
+
+	test("comment before single expression", () => {
+		const source = "// answer\n42";
+		const ast1 = parse(source);
+		const code = generate(ast1);
+		expect(code).toBe("// answer\n42");
+	});
+
+	test("trailing comment on single-statement program", () => {
+		const source = "42\n// trailing";
+		const ast1 = parse(source);
+		const code = generate(ast1);
+		expect(code).toBe("42\n// trailing");
+	});
+
+	test("inline comment preserved on same line", () => {
+		const source = "tax = subtotal * tax_rate // tax calculation";
+		const ast1 = parse(source);
+		const code = generate(ast1);
+		expect(code).toBe("tax = subtotal * tax_rate // tax calculation");
+	});
+
+	test("inline comments in multi-statement program", () => {
+		const source = "x = 5 // first\ny = 10 // second\nx + y";
+		const ast1 = parse(source);
+		const code = generate(ast1);
+		expect(code).toBe("x = 5 // first\ny = 10 // second\nx + y");
+	});
+
+	test("mixed leading and inline comments", () => {
+		const source = "// setup\nx = 5 // assign x\ny = x + 10";
+		const ast1 = parse(source);
+		const code = generate(ast1);
+		expect(code).toBe("// setup\nx = 5 // assign x\ny = x + 10");
 	});
 });

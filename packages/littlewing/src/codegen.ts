@@ -1,5 +1,5 @@
-import type { ASTNode, Operator } from "./ast";
-import { isAssignment, isBinaryOp, isRangeExpression, isUnaryOp } from "./ast";
+import type { ASTNode, Operator, Program } from "./ast";
+import { isAssignment, isBinaryOp, isProgram, isRangeExpression, isUnaryOp } from "./ast";
 import { getOperatorPrecedence } from "./utils";
 import { visit } from "./visitor";
 
@@ -32,13 +32,69 @@ function escapeString(value: string): string {
 }
 
 /**
+ * Emit a statement line with its leading and trailing comments.
+ * Leading comments appear on their own lines before the code.
+ * Trailing comments appear on the same line after the code.
+ */
+function emitStatement(code: string, node: ASTNode, lines: string[]): void {
+	if (node.leadingComments) {
+		for (const comment of node.leadingComments) {
+			lines.push(comment);
+		}
+	}
+	if (node.trailingComments && node.trailingComments.length > 0) {
+		lines.push(`${code} ${node.trailingComments.join(" ")}`);
+	} else {
+		lines.push(code);
+	}
+}
+
+/**
+ * Generate source code for a Program node, handling comments and multi-line output.
+ */
+function generateProgram(n: Program, recurse: (node: ASTNode) => string): string {
+	const lines: string[] = [];
+	for (const stmt of n.statements) {
+		emitStatement(recurse(stmt), stmt, lines);
+	}
+	if (n.trailingComments) {
+		for (const comment of n.trailingComments) {
+			lines.push(comment);
+		}
+	}
+	return lines.join("\n");
+}
+
+/**
  * Generate source code from an AST node
  */
 export function generate(node: ASTNode): string {
+	const code = generateNode(node);
+	const parts: string[] = [];
+
+	if (!isProgram(node)) {
+		if (node.leadingComments) {
+			for (const comment of node.leadingComments) {
+				parts.push(comment);
+			}
+		}
+		if (node.trailingComments && node.trailingComments.length > 0) {
+			parts.push(`${code} ${node.trailingComments.join(" ")}`);
+		} else {
+			parts.push(code);
+		}
+		if (parts.length > 1 || (node.leadingComments && node.leadingComments.length > 0)) {
+			return parts.join("\n");
+		}
+		return parts[0] ?? code;
+	}
+
+	return code;
+}
+
+function generateNode(node: ASTNode): string {
 	return visit(node, {
-		Program: (n, recurse) => {
-			return n.statements.map(recurse).join("; ");
-		},
+		Program: generateProgram,
 
 		NumberLiteral: (n) => {
 			return String(n.value);

@@ -801,3 +801,32 @@ describe("RangeExpression folding", () => {
 		expect((optimized as NumberLiteral).value).toBe(3);
 	});
 });
+
+describe("Comment preservation through optimizer", () => {
+	test("comments survive constant folding", () => {
+		const source = "// compute\n2 + 3";
+		const optimized = optimize(parse(source));
+		expect(isNumberLiteral(optimized)).toBe(true);
+		expect((optimized as NumberLiteral).value).toBe(5);
+		expect(optimized.leadingComments).toEqual(["// compute"]);
+	});
+
+	test("comments on dead code are dropped", () => {
+		const source = "// unused\nx = 10\n// used\ny = 20";
+		const optimized = optimize(parse(source));
+		// DCE removes x=10, leaving only y=20 (unwrapped from Program)
+		expect(isAssignment(optimized)).toBe(true);
+		expect((optimized as Assignment).name).toBe("y");
+		expect(optimized.leadingComments).toEqual(["// used"]);
+	});
+
+	test("comments preserved on kept statements after DCE", () => {
+		const source = "// setup\nx = 10\n// result\ny = x * 2\ny";
+		const optimized = optimize(parse(source));
+		expect(isProgram(optimized)).toBe(true);
+		const prog = optimized as Program;
+		expect(prog.statements.length).toBe(3);
+		expect(prog.statements[0]!.leadingComments).toEqual(["// setup"]);
+		expect(prog.statements[1]!.leadingComments).toEqual(["// result"]);
+	});
+});

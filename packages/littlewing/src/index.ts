@@ -11,6 +11,7 @@ export * as ast from "./ast";
 export {
 	type ArrayLiteral,
 	type ASTNode,
+	type ASTNodeBase,
 	type Assignment,
 	type BinaryOp,
 	type BooleanLiteral,

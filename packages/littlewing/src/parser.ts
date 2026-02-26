@@ -1,6 +1,7 @@
 import * as ast from "./ast";
 import { type ASTNode, NodeKind, type Operator } from "./ast";
 import {
+	type Comment,
 	type Cursor,
 	createCursor,
 	nextToken,
@@ -49,8 +50,10 @@ export function parse(source: string): ASTNode {
 	};
 
 	const statements: ASTNode[] = [];
+	const statementOffsets: number[] = [];
 
 	while (state.currentToken[0] !== TokenKind.Eof) {
+		statementOffsets.push(state.currentToken[1]);
 		statements.push(parseExpression(state, 0));
 	}
 
@@ -58,15 +61,161 @@ export function parse(source: string): ASTNode {
 		throw new Error("Empty program");
 	}
 
-	if (statements.length === 1) {
-		const singleStatement = statements[0];
-		if (singleStatement === undefined) {
+	const annotated = attachComments(source, statements, statementOffsets, cursor.comments);
+
+	// Unwrap single-statement Programs unless there are program-level trailing comments,
+	// which require a Program node to emit correctly (own-line vs inline distinction).
+	if (annotated.statements.length === 1 && !annotated.programTrailing) {
+		const stmt = annotated.statements[0];
+		if (stmt === undefined) {
 			throw new Error("Unexpected empty statements array");
 		}
-		return singleStatement;
+		return stmt;
 	}
 
-	return ast.program(statements);
+	const program: ast.Program = {
+		kind: NodeKind.Program,
+		statements: annotated.statements,
+		...(annotated.programTrailing ? { trailingComments: annotated.programTrailing } : {}),
+	};
+	return program;
+}
+
+/**
+ * Check if a comment is inline (on the same line as preceding code).
+ * Walks backward from the comment offset looking for non-whitespace before a newline.
+ */
+function isInlineComment(source: string, commentOffset: number): boolean {
+	for (let i = commentOffset - 1; i >= 0; i--) {
+		const ch = source.charCodeAt(i);
+		if (ch === 0x0a || ch === 0x0d) return false;
+		if (ch !== 0x20 && ch !== 0x09 && ch !== 0x3b) return true;
+	}
+	return false;
+}
+
+/**
+ * Find the index of the last statement whose start offset <= commentOffset.
+ * Returns -1 if the comment precedes all statements.
+ */
+function findPrecedingStatement(
+	statementOffsets: readonly number[],
+	commentOffset: number,
+): number {
+	let result = -1;
+	for (let i = 0; i < statementOffsets.length; i++) {
+		const offset = statementOffsets[i];
+		if (offset !== undefined && offset <= commentOffset) {
+			result = i;
+		} else {
+			break;
+		}
+	}
+	return result;
+}
+
+/**
+ * Find the index of the first statement whose start offset > commentOffset.
+ * Returns -1 if no such statement exists.
+ */
+function findFollowingStatement(
+	statementOffsets: readonly number[],
+	commentOffset: number,
+): number {
+	for (let i = 0; i < statementOffsets.length; i++) {
+		const offset = statementOffsets[i];
+		if (offset !== undefined && offset > commentOffset) {
+			return i;
+		}
+	}
+	return -1;
+}
+
+interface AttachResult {
+	statements: ASTNode[];
+	programTrailing: string[] | undefined;
+}
+
+/**
+ * Attach collected comments to statements.
+ *
+ * - Inline comments (on the same line as code) → trailingComments on the preceding statement
+ * - Own-line comments before a statement → leadingComments on the following statement
+ * - Own-line comments after the last statement → programTrailing (trailingComments on Program)
+ */
+function attachComments(
+	source: string,
+	statements: readonly ASTNode[],
+	statementOffsets: readonly number[],
+	comments: readonly Comment[],
+): AttachResult {
+	if (comments.length === 0) {
+		return { statements: statements.slice(), programTrailing: undefined };
+	}
+
+	const leadingByStmt = new Map<number, string[]>();
+	const trailingByStmt = new Map<number, string[]>();
+	let programTrailing: string[] | undefined;
+
+	for (const comment of comments) {
+		if (isInlineComment(source, comment.offset)) {
+			// Inline comment: attach as trailing on the preceding statement
+			const idx = findPrecedingStatement(statementOffsets, comment.offset);
+			if (idx >= 0) {
+				const existing = trailingByStmt.get(idx);
+				if (existing) {
+					existing.push(comment.text);
+				} else {
+					trailingByStmt.set(idx, [comment.text]);
+				}
+			} else {
+				// Inline comment before any statement (shouldn't happen, but handle gracefully)
+				const following = findFollowingStatement(statementOffsets, comment.offset);
+				if (following >= 0) {
+					const existing = leadingByStmt.get(following);
+					if (existing) {
+						existing.push(comment.text);
+					} else {
+						leadingByStmt.set(following, [comment.text]);
+					}
+				}
+			}
+		} else {
+			// Own-line comment: attach as leading on the following statement
+			const following = findFollowingStatement(statementOffsets, comment.offset);
+			if (following >= 0) {
+				const existing = leadingByStmt.get(following);
+				if (existing) {
+					existing.push(comment.text);
+				} else {
+					leadingByStmt.set(following, [comment.text]);
+				}
+			} else {
+				// After the last statement
+				if (!programTrailing) {
+					programTrailing = [];
+				}
+				programTrailing.push(comment.text);
+			}
+		}
+	}
+
+	const result: ASTNode[] = [];
+	for (let i = 0; i < statements.length; i++) {
+		let stmt = statements[i] as ASTNode;
+		const leading = leadingByStmt.get(i);
+		const trailing = trailingByStmt.get(i);
+		if (leading || trailing) {
+			stmt = {
+				...stmt,
+				...(leading ? { leadingComments: leading } : {}),
+				...(trailing ? { trailingComments: trailing } : {}),
+			};
+		}
+		result.push(stmt);
+	}
+
+	return { statements: result, programTrailing };
 }
 
 function parseExpression(state: ParserState, minPrecedence: number): ASTNode {

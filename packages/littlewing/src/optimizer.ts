@@ -13,6 +13,21 @@ import { buildRange, collectAllIdentifiers, evaluateBinaryOperation, resolveInde
 import { visit } from "./visitor";
 
 /**
+ * Copy leadingComments and trailingComments from original node to replacement node when present.
+ * Returns the replacement unchanged if there are no comments to preserve.
+ */
+function preserveComments<T extends ASTNode>(original: ASTNode, replacement: T): T {
+	const hasLeading = original.leadingComments && original.leadingComments.length > 0;
+	const hasTrailing = original.trailingComments && original.trailingComments.length > 0;
+	if (!hasLeading && !hasTrailing) return replacement;
+	return {
+		...replacement,
+		...(hasLeading ? { leadingComments: original.leadingComments } : {}),
+		...(hasTrailing ? { trailingComments: original.trailingComments } : {}),
+	};
+}
+
+/**
  * Eliminate dead code (unused variable assignments) from a Program.
  */
 function eliminateDeadCode(program: Program): Program {
@@ -61,7 +76,11 @@ function eliminateDeadCode(program: Program): Program {
 		}
 	}
 
-	return ast.program(keptStatements);
+	const result = ast.program(keptStatements);
+	if (program.trailingComments && program.trailingComments.length > 0) {
+		return { ...result, trailingComments: program.trailingComments };
+	}
+	return result;
 }
 
 /**
@@ -140,7 +159,11 @@ function propagateConstants(
 	if (!hasSubstitution) return null;
 
 	// Substitute known values throughout the AST
-	return ast.program(statements.map((stmt) => substituteIdentifiers(stmt, knownValues)));
+	const result = ast.program(statements.map((stmt) => substituteIdentifiers(stmt, knownValues)));
+	if (program.trailingComments && program.trailingComments.length > 0) {
+		return { ...result, trailingComments: program.trailingComments };
+	}
+	return result;
 }
 
 /**
@@ -251,18 +274,32 @@ function collectForLoopVars(node: ASTNode, vars: Set<string>): void {
  */
 function substituteIdentifiers(node: ASTNode, knownValues: ReadonlyMap<string, ASTNode>): ASTNode {
 	return visit<ASTNode>(node, {
-		Program: (n, recurse) => ast.program(n.statements.map(recurse)),
+		Program: (n, recurse) => {
+			const result = ast.program(n.statements.map(recurse));
+			if (n.trailingComments && n.trailingComments.length > 0) {
+				return { ...result, trailingComments: n.trailingComments };
+			}
+			return result;
+		},
 		NumberLiteral: (n) => n,
 		StringLiteral: (n) => n,
 		BooleanLiteral: (n) => n,
-		ArrayLiteral: (n, recurse) => ast.array(n.elements.map(recurse)),
-		Identifier: (n) => knownValues.get(n.name) ?? n,
-		BinaryOp: (n, recurse) => ast.binaryOp(recurse(n.left), n.operator, recurse(n.right)),
-		UnaryOp: (n, recurse) => ast.unaryOp(n.operator, recurse(n.argument)),
-		FunctionCall: (n, recurse) => ast.functionCall(n.name, n.args.map(recurse)),
-		Assignment: (n, recurse) => ast.assign(n.name, recurse(n.value)),
+		ArrayLiteral: (n, recurse) => preserveComments(n, ast.array(n.elements.map(recurse))),
+		Identifier: (n) => {
+			const replacement = knownValues.get(n.name);
+			return replacement ? preserveComments(n, replacement) : n;
+		},
+		BinaryOp: (n, recurse) =>
+			preserveComments(n, ast.binaryOp(recurse(n.left), n.operator, recurse(n.right))),
+		UnaryOp: (n, recurse) => preserveComments(n, ast.unaryOp(n.operator, recurse(n.argument))),
+		FunctionCall: (n, recurse) =>
+			preserveComments(n, ast.functionCall(n.name, n.args.map(recurse))),
+		Assignment: (n, recurse) => preserveComments(n, ast.assign(n.name, recurse(n.value))),
 		IfExpression: (n, recurse) =>
-			ast.ifExpr(recurse(n.condition), recurse(n.consequent), recurse(n.alternate)),
+			preserveComments(
+				n,
+				ast.ifExpr(recurse(n.condition), recurse(n.consequent), recurse(n.alternate)),
+			),
 		ForExpression: (n, recurse) => {
 			// Do not substitute the loop variable inside for body/guard
 			const innerKnown = new Map(knownValues);
@@ -270,10 +307,12 @@ function substituteIdentifiers(node: ASTNode, knownValues: ReadonlyMap<string, A
 			const iterable = recurse(n.iterable);
 			const guard = n.guard ? substituteIdentifiers(n.guard, innerKnown) : null;
 			const body = substituteIdentifiers(n.body, innerKnown);
-			return ast.forExpr(n.variable, iterable, guard, body);
+			return preserveComments(n, ast.forExpr(n.variable, iterable, guard, body));
 		},
-		IndexAccess: (n, recurse) => ast.indexAccess(recurse(n.object), recurse(n.index)),
-		RangeExpression: (n, recurse) => ast.rangeExpr(recurse(n.start), recurse(n.end), n.inclusive),
+		IndexAccess: (n, recurse) =>
+			preserveComments(n, ast.indexAccess(recurse(n.object), recurse(n.index))),
+		RangeExpression: (n, recurse) =>
+			preserveComments(n, ast.rangeExpr(recurse(n.start), recurse(n.end), n.inclusive)),
 	});
 }
 
@@ -301,7 +340,15 @@ export function optimize(node: ASTNode, externalVariables?: ReadonlySet<string>)
 		const dce = eliminateDeadCode(propagated);
 		// Unwrap single-statement Programs, consistent with how parse() works
 		if (dce.statements.length === 1) {
-			return dce.statements[0] as ASTNode;
+			const stmt = dce.statements[0] as ASTNode;
+			// Merge Program's trailing comments into the single statement's trailing
+			if (dce.trailingComments && dce.trailingComments.length > 0) {
+				const existing = stmt.trailingComments
+					? [...stmt.trailingComments, ...dce.trailingComments]
+					: dce.trailingComments;
+				return { ...stmt, trailingComments: existing };
+			}
+			return stmt;
 		}
 		return dce;
 	}
@@ -320,7 +367,7 @@ function fold(node: ASTNode): ASTNode {
 
 		ArrayLiteral: (n, recurse) => {
 			const elements = n.elements.map(recurse);
-			return ast.array(elements);
+			return preserveComments(n, ast.array(elements));
 		},
 
 		Identifier: (n) => n,
@@ -332,13 +379,13 @@ function fold(node: ASTNode): ASTNode {
 			// Both sides are number literals: fold arithmetic and comparison
 			if (isNumberLiteral(left) && isNumberLiteral(right)) {
 				const result = evaluateBinaryOperation(n.operator, left.value, right.value);
-				if (typeof result === "number") return ast.number(result);
-				if (typeof result === "boolean") return ast.boolean(result);
+				if (typeof result === "number") return preserveComments(n, ast.number(result));
+				if (typeof result === "boolean") return preserveComments(n, ast.boolean(result));
 			}
 
 			// Both sides are string literals
 			if (isStringLiteral(left) && isStringLiteral(right)) {
-				if (n.operator === "+") return ast.string(left.value + right.value);
+				if (n.operator === "+") return preserveComments(n, ast.string(left.value + right.value));
 				if (
 					n.operator === "<" ||
 					n.operator === ">" ||
@@ -346,73 +393,78 @@ function fold(node: ASTNode): ASTNode {
 					n.operator === ">="
 				) {
 					const result = evaluateBinaryOperation(n.operator, left.value, right.value);
-					return ast.boolean(result as boolean);
+					return preserveComments(n, ast.boolean(result as boolean));
 				}
-				if (n.operator === "==") return ast.boolean(left.value === right.value);
-				if (n.operator === "!=") return ast.boolean(left.value !== right.value);
+				if (n.operator === "==")
+					return preserveComments(n, ast.boolean(left.value === right.value));
+				if (n.operator === "!=")
+					return preserveComments(n, ast.boolean(left.value !== right.value));
 			}
 
 			// Both sides are boolean literals
 			if (isBooleanLiteral(left) && isBooleanLiteral(right)) {
-				if (n.operator === "&&") return ast.boolean(left.value && right.value);
-				if (n.operator === "||") return ast.boolean(left.value || right.value);
-				if (n.operator === "==") return ast.boolean(left.value === right.value);
-				if (n.operator === "!=") return ast.boolean(left.value !== right.value);
+				if (n.operator === "&&") return preserveComments(n, ast.boolean(left.value && right.value));
+				if (n.operator === "||") return preserveComments(n, ast.boolean(left.value || right.value));
+				if (n.operator === "==")
+					return preserveComments(n, ast.boolean(left.value === right.value));
+				if (n.operator === "!=")
+					return preserveComments(n, ast.boolean(left.value !== right.value));
 			}
 
 			// Cross-type literal pairs: == is false, != is true
 			if (isLiteral(left) && isLiteral(right)) {
 				// Different types (we've already handled same-type above)
 				if (left.kind !== right.kind) {
-					if (n.operator === "==") return ast.boolean(false);
-					if (n.operator === "!=") return ast.boolean(true);
+					if (n.operator === "==") return preserveComments(n, ast.boolean(false));
+					if (n.operator === "!=") return preserveComments(n, ast.boolean(true));
 				}
 			}
 
-			return ast.binaryOp(left, n.operator, right);
+			return preserveComments(n, ast.binaryOp(left, n.operator, right));
 		},
 
 		UnaryOp: (n, recurse) => {
 			const argument = recurse(n.argument);
 
 			if (n.operator === "-" && isNumberLiteral(argument)) {
-				return ast.number(-argument.value);
+				return preserveComments(n, ast.number(-argument.value));
 			}
 
 			if (n.operator === "!" && isBooleanLiteral(argument)) {
-				return ast.boolean(!argument.value);
+				return preserveComments(n, ast.boolean(!argument.value));
 			}
 
-			return ast.unaryOp(n.operator, argument);
+			return preserveComments(n, ast.unaryOp(n.operator, argument));
 		},
 
 		FunctionCall: (n, recurse) => {
 			const optimizedArgs = n.args.map(recurse);
-			return ast.functionCall(n.name, optimizedArgs);
+			return preserveComments(n, ast.functionCall(n.name, optimizedArgs));
 		},
 
 		Assignment: (n, recurse) => {
-			return ast.assign(n.name, recurse(n.value));
+			return preserveComments(n, ast.assign(n.name, recurse(n.value)));
 		},
 
 		IfExpression: (n, recurse) => {
 			const condition = recurse(n.condition);
 
 			if (isBooleanLiteral(condition)) {
-				return condition.value ? recurse(n.consequent) : recurse(n.alternate);
+				const result = condition.value ? recurse(n.consequent) : recurse(n.alternate);
+				return preserveComments(n, result);
 			}
 
 			const consequent = recurse(n.consequent);
 			const alternate = recurse(n.alternate);
 
-			return ast.ifExpr(condition, consequent, alternate);
+			return preserveComments(n, ast.ifExpr(condition, consequent, alternate));
 		},
 
 		ForExpression: (n, recurse) => {
 			const iterable = recurse(n.iterable);
 			const guard = n.guard ? recurse(n.guard) : null;
 			const body = recurse(n.body);
-			return ast.forExpr(n.variable, iterable, guard, body);
+			return preserveComments(n, ast.forExpr(n.variable, iterable, guard, body));
 		},
 
 		IndexAccess: (n, recurse) => {
@@ -426,7 +478,7 @@ function fold(node: ASTNode): ASTNode {
 					const len = object.elements.length;
 					const resolved = idx < 0 ? len + idx : idx;
 					if (resolved >= 0 && resolved < len) {
-						return object.elements[resolved] as ASTNode;
+						return preserveComments(n, object.elements[resolved] as ASTNode);
 					}
 				}
 			}
@@ -435,13 +487,13 @@ function fold(node: ASTNode): ASTNode {
 			if (isStringLiteral(object) && isNumberLiteral(index)) {
 				try {
 					const char = resolveIndex(object.value, index.value);
-					return ast.string(char as string);
+					return preserveComments(n, ast.string(char as string));
 				} catch {
 					// Out of bounds — leave unfoldable
 				}
 			}
 
-			return ast.indexAccess(object, index);
+			return preserveComments(n, ast.indexAccess(object, index));
 		},
 
 		RangeExpression: (n, recurse) => {
@@ -455,19 +507,23 @@ function fold(node: ASTNode): ASTNode {
 					const count = limit - start.value;
 					if (count >= 0 && count <= 10000) {
 						const values = buildRange(start.value, end.value, n.inclusive);
-						return ast.array(values.map(ast.number));
+						return preserveComments(n, ast.array(values.map(ast.number)));
 					}
 				} catch {
 					// Invalid range — leave unfoldable
 				}
 			}
 
-			return ast.rangeExpr(start, end, n.inclusive);
+			return preserveComments(n, ast.rangeExpr(start, end, n.inclusive));
 		},
 
 		Program: (n, recurse) => {
 			const optimizedStatements = n.statements.map(recurse);
-			return ast.program(optimizedStatements);
+			const result = ast.program(optimizedStatements);
+			if (n.trailingComments && n.trailingComments.length > 0) {
+				return { ...result, trailingComments: n.trailingComments };
+			}
+			return result;
 		},
 	});
 }

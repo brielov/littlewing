@@ -18,6 +18,15 @@ export type Operator =
 	| "||";
 
 /**
+ * Base interface for all AST nodes.
+ * Optional comment metadata preserved through parse → generate roundtrips.
+ */
+export interface ASTNodeBase {
+	readonly leadingComments?: readonly string[];
+	readonly trailingComments?: readonly string[];
+}
+
+/**
  * AST Node kind discriminator (const enum for zero-cost abstraction)
  */
 export const enum NodeKind {
@@ -40,7 +49,7 @@ export const enum NodeKind {
 /**
  * Program node (multiple statements)
  */
-export interface Program {
+export interface Program extends ASTNodeBase {
 	readonly kind: NodeKind.Program;
 	readonly statements: readonly ASTNode[];
 }
@@ -48,7 +57,7 @@ export interface Program {
 /**
  * Number literal (123, 45.67)
  */
-export interface NumberLiteral {
+export interface NumberLiteral extends ASTNodeBase {
 	readonly kind: NodeKind.NumberLiteral;
 	readonly value: number;
 }
@@ -56,7 +65,7 @@ export interface NumberLiteral {
 /**
  * String literal ("hello")
  */
-export interface StringLiteral {
+export interface StringLiteral extends ASTNodeBase {
 	readonly kind: NodeKind.StringLiteral;
 	readonly value: string;
 }
@@ -64,7 +73,7 @@ export interface StringLiteral {
 /**
  * Boolean literal (true, false)
  */
-export interface BooleanLiteral {
+export interface BooleanLiteral extends ASTNodeBase {
 	readonly kind: NodeKind.BooleanLiteral;
 	readonly value: boolean;
 }
@@ -72,7 +81,7 @@ export interface BooleanLiteral {
 /**
  * Array literal ([1, 2, 3])
  */
-export interface ArrayLiteral {
+export interface ArrayLiteral extends ASTNodeBase {
 	readonly kind: NodeKind.ArrayLiteral;
 	readonly elements: readonly ASTNode[];
 }
@@ -80,7 +89,7 @@ export interface ArrayLiteral {
 /**
  * Identifier (variable or function name)
  */
-export interface Identifier {
+export interface Identifier extends ASTNodeBase {
 	readonly kind: NodeKind.Identifier;
 	readonly name: string;
 }
@@ -88,7 +97,7 @@ export interface Identifier {
 /**
  * Binary operation (a + b, x * y, etc.)
  */
-export interface BinaryOp {
+export interface BinaryOp extends ASTNodeBase {
 	readonly kind: NodeKind.BinaryOp;
 	readonly left: ASTNode;
 	readonly operator: Operator;
@@ -98,7 +107,7 @@ export interface BinaryOp {
 /**
  * Unary operation (-x, !x, etc.)
  */
-export interface UnaryOp {
+export interface UnaryOp extends ASTNodeBase {
 	readonly kind: NodeKind.UnaryOp;
 	readonly operator: "-" | "!";
 	readonly argument: ASTNode;
@@ -107,7 +116,7 @@ export interface UnaryOp {
 /**
  * Function call (NOW(), MAX(a, b), etc.)
  */
-export interface FunctionCall {
+export interface FunctionCall extends ASTNodeBase {
 	readonly kind: NodeKind.FunctionCall;
 	readonly name: string;
 	readonly args: readonly ASTNode[];
@@ -116,7 +125,7 @@ export interface FunctionCall {
 /**
  * Variable assignment (x = 5)
  */
-export interface Assignment {
+export interface Assignment extends ASTNodeBase {
 	readonly kind: NodeKind.Assignment;
 	readonly name: string;
 	readonly value: ASTNode;
@@ -126,7 +135,7 @@ export interface Assignment {
  * If expression (if condition then consequent else alternate)
  * Returns consequent if condition is true, otherwise returns alternate
  */
-export interface IfExpression {
+export interface IfExpression extends ASTNodeBase {
 	readonly kind: NodeKind.IfExpression;
 	readonly condition: ASTNode;
 	readonly consequent: ASTNode;
@@ -137,7 +146,7 @@ export interface IfExpression {
  * For expression (for variable in iterable [when guard] then body)
  * Maps over an array or string, optionally filtering with a guard
  */
-export interface ForExpression {
+export interface ForExpression extends ASTNodeBase {
 	readonly kind: NodeKind.ForExpression;
 	readonly variable: string;
 	readonly iterable: ASTNode;
@@ -148,7 +157,7 @@ export interface ForExpression {
 /**
  * Index access (arr[0], str[1])
  */
-export interface IndexAccess {
+export interface IndexAccess extends ASTNodeBase {
 	readonly kind: NodeKind.IndexAccess;
 	readonly object: ASTNode;
 	readonly index: ASTNode;
@@ -157,7 +166,7 @@ export interface IndexAccess {
 /**
  * Range expression (1..5, 1..=5)
  */
-export interface RangeExpression {
+export interface RangeExpression extends ASTNodeBase {
 	readonly kind: NodeKind.RangeExpression;
 	readonly start: ASTNode;
 	readonly end: ASTNode;

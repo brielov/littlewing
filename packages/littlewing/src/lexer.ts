@@ -71,12 +71,21 @@ const KEYWORDS = new Map<string, TokenKind>([
 export type Token = [kind: TokenKind, start: number, end: number];
 
 /**
+ * A comment collected during lexing, with its source text and byte offset.
+ */
+export interface Comment {
+	readonly text: string;
+	readonly offset: number;
+}
+
+/**
  * Cursor for tracking position during lexical analysis
  * Uses mutable position for zero-allocation iteration
  */
 export interface Cursor {
 	readonly source: string;
 	readonly len: number;
+	readonly comments: Comment[];
 	pos: number;
 }
 
@@ -87,6 +96,7 @@ export function createCursor(source: string): Cursor {
 	return {
 		source,
 		len: source.length,
+		comments: [],
 		pos: 0,
 	};
 }
@@ -122,7 +132,8 @@ function skipWhitespace(cursor: Cursor): void {
 }
 
 /**
- * Skip a single-line comment starting with '//'
+ * Collect a single-line comment starting with '//' into cursor.comments,
+ * then advance past it.
  */
 function skipComment(cursor: Cursor): void {
 	if (
@@ -130,12 +141,14 @@ function skipComment(cursor: Cursor): void {
 		cursor.source.charCodeAt(cursor.pos) === 0x2f &&
 		cursor.source.charCodeAt(cursor.pos + 1) === 0x2f
 	) {
+		const offset = cursor.pos;
 		cursor.pos += 2;
 		while (cursor.pos < cursor.len) {
 			const ch = cursor.source.charCodeAt(cursor.pos);
 			if (ch === 0x0a || ch === 0x0d) break;
 			cursor.pos++;
 		}
+		cursor.comments.push({ text: cursor.source.slice(offset, cursor.pos), offset });
 	}
 }
 
