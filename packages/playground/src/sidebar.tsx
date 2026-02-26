@@ -1,5 +1,5 @@
-import { type ASTNode, type RuntimeValue, visit } from "littlewing";
-import { useState } from "react";
+import { type ASTNode, type RuntimeValue, defaultContext, evaluate, visit } from "littlewing";
+import { useEffect, useState } from "react";
 import type { UseEvaluationReturn } from "./use-evaluation.ts";
 
 interface SidebarProps {
@@ -14,7 +14,6 @@ export function Sidebar({ evaluation }: SidebarProps) {
 		<div
 			className="flex h-full flex-col overflow-y-auto"
 			style={{
-				borderLeft: "1px solid var(--color-border)",
 				backgroundColor: "var(--color-bg)",
 			}}
 		>
@@ -238,6 +237,9 @@ function VariableInput({ name, type, currentValue, setOverride }: VariableInputP
 				/>
 			);
 
+		case "array":
+			return <ExpressionInput name={name} currentValue={currentValue} setOverride={setOverride} />;
+
 		default:
 			return (
 				<span
@@ -251,6 +253,61 @@ function VariableInput({ name, type, currentValue, setOverride }: VariableInputP
 				</span>
 			);
 	}
+}
+
+function ExpressionInput({
+	name,
+	currentValue,
+	setOverride,
+}: {
+	name: string;
+	currentValue: RuntimeValue;
+	setOverride: (name: string, value: RuntimeValue) => void;
+}) {
+	const [text, setText] = useState(() => formatValue(currentValue));
+	const [error, setError] = useState(false);
+
+	useEffect(() => {
+		setText(formatValue(currentValue));
+		setError(false);
+	}, [currentValue]);
+
+	function tryEvaluate(value: string): boolean {
+		try {
+			const result = evaluate(value, defaultContext);
+			if (Array.isArray(result)) {
+				setOverride(name, result);
+				setError(false);
+				return true;
+			}
+		} catch {
+			// Ignore parse errors during typing
+		}
+		return false;
+	}
+
+	return (
+		<input
+			type="text"
+			className="rounded px-2 py-1 text-xs"
+			style={{
+				backgroundColor: "var(--color-bg-secondary)",
+				color: "var(--color-fg)",
+				border: `1px solid ${error ? "var(--color-error)" : "var(--color-border)"}`,
+				fontFamily: '"Maple Mono", monospace',
+			}}
+			value={text}
+			onChange={(e) => {
+				setText(e.target.value);
+				tryEvaluate(e.target.value);
+			}}
+			onBlur={() => {
+				if (!tryEvaluate(text)) {
+					setError(true);
+				}
+			}}
+		/>
+	);
 }
 
 // --- Output Section ---

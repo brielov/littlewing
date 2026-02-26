@@ -62,9 +62,12 @@ function getIsDark(): boolean {
 	return darkQuery.matches;
 }
 
+type MobileView = "editor" | "results";
+
 export function App() {
 	const [source, setSource] = useState(INITIAL_SOURCE);
 	const [ready, setReady] = useState(false);
+	const [mobileView, setMobileView] = useState<MobileView>("editor");
 	const isDark = useSyncExternalStore(subscribeToDarkMode, getIsDark);
 
 	// Restore source from URL hash on mount
@@ -137,14 +140,69 @@ export function App() {
 					<HelpDialog />
 				</div>
 			</header>
-			<main className="flex min-h-0 flex-1">
+
+			{/* Desktop layout: side-by-side 7:3 split */}
+			<main className="hidden min-h-0 flex-1 md:flex">
 				<div className="flex min-h-0 min-w-0" style={{ flex: "7 1 0%" }}>
 					<Editor value={source} onChange={setSource} theme={monacoTheme} />
 				</div>
-				<div className="min-h-0" style={{ flex: "3 1 0%" }}>
+				<div
+					className="min-h-0"
+					style={{ flex: "3 1 0%", borderLeft: "1px solid var(--color-border)" }}
+				>
 					<Sidebar evaluation={evaluation} />
 				</div>
 			</main>
+
+			{/* Mobile layout: single panel switched by tab bar */}
+			<main className="flex min-h-0 flex-1 flex-col md:hidden">
+				<div className={`min-h-0 flex-1 ${mobileView === "editor" ? "flex" : "hidden"}`}>
+					<Editor value={source} onChange={setSource} theme={monacoTheme} />
+				</div>
+				<div className={`min-h-0 flex-1 ${mobileView === "results" ? "flex" : "hidden"}`}>
+					<Sidebar evaluation={evaluation} />
+				</div>
+			</main>
+
+			{/* Mobile tab bar */}
+			<nav
+				className="flex shrink-0 md:hidden"
+				style={{
+					height: 44,
+					borderTop: "1px solid var(--color-border)",
+					backgroundColor: "var(--color-bg)",
+				}}
+			>
+				<TabButton active={mobileView === "editor"} onClick={() => setMobileView("editor")}>
+					Editor
+				</TabButton>
+				<TabButton active={mobileView === "results"} onClick={() => setMobileView("results")}>
+					Results
+				</TabButton>
+			</nav>
 		</div>
+	);
+}
+
+function TabButton({
+	active,
+	onClick,
+	children,
+}: {
+	active: boolean;
+	onClick: () => void;
+	children: React.ReactNode;
+}) {
+	return (
+		<button
+			type="button"
+			onClick={onClick}
+			className="flex flex-1 cursor-pointer items-center justify-center text-xs font-medium"
+			style={{
+				color: active ? "var(--color-accent)" : "var(--color-fg-muted)",
+			}}
+		>
+			{children}
+		</button>
 	);
 }
