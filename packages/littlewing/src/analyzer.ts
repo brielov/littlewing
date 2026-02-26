@@ -83,6 +83,7 @@ export function extractAssignedVariables(ast: ASTNode): string[] {
 			ForExpression: (n, recurse) => {
 				recurse(n.iterable);
 				if (n.guard) recurse(n.guard);
+				if (n.accumulator) recurse(n.accumulator.initial);
 				recurse(n.body);
 			},
 			IndexAccess: (n, recurse) => {

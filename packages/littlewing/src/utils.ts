@@ -443,9 +443,10 @@ export function collectAllIdentifiers(node: ASTNode): Set<string> {
 			recurse(n.alternate);
 		},
 		ForExpression: (n, recurse) => {
-			// Do NOT collect the loop variable — it's a binding, not a reference
+			// Do NOT collect the loop variable or accumulator name — they're bindings, not references
 			recurse(n.iterable);
 			if (n.guard) recurse(n.guard);
+			if (n.accumulator) recurse(n.accumulator.initial);
 			recurse(n.body);
 		},
 		IndexAccess: (n, recurse) => {

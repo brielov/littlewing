@@ -160,6 +160,45 @@ function evaluateNode(
 			const previousValue = variables.get(n.variable);
 			const hadPreviousValue = variables.has(n.variable);
 
+			const restoreLoopVar = () => {
+				if (hadPreviousValue) {
+					variables.set(n.variable, previousValue as RuntimeValue);
+				} else {
+					variables.delete(n.variable);
+				}
+			};
+
+			// Accumulator mode: reduce/fold
+			if (n.accumulator) {
+				let acc = recurse(n.accumulator.initial);
+				const prevAcc = variables.get(n.accumulator.name);
+				const hadPrevAcc = variables.has(n.accumulator.name);
+
+				for (const item of items) {
+					variables.set(n.variable, item);
+
+					if (n.guard) {
+						const guardValue = recurse(n.guard);
+						assertBoolean(guardValue, "For guard");
+						if (!guardValue) continue;
+					}
+
+					variables.set(n.accumulator.name, acc);
+					acc = recurse(n.body);
+				}
+
+				// Restore accumulator variable
+				if (hadPrevAcc) {
+					variables.set(n.accumulator.name, prevAcc as RuntimeValue);
+				} else {
+					variables.delete(n.accumulator.name);
+				}
+
+				restoreLoopVar();
+				return acc;
+			}
+
+			// Map mode: collect into array
 			const result: RuntimeValue[] = [];
 			for (const item of items) {
 				variables.set(n.variable, item);
@@ -173,13 +212,7 @@ function evaluateNode(
 				result.push(recurse(n.body));
 			}
 
-			// Restore loop variable to previous state
-			if (hadPreviousValue) {
-				variables.set(n.variable, previousValue as RuntimeValue);
-			} else {
-				variables.delete(n.variable);
-			}
-
+			restoreLoopVar();
 			validateHomogeneousArray(result);
 			return result;
 		},

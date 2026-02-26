@@ -143,14 +143,16 @@ export interface IfExpression extends ASTNodeBase {
 }
 
 /**
- * For expression (for variable in iterable [when guard] then body)
- * Maps over an array or string, optionally filtering with a guard
+ * For expression (for variable in iterable [when guard] [into name = init] then body)
+ * Without `into`: maps over an array or string, optionally filtering with a guard
+ * With `into`: reduces/folds into a single value using an accumulator
  */
 export interface ForExpression extends ASTNodeBase {
 	readonly kind: NodeKind.ForExpression;
 	readonly variable: string;
 	readonly iterable: ASTNode;
 	readonly guard: ASTNode | null;
+	readonly accumulator: { readonly name: string; readonly initial: ASTNode } | null;
 	readonly body: ASTNode;
 }
 
@@ -338,12 +340,13 @@ export function ifExpr(condition: ASTNode, consequent: ASTNode, alternate: ASTNo
 }
 
 /**
- * Create a for expression node (for variable in iterable [when guard] then body)
+ * Create a for expression node (for variable in iterable [when guard] [into name = init] then body)
  */
 export function forExpr(
 	variable: string,
 	iterable: ASTNode,
 	guard: ASTNode | null,
+	accumulator: { readonly name: string; readonly initial: ASTNode } | null,
 	body: ASTNode,
 ): ForExpression {
 	return {
@@ -351,6 +354,7 @@ export function forExpr(
 		variable,
 		iterable,
 		guard,
+		accumulator,
 		body,
 	};
 }

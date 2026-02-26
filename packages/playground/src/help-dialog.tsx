@@ -30,8 +30,9 @@ const sections: Array<{ title: string; items: Array<[string, string]> }> = [
 		title: "Control Flow",
 		items: [
 			["if/then/else", 'if x > 0 then "yes" else "no"'],
-			["for/in/then", "for x in 1..5 then x * 2"],
-			["for with guard", "for x in arr when x > 0 then x"],
+			["for (map)", "for x in 1..5 then x * 2"],
+			["for (filter)", "for x in arr when x > 0 then x"],
+			["for (reduce)", "for x in [1,2,3] into sum = 0 then sum + x"],
 		],
 	},
 	{
@@ -46,8 +47,8 @@ const sections: Array<{ title: string; items: Array<[string, string]> }> = [
 		items: [
 			["type", 'STR(42), NUM("3"), TYPE(x)'],
 			["math", "ABS, CEIL, FLOOR, ROUND, SQRT, MIN, MAX, CLAMP"],
-			["string", "STR_LEN, STR_UPPER, STR_LOWER, STR_TRIM, STR_SLICE"],
-			["array", "ARR_LEN, ARR_PUSH, ARR_SLICE, ARR_REVERSE, ARR_FIRST"],
+			["string", "STR_LEN, STR_UPPER, STR_LOWER, STR_TRIM, STR_SPLIT"],
+			["array", "ARR_LEN, ARR_PUSH, ARR_SORT, ARR_SUM, ARR_JOIN"],
 			["date", "TODAY(), GET_YEAR, ADD_DAYS, DIFFERENCE_IN_DAYS"],
 			["time", "NOW_TIME(), GET_HOUR, ADD_HOURS"],
 		],

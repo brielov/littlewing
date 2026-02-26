@@ -144,19 +144,40 @@ describe("Default Context Functions", () => {
 			expect(evaluate('STR_INDEX_OF("hello", "xyz")', defaultContext)).toBe(-1);
 		});
 
-		test("STR_CHAR_AT", () => {
-			expect(evaluate('STR_CHAR_AT("hello", 0)', defaultContext)).toBe("h");
-			expect(evaluate('STR_CHAR_AT("hello", 4)', defaultContext)).toBe("o");
-		});
-
-		test("STR_CHAR_AT throws on out of bounds", () => {
-			expect(() => evaluate('STR_CHAR_AT("hello", 5)', defaultContext)).toThrow();
-			expect(() => evaluate('STR_CHAR_AT("hello", -1)', defaultContext)).toThrow();
-		});
-
 		test("STR_SLICE", () => {
 			expect(evaluate('STR_SLICE("hello", 1, 3)', defaultContext)).toBe("el");
 			expect(evaluate('STR_SLICE("hello", 1)', defaultContext)).toBe("ello");
+		});
+
+		test("STR_SPLIT", () => {
+			expect(evaluate('STR_SPLIT("a,b,c", ",")', defaultContext)).toEqual(["a", "b", "c"]);
+			expect(evaluate('STR_SPLIT("hello", "")', defaultContext)).toEqual(["h", "e", "l", "l", "o"]);
+		});
+
+		test("STR_REPLACE", () => {
+			expect(evaluate('STR_REPLACE("hello world", "world", "there")', defaultContext)).toBe(
+				"hello there",
+			);
+			expect(evaluate('STR_REPLACE("aaa", "a", "b")', defaultContext)).toBe("baa");
+		});
+
+		test("STR_STARTS_WITH", () => {
+			expect(evaluate('STR_STARTS_WITH("hello", "hel")', defaultContext)).toBe(true);
+			expect(evaluate('STR_STARTS_WITH("hello", "xyz")', defaultContext)).toBe(false);
+		});
+
+		test("STR_ENDS_WITH", () => {
+			expect(evaluate('STR_ENDS_WITH("hello", "llo")', defaultContext)).toBe(true);
+			expect(evaluate('STR_ENDS_WITH("hello", "xyz")', defaultContext)).toBe(false);
+		});
+
+		test("STR_REPEAT", () => {
+			expect(evaluate('STR_REPEAT("ab", 3)', defaultContext)).toBe("ababab");
+			expect(evaluate('STR_REPEAT("x", 0)', defaultContext)).toBe("");
+		});
+
+		test("STR_REPEAT throws on negative count", () => {
+			expect(() => evaluate('STR_REPEAT("x", -1)', defaultContext)).toThrow(RangeError);
 		});
 
 		test("string functions throw TypeError on non-string", () => {
@@ -169,16 +190,6 @@ describe("Default Context Functions", () => {
 		test("ARR_LEN", () => {
 			expect(evaluate("ARR_LEN([1, 2, 3])", defaultContext)).toBe(3);
 			expect(evaluate("ARR_LEN([])", defaultContext)).toBe(0);
-		});
-
-		test("ARR_INDEX", () => {
-			expect(evaluate("ARR_INDEX([10, 20, 30], 0)", defaultContext)).toBe(10);
-			expect(evaluate("ARR_INDEX([10, 20, 30], 2)", defaultContext)).toBe(30);
-		});
-
-		test("ARR_INDEX throws on out of bounds", () => {
-			expect(() => evaluate("ARR_INDEX([1, 2], 5)", defaultContext)).toThrow();
-			expect(() => evaluate("ARR_INDEX([1, 2], -1)", defaultContext)).toThrow();
 		});
 
 		test("ARR_PUSH", () => {
@@ -199,19 +210,70 @@ describe("Default Context Functions", () => {
 			expect(evaluate("ARR_REVERSE([1, 2, 3])", defaultContext)).toEqual([3, 2, 1]);
 		});
 
-		test("ARR_FIRST and ARR_LAST", () => {
-			expect(evaluate("ARR_FIRST([10, 20, 30])", defaultContext)).toBe(10);
-			expect(evaluate("ARR_LAST([10, 20, 30])", defaultContext)).toBe(30);
+		test("ARR_SORT with numbers", () => {
+			expect(evaluate("ARR_SORT([3, 1, 2])", defaultContext)).toEqual([1, 2, 3]);
 		});
 
-		test("ARR_FIRST and ARR_LAST throw on empty array", () => {
-			expect(() => evaluate("ARR_FIRST([])", defaultContext)).toThrow();
-			expect(() => evaluate("ARR_LAST([])", defaultContext)).toThrow();
+		test("ARR_SORT with strings", () => {
+			expect(evaluate('ARR_SORT(["c", "a", "b"])', defaultContext)).toEqual(["a", "b", "c"]);
+		});
+
+		test("ARR_SORT with empty array", () => {
+			expect(evaluate("ARR_SORT([])", defaultContext)).toEqual([]);
+		});
+
+		test("ARR_UNIQUE", () => {
+			expect(evaluate("ARR_UNIQUE([1, 2, 2, 3, 1])", defaultContext)).toEqual([1, 2, 3]);
+		});
+
+		test("ARR_UNIQUE with deep equality", () => {
+			expect(evaluate("ARR_UNIQUE([[1, 2], [1, 2], [3]])", defaultContext)).toEqual([[1, 2], [3]]);
+		});
+
+		test("ARR_FLAT", () => {
+			expect(evaluate("ARR_FLAT([[1, 2], [3, 4]])", defaultContext)).toEqual([1, 2, 3, 4]);
+		});
+
+		test("ARR_FLAT throws on non-array elements", () => {
+			expect(() => evaluate("ARR_FLAT([1, 2])", defaultContext)).toThrow(TypeError);
+		});
+
+		test("ARR_JOIN", () => {
+			expect(evaluate('ARR_JOIN(["a", "b", "c"], ", ")', defaultContext)).toBe("a, b, c");
+			expect(evaluate('ARR_JOIN(["x"], "-")', defaultContext)).toBe("x");
+			expect(evaluate('ARR_JOIN([], "-")', defaultContext)).toBe("");
+		});
+
+		test("ARR_JOIN throws on non-string elements", () => {
+			expect(() => evaluate('ARR_JOIN([1, 2], ",")', defaultContext)).toThrow(TypeError);
+		});
+
+		test("ARR_SUM", () => {
+			expect(evaluate("ARR_SUM([1, 2, 3])", defaultContext)).toBe(6);
+			expect(evaluate("ARR_SUM([])", defaultContext)).toBe(0);
+		});
+
+		test("ARR_SUM throws on non-number elements", () => {
+			expect(() => evaluate('ARR_SUM(["a"])', defaultContext)).toThrow(TypeError);
+		});
+
+		test("ARR_MIN and ARR_MAX", () => {
+			expect(evaluate("ARR_MIN([3, 1, 2])", defaultContext)).toBe(1);
+			expect(evaluate("ARR_MAX([3, 1, 2])", defaultContext)).toBe(3);
+		});
+
+		test("ARR_MIN and ARR_MAX with strings", () => {
+			expect(evaluate('ARR_MIN(["c", "a", "b"])', defaultContext)).toBe("a");
+			expect(evaluate('ARR_MAX(["c", "a", "b"])', defaultContext)).toBe("c");
+		});
+
+		test("ARR_MIN and ARR_MAX throw on empty array", () => {
+			expect(() => evaluate("ARR_MIN([])", defaultContext)).toThrow(RangeError);
+			expect(() => evaluate("ARR_MAX([])", defaultContext)).toThrow(RangeError);
 		});
 
 		test("array functions throw TypeError on non-array", () => {
 			expect(() => evaluate("ARR_LEN(42)", defaultContext)).toThrow(TypeError);
-			expect(() => evaluate('ARR_INDEX("hello", 0)', defaultContext)).toThrow(TypeError);
 		});
 	});
 

@@ -360,6 +360,39 @@ describe("Parser", () => {
 		expect(() => parse("for 5 in [1, 2] then x")).toThrow('Expected identifier after "for"');
 	});
 
+	test("parse for expression with accumulator", () => {
+		const node = parse("for x in [1, 2, 3] into sum = 0 then sum + x");
+		expectKind(node, NodeKind.ForExpression);
+		const forNode = node as ForExpression;
+		expect(forNode.variable).toBe("x");
+		expect(forNode.guard).toBeNull();
+		expect(forNode.accumulator).not.toBeNull();
+		expect(forNode.accumulator!.name).toBe("sum");
+		expectKind(forNode.accumulator!.initial, NodeKind.NumberLiteral);
+		expectBinaryOp(forNode.body, "+");
+	});
+
+	test("parse for expression with guard and accumulator", () => {
+		const node = parse("for x in arr when x > 0 into total = 0 then total + x");
+		expectKind(node, NodeKind.ForExpression);
+		const forNode = node as ForExpression;
+		expect(forNode.guard).not.toBeNull();
+		expect(forNode.accumulator).not.toBeNull();
+		expect(forNode.accumulator!.name).toBe("total");
+	});
+
+	test("for accumulator error on missing =", () => {
+		expect(() => parse("for x in [1] into sum then sum + x")).toThrow(
+			'Expected "=" after accumulator name',
+		);
+	});
+
+	test("for accumulator error on missing identifier", () => {
+		expect(() => parse("for x in [1] into 5 = 0 then x")).toThrow(
+			'Expected identifier after "into"',
+		);
+	});
+
 	// Assignment operator tests
 	test("parse chained assignment (right-associative)", () => {
 		// a = b = c = 5 should parse as a = (b = (c = 5))

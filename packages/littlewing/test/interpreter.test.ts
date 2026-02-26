@@ -380,6 +380,56 @@ describe("For expression", () => {
 	});
 });
 
+describe("For expression with accumulator", () => {
+	test("basic sum", () => {
+		expect(evaluate("for x in [1, 2, 3] into sum = 0 then sum + x")).toBe(6);
+	});
+
+	test("product", () => {
+		expect(evaluate("for x in [1, 2, 3, 4] into p = 1 then p * x")).toBe(24);
+	});
+
+	test("string concatenation", () => {
+		expect(evaluate('for x in ["a", "b", "c"] into s = "" then s + x')).toBe("abc");
+	});
+
+	test("with guard", () => {
+		expect(evaluate("for x in [1, -2, 3] when x > 0 into total = 0 then total + x")).toBe(4);
+	});
+
+	test("flatten arrays", () => {
+		expect(evaluate("for x in [[1, 2], [3]] into flat = [] then flat + x")).toEqual([1, 2, 3]);
+	});
+
+	test("max via accumulator", () => {
+		expect(evaluate("for x in [3, 1, 4] into best = 0 then if x > best then x else best")).toBe(4);
+	});
+
+	test("empty iterable returns initial value", () => {
+		expect(evaluate("for x in [] into sum = 0 then sum + x")).toBe(0);
+	});
+
+	test("accumulator variable restored after loop", () => {
+		expect(evaluate("sum = 99; for x in [1, 2] into sum = 0 then sum + x; sum")).toBe(99);
+	});
+
+	test("accumulator not accessible outside loop", () => {
+		expect(() => evaluate("for x in [1] into acc = 0 then acc + x; acc")).toThrow(
+			"Undefined variable: acc",
+		);
+	});
+
+	test("loop variable not accessible outside accumulator loop", () => {
+		expect(() => evaluate("for x in [1, 2] into s = 0 then s + x; x")).toThrow(
+			"Undefined variable: x",
+		);
+	});
+
+	test("with string iterable", () => {
+		expect(evaluate('for c in "abc" into s = "" then s + c + c')).toBe("aabbcc");
+	});
+});
+
 describe("Bracket indexing", () => {
 	test("array indexing", () => {
 		expect(evaluate("[1, 2, 3][0]")).toBe(1);

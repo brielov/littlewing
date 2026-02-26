@@ -4,7 +4,7 @@ import type { Position, editor } from "monaco-editor";
 import tomorrowNightTheme from "./themes/tomorrow-night.json";
 import tomorrowTheme from "./themes/tomorrow.json";
 
-const KEYWORDS = ["if", "then", "else", "for", "in", "when"];
+const KEYWORDS = ["if", "then", "else", "for", "in", "when", "into"];
 const BUILTINS = Object.keys(defaultContext.functions ?? {});
 
 export function registerLittlewingLanguage(monaco: Monaco): void {

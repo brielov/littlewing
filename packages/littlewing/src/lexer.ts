@@ -48,6 +48,7 @@ export const enum TokenKind {
 	For,
 	In,
 	When,
+	Into,
 
 	Eof,
 }
@@ -62,6 +63,7 @@ const KEYWORDS = new Map<string, TokenKind>([
 	["for", TokenKind.For],
 	["in", TokenKind.In],
 	["when", TokenKind.When],
+	["into", TokenKind.Into],
 ]);
 
 /**

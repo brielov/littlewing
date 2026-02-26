@@ -206,6 +206,7 @@ function collectReferencedIdentifiers(node: ASTNode, ids: Set<string>): void {
 		ForExpression: (n, recurse) => {
 			recurse(n.iterable);
 			if (n.guard) recurse(n.guard);
+			if (n.accumulator) recurse(n.accumulator.initial);
 			recurse(n.body);
 		},
 		IndexAccess: (n, recurse) => {
@@ -254,8 +255,10 @@ function collectForLoopVars(node: ASTNode, vars: Set<string>): void {
 		},
 		ForExpression: (n, recurse) => {
 			vars.add(n.variable);
+			if (n.accumulator) vars.add(n.accumulator.name);
 			recurse(n.iterable);
 			if (n.guard) recurse(n.guard);
+			if (n.accumulator) recurse(n.accumulator.initial);
 			recurse(n.body);
 		},
 		IndexAccess: (n, recurse) => {
@@ -301,13 +304,18 @@ function substituteIdentifiers(node: ASTNode, knownValues: ReadonlyMap<string, A
 				ast.ifExpr(recurse(n.condition), recurse(n.consequent), recurse(n.alternate)),
 			),
 		ForExpression: (n, recurse) => {
-			// Do not substitute the loop variable inside for body/guard
+			// Do not substitute the loop variable or accumulator name inside for body/guard
 			const innerKnown = new Map(knownValues);
 			innerKnown.delete(n.variable);
+			if (n.accumulator) innerKnown.delete(n.accumulator.name);
 			const iterable = recurse(n.iterable);
 			const guard = n.guard ? substituteIdentifiers(n.guard, innerKnown) : null;
+			// Accumulator initial is evaluated in outer scope, so use outer knownValues
+			const accumulator = n.accumulator
+				? { name: n.accumulator.name, initial: recurse(n.accumulator.initial) }
+				: null;
 			const body = substituteIdentifiers(n.body, innerKnown);
-			return preserveComments(n, ast.forExpr(n.variable, iterable, guard, body));
+			return preserveComments(n, ast.forExpr(n.variable, iterable, guard, accumulator, body));
 		},
 		IndexAccess: (n, recurse) =>
 			preserveComments(n, ast.indexAccess(recurse(n.object), recurse(n.index))),
@@ -463,8 +471,11 @@ function fold(node: ASTNode): ASTNode {
 		ForExpression: (n, recurse) => {
 			const iterable = recurse(n.iterable);
 			const guard = n.guard ? recurse(n.guard) : null;
+			const accumulator = n.accumulator
+				? { name: n.accumulator.name, initial: recurse(n.accumulator.initial) }
+				: null;
 			const body = recurse(n.body);
-			return preserveComments(n, ast.forExpr(n.variable, iterable, guard, body));
+			return preserveComments(n, ast.forExpr(n.variable, iterable, guard, accumulator, body));
 		},
 
 		IndexAccess: (n, recurse) => {

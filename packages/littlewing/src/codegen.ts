@@ -157,13 +157,15 @@ function generateNode(node: ASTNode): string {
 		},
 
 		ForExpression: (n, recurse) => {
-			const iterable = recurse(n.iterable);
-			const body = recurse(n.body);
+			const parts = [`for ${n.variable} in ${recurse(n.iterable)}`];
 			if (n.guard) {
-				const guard = recurse(n.guard);
-				return `for ${n.variable} in ${iterable} when ${guard} then ${body}`;
+				parts.push(`when ${recurse(n.guard)}`);
 			}
-			return `for ${n.variable} in ${iterable} then ${body}`;
+			if (n.accumulator) {
+				parts.push(`into ${n.accumulator.name} = ${recurse(n.accumulator.initial)}`);
+			}
+			parts.push(`then ${recurse(n.body)}`);
+			return parts.join(" ");
 		},
 
 		IndexAccess: (n, recurse) => {

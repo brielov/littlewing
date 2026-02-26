@@ -3,6 +3,7 @@ import type {
 	Assignment,
 	BinaryOp,
 	BooleanLiteral,
+	ForExpression,
 	FunctionCall,
 	NumberLiteral,
 	Program,
@@ -13,6 +14,7 @@ import {
 	isAssignment,
 	isBinaryOp,
 	isBooleanLiteral,
+	isForExpression,
 	isFunctionCall,
 	isIdentifier,
 	isNumberLiteral,
@@ -828,5 +830,20 @@ describe("Comment preservation through optimizer", () => {
 		expect(prog.statements.length).toBe(3);
 		expect(prog.statements[0]!.leadingComments).toEqual(["// setup"]);
 		expect(prog.statements[1]!.leadingComments).toEqual(["// result"]);
+	});
+
+	test("for accumulator initial value gets folded", () => {
+		const optimized = optimize(parse("for x in arr into sum = 1 + 1 then sum + x"));
+		expect(isForExpression(optimized)).toBe(true);
+		const forNode = optimized as ForExpression;
+		expect(forNode.accumulator).not.toBeNull();
+		expect(isNumberLiteral(forNode.accumulator!.initial)).toBe(true);
+		expect((forNode.accumulator!.initial as NumberLiteral).value).toBe(2);
+	});
+
+	test("for accumulator variable not propagated", () => {
+		const source = "sum = 10; for x in [1, 2] into sum = 0 then sum + x";
+		const optimized = optimize(parse(source), new Set());
+		expect(isProgram(optimized)).toBe(true);
 	});
 });

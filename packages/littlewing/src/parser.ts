@@ -329,12 +329,27 @@ function parsePrefix(state: ParserState): ASTNode {
 			advance(state); // consume 'when'
 			guard = parseExpression(state, 0);
 		}
+		let accumulator: { readonly name: string; readonly initial: ASTNode } | null = null;
+		if (peekKind(state) === TokenKind.Into) {
+			advance(state); // consume 'into'
+			if (peekKind(state) !== TokenKind.Identifier) {
+				throw new Error('Expected identifier after "into"');
+			}
+			const accName = readText(state.cursor, state.currentToken);
+			advance(state); // consume accumulator name
+			if (peekKind(state) !== TokenKind.Eq) {
+				throw new Error('Expected "=" after accumulator name');
+			}
+			advance(state); // consume '='
+			const initial = parseExpression(state, 0);
+			accumulator = { name: accName, initial };
+		}
 		if (peekKind(state) !== TokenKind.Then) {
 			throw new Error('Expected "then" in for expression');
 		}
 		advance(state); // consume 'then'
 		const body = parseExpression(state, 0);
-		return ast.forExpr(variableName, iterable, guard, body);
+		return ast.forExpr(variableName, iterable, guard, accumulator, body);
 	}
 
 	// Number literal

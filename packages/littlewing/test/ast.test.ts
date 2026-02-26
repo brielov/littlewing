@@ -109,6 +109,7 @@ describe("AST Builders", () => {
 			"x",
 			ast.array([ast.number(1), ast.number(2)]),
 			null,
+			null,
 			ast.identifier("x"),
 		);
 		expect(isForExpression(node)).toBe(true);
@@ -116,6 +117,7 @@ describe("AST Builders", () => {
 			expect(node.kind).toBe(NodeKind.ForExpression);
 			expect(node.variable).toBe("x");
 			expect(node.guard).toBeNull();
+			expect(node.accumulator).toBeNull();
 		}
 	});
 
@@ -124,11 +126,13 @@ describe("AST Builders", () => {
 			"x",
 			ast.identifier("arr"),
 			ast.greaterThan(ast.identifier("x"), ast.number(0)),
+			null,
 			ast.multiply(ast.identifier("x"), ast.number(2)),
 		);
 		expect(isForExpression(node)).toBe(true);
 		if (isForExpression(node)) {
 			expect(node.guard).not.toBeNull();
+			expect(node.accumulator).toBeNull();
 		}
 	});
 

@@ -292,6 +292,7 @@ describe("CodeGenerator", () => {
 			"x",
 			ast.identifier("arr"),
 			null,
+			null,
 			ast.multiply(ast.identifier("x"), ast.number(2)),
 		);
 		expect(generate(node)).toBe("for x in arr then x * 2");
@@ -302,6 +303,7 @@ describe("CodeGenerator", () => {
 			"x",
 			ast.identifier("arr"),
 			ast.greaterThan(ast.identifier("x"), ast.number(0)),
+			null,
 			ast.multiply(ast.identifier("x"), ast.number(2)),
 		);
 		expect(generate(node)).toBe("for x in arr when x > 0 then x * 2");
@@ -316,6 +318,42 @@ describe("CodeGenerator", () => {
 
 	test("for expression with guard round-trip", () => {
 		const source = "for x in arr when x > 0 then x * 2";
+		const ast1 = parse(source);
+		const code = generate(ast1);
+		expect(code).toBe(source);
+	});
+
+	test("for expression with accumulator", () => {
+		const node = ast.forExpr(
+			"x",
+			ast.identifier("arr"),
+			null,
+			{ name: "sum", initial: ast.number(0) },
+			ast.add(ast.identifier("sum"), ast.identifier("x")),
+		);
+		expect(generate(node)).toBe("for x in arr into sum = 0 then sum + x");
+	});
+
+	test("for expression with guard and accumulator", () => {
+		const node = ast.forExpr(
+			"x",
+			ast.identifier("arr"),
+			ast.greaterThan(ast.identifier("x"), ast.number(0)),
+			{ name: "total", initial: ast.number(0) },
+			ast.add(ast.identifier("total"), ast.identifier("x")),
+		);
+		expect(generate(node)).toBe("for x in arr when x > 0 into total = 0 then total + x");
+	});
+
+	test("for expression with accumulator round-trip", () => {
+		const source = "for x in [1, 2, 3] into sum = 0 then sum + x";
+		const ast1 = parse(source);
+		const code = generate(ast1);
+		expect(code).toBe(source);
+	});
+
+	test("for expression with guard and accumulator round-trip", () => {
+		const source = "for x in arr when x > 0 into total = 0 then total + x";
 		const ast1 = parse(source);
 		const code = generate(ast1);
 		expect(code).toBe(source);

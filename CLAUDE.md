@@ -11,7 +11,7 @@ Key characteristics:
 - **Multi-type system** - Seven types: `number`, `string`, `boolean`, `Temporal.PlainDate`, `Temporal.PlainTime`, `Temporal.PlainDateTime`, `readonly RuntimeValue[]`
 - **No implicit coercion** - Explicit conversion via `STR()`, `NUM()`, etc.
 - **Strict boolean logic** - `!`, `&&`, `||`, and `if` conditions require boolean operands
-- **Control flow** - `if/then/else` expressions and `for/in/then` comprehensions (with optional `when` guard)
+- **Control flow** - `if/then/else` expressions, `for/in/then` comprehensions (with optional `when` guard and `into` accumulator)
 - **Deep structural equality** - `[1, 2] == [1, 2]` → `true`; cross-type `==` → `false`
 - **Homogeneous arrays** - `[1, "two"]` is a TypeError
 - **Full Temporal support** - PlainDate (date-only), PlainTime (time-only), PlainDateTime (date+time, no timezone)
@@ -37,7 +37,7 @@ The codebase follows a **three-stage compilation pipeline**:
    - Supports: unary > exponentiation > mult/div/mod > add/sub > range > comparison > logical AND > logical OR > assignment
    - Postfix bracket indexing (`arr[0]`, `str[1]`) with chaining support (`a[0][1]`, `f()[0]`)
    - `if/then/else` and `for/in/then` are prefix expressions (not infix), parsed in prefix position
-   - Keywords: `if`, `then`, `else`, `for`, `in`, `when` — have no precedence, naturally terminate sub-expressions
+   - Keywords: `if`, `then`, `else`, `for`, `in`, `when`, `into` — have no precedence, naturally terminate sub-expressions
    - Handles string literals, boolean literals (`true`/`false` in prefix position), array literals (`[...]`)
    - `true`/`false` cannot be used as assignment targets
 
@@ -48,7 +48,8 @@ The codebase follows a **three-stage compilation pipeline**:
    - `if` condition must be boolean
    - `for` expression iterates arrays and strings (strings split into single-character strings)
    - `for` with `when` guard filters elements (guard must be boolean)
-   - `for` result must be a homogeneous array
+   - `for` without `into`: map mode, result must be a homogeneous array
+   - `for` with `into name = init`: reduce/fold mode, returns final accumulator value
    - `!` operator requires boolean, `-` operator requires number
    - Validates homogeneous array elements at construction time
    - Supports custom functions and variables via `ExecutionContext`
@@ -114,11 +115,11 @@ Type guards (`isNumberLiteral`, `isStringLiteral`, `isBooleanLiteral`, `isArrayL
 
 **Standard Library:**
 
-- `defaultContext` - All 78 built-in functions
+- `defaultContext` - All 86 built-in functions
 - `core` - Type conversion: `STR`, `NUM`, `TYPE`
 - `math` - Math functions (14)
-- `string` - String functions (8)
-- `array` - Array functions (8)
+- `string` - String functions (12)
+- `array` - Array functions (12)
 - `datetime` - Date functions (24, most also accept PlainDateTime)
 - `time` - Time functions (13)
 - `datetimefull` - DateTime construction/conversion functions (7)
@@ -179,12 +180,12 @@ This is a **Bun workspaces monorepo** with two packages:
 │   │   │       ├── index.ts          # Combines all stdlib modules into defaultContext
 │   │   │       ├── core.ts           # STR, NUM, TYPE
 │   │   │       ├── math.ts           # Math functions (14)
-│   │   │       ├── string.ts         # String functions (8)
-│   │   │       ├── array.ts          # Array functions (8)
+│   │   │       ├── string.ts         # String functions (12)
+│   │   │       ├── array.ts          # Array functions (12)
 │   │   │       ├── datetime.ts       # Date functions (24)
 │   │   │       ├── time.ts           # Time functions (13)
 │   │   │       └── datetimefull.ts   # DateTime functions (7)
-│   │   └── test/                 # 16 test files, 737 tests
+│   │   └── test/                 # 16 test files, 784 tests
 │   └── playground/           # Private web app
 │       ├── package.json
 │       ├── tsconfig.json
@@ -236,7 +237,11 @@ const count = visit(ast, {
 	IfExpression: (n, recurse) =>
 		1 + recurse(n.condition) + recurse(n.consequent) + recurse(n.alternate),
 	ForExpression: (n, recurse) =>
-		1 + recurse(n.iterable) + (n.guard ? recurse(n.guard) : 0) + recurse(n.body),
+		1 +
+		recurse(n.iterable) +
+		(n.guard ? recurse(n.guard) : 0) +
+		(n.accumulator ? recurse(n.accumulator.initial) : 0) +
+		recurse(n.body),
 	IndexAccess: (n, recurse) => 1 + recurse(n.object) + recurse(n.index),
 	RangeExpression: (n, recurse) => 1 + recurse(n.start) + recurse(n.end),
 });
@@ -255,7 +260,7 @@ The optimizer (`packages/littlewing/src/optimizer.ts`) implements constant foldi
 - **Constant folding** - Evaluates pure expressions at compile time (numbers, strings, booleans)
 - **Cross-type folding** - `1 == "1"` folds to `false`, `"a" + "b"` folds to `"ab"`
 - **Conditional folding** - `if true then x else y` folds to `x` (requires boolean literal condition)
-- **Constant propagation** - When `externalVariables` is provided, substitutes single-assignment literal variables and re-folds iteratively until stable. Variables in the `externalVariables` set, reassigned variables, and `for` loop variables are never propagated.
+- **Constant propagation** - When `externalVariables` is provided, substitutes single-assignment literal variables and re-folds iteratively until stable. Variables in the `externalVariables` set, reassigned variables, `for` loop variables, and `for` accumulator variables are never propagated.
 - **Dead code elimination** - Removes unused variable assignments
 - **Without `externalVariables`** - No variables are propagated (backward-compatible; they can be overridden by `ExecutionContext.variables` at runtime)
 
@@ -263,7 +268,7 @@ The optimizer (`packages/littlewing/src/optimizer.ts`) implements constant foldi
 
 Tests use Bun's built-in test framework:
 
-- **737 tests** across 16 test files
+- **784 tests** across 16 test files
 - Run a single test file: `bun test packages/littlewing/test/optimizer.test.ts`
 
 ### Code Style
@@ -364,6 +369,7 @@ interface ForExpression {
 	readonly variable: string;
 	readonly iterable: ASTNode;
 	readonly guard: ASTNode | null;
+	readonly accumulator: { readonly name: string; readonly initial: ASTNode } | null;
 	readonly body: ASTNode;
 }
 interface IndexAccess {
@@ -381,12 +387,12 @@ interface RangeExpression {
 
 ## Built-in Functions Summary
 
-**Total: 78 built-in functions in `defaultContext`**
+**Total: 86 built-in functions in `defaultContext`**
 
 - **Type Conversion (3):** STR, NUM, TYPE
 - **Math (14):** ABS, CEIL, FLOOR, ROUND, SQRT, MIN, MAX, CLAMP, SIN, COS, TAN, LOG, LOG10, EXP
-- **String (8):** STR_LEN, STR_CHAR_AT, STR_UPPER, STR_LOWER, STR_TRIM, STR_SLICE, STR_CONTAINS, STR_INDEX_OF
-- **Array (8):** ARR_LEN, ARR_INDEX, ARR_PUSH, ARR_SLICE, ARR_CONTAINS, ARR_REVERSE, ARR_FIRST, ARR_LAST
+- **String (12):** STR_LEN, STR_UPPER, STR_LOWER, STR_TRIM, STR_SLICE, STR_CONTAINS, STR_INDEX_OF, STR_SPLIT, STR_REPLACE, STR_STARTS_WITH, STR_ENDS_WITH, STR_REPEAT
+- **Array (12):** ARR_LEN, ARR_PUSH, ARR_SLICE, ARR_CONTAINS, ARR_REVERSE, ARR_SORT, ARR_UNIQUE, ARR_FLAT, ARR_JOIN, ARR_SUM, ARR_MIN, ARR_MAX
 - **Date - Core (2):** TODAY, DATE
 - **Date - Extractors (6):** GET_YEAR, GET_MONTH, GET_DAY, GET_WEEKDAY, GET_DAY_OF_YEAR, GET_QUARTER
 - **Date - Arithmetic (3):** ADD_DAYS, ADD_MONTHS, ADD_YEARS

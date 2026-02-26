@@ -181,7 +181,13 @@ describe("visit", () => {
 		});
 
 		test("visits ForExpression node", () => {
-			const node = forExpr("x", array([number(1), number(2), number(3)]), null, identifier("x"));
+			const node = forExpr(
+				"x",
+				array([number(1), number(2), number(3)]),
+				null,
+				null,
+				identifier("x"),
+			);
 			const result = visit(node, {
 				Program: () => "",
 				NumberLiteral: (n) => String(n.value),
@@ -411,6 +417,9 @@ describe("visit", () => {
 						n.variable,
 						recurse(n.iterable),
 						n.guard ? recurse(n.guard) : null,
+						n.accumulator
+							? { name: n.accumulator.name, initial: recurse(n.accumulator.initial) }
+							: null,
 						recurse(n.body),
 					),
 				IndexAccess: (n, recurse) => indexAccess(recurse(n.object), recurse(n.index)),
@@ -457,6 +466,9 @@ describe("visit", () => {
 						n.variable,
 						recurse(n.iterable),
 						n.guard ? recurse(n.guard) : null,
+						n.accumulator
+							? { name: n.accumulator.name, initial: recurse(n.accumulator.initial) }
+							: null,
 						recurse(n.body),
 					),
 				IndexAccess: (n, recurse) => indexAccess(recurse(n.object), recurse(n.index)),
@@ -792,6 +804,9 @@ describe("visitor examples from real use cases", () => {
 						n.variable,
 						recurse(n.iterable),
 						n.guard ? recurse(n.guard) : null,
+						n.accumulator
+							? { name: n.accumulator.name, initial: recurse(n.accumulator.initial) }
+							: null,
 						recurse(n.body),
 					),
 				IndexAccess: (n, recurse) => indexAccess(recurse(n.object), recurse(n.index)),
