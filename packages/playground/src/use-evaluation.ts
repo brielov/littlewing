@@ -37,83 +37,62 @@ export interface UseEvaluationReturn {
 	clearOverride: (name: string) => void;
 }
 
-interface PipelineOutput {
-	result: Result | null;
+interface CompilationResult {
+	optimizedAst: ASTNode;
+	ast: ASTNode;
 	inputVariables: InputVariable[];
-	scope: Record<string, RuntimeValue> | null;
-	ast: ASTNode | null;
-	timing: Timing | null;
+	parseMs: number;
+	optimizeMs: number;
 }
 
-function runPipeline(src: string, currentOverrides: Map<string, RuntimeValue>): PipelineOutput {
-	if (src.trim() === "") {
-		return { result: null, inputVariables: [], scope: null, ast: null, timing: null };
+function compile(src: string): CompilationResult | null {
+	if (src.trim() === "") return null;
+
+	const parseStart = performance.now();
+	const ast = parse(src);
+	const parseMs = performance.now() - parseStart;
+
+	const inputVarNames = extractInputVariables(ast);
+
+	const optimizeStart = performance.now();
+	const optimizedAst = optimize(ast, new Set(inputVarNames));
+	const optimizeMs = performance.now() - optimizeStart;
+
+	const defaultScope = evaluateScope(optimizedAst, defaultContext);
+	const inputVariables: InputVariable[] = inputVarNames
+		.filter((name) => name in defaultScope)
+		.map((name) => ({
+			name,
+			type: typeOf(defaultScope[name] as RuntimeValue),
+			defaultValue: defaultScope[name] as RuntimeValue,
+		}));
+
+	return { optimizedAst, ast, inputVariables, parseMs, optimizeMs };
+}
+
+interface EvaluationResult {
+	result: Result;
+	scope: Record<string, RuntimeValue>;
+	evaluateMs: number;
+}
+
+function run(optimizedAst: ASTNode, overrides: Map<string, RuntimeValue>): EvaluationResult {
+	const overrideVariables: Record<string, RuntimeValue> = {};
+	for (const [name, value] of overrides) {
+		overrideVariables[name] = value;
 	}
 
-	try {
-		const totalStart = performance.now();
+	const mergedContext = {
+		...defaultContext,
+		variables: overrideVariables,
+	};
 
-		// Parse
-		const parseStart = performance.now();
-		const ast = parse(src);
-		const parseMs = performance.now() - parseStart;
+	const evaluateStart = performance.now();
+	const value = evaluate(optimizedAst, mergedContext);
+	const scope = evaluateScope(optimizedAst, mergedContext);
+	const evaluateMs = performance.now() - evaluateStart;
 
-		// Extract input variables
-		const inputVarNames = extractInputVariables(ast);
-
-		// Optimize (preserving input variables as external)
-		const optimizeStart = performance.now();
-		const optimizedAst = optimize(ast, new Set(inputVarNames));
-		const optimizeMs = performance.now() - optimizeStart;
-
-		// Get default values via scope evaluation
-		const defaultScope = evaluateScope(optimizedAst, defaultContext);
-		const inputVariables: InputVariable[] = inputVarNames
-			.filter((name) => name in defaultScope)
-			.map((name) => ({
-				name,
-				type: typeOf(defaultScope[name] as RuntimeValue),
-				defaultValue: defaultScope[name] as RuntimeValue,
-			}));
-
-		// Build context with overrides
-		const overrideVariables: Record<string, RuntimeValue> = {};
-		for (const [name, value] of currentOverrides) {
-			overrideVariables[name] = value;
-		}
-
-		const mergedContext = {
-			...defaultContext,
-			variables: overrideVariables,
-		};
-
-		// Evaluate (use evaluateScope to get both result and full scope)
-		const evaluateStart = performance.now();
-		const value = evaluate(optimizedAst, mergedContext);
-		const scope = evaluateScope(optimizedAst, mergedContext);
-		const evaluateMs = performance.now() - evaluateStart;
-
-		const totalMs = performance.now() - totalStart;
-
-		return {
-			result: { ok: true, value },
-			inputVariables,
-			scope,
-			ast,
-			timing: { parseMs, optimizeMs, evaluateMs, totalMs },
-		};
-	} catch (err) {
-		return {
-			result: {
-				ok: false,
-				error: err instanceof Error ? err.message : String(err),
-			},
-			inputVariables: [],
-			scope: null,
-			ast: null,
-			timing: null,
-		};
-	}
+	return { result: { ok: true, value }, scope, evaluateMs };
 }
 
 export function useEvaluation(source: string): UseEvaluationReturn {
@@ -136,10 +115,62 @@ export function useEvaluation(source: string): UseEvaluationReturn {
 		});
 	}, []);
 
-	const { result, inputVariables, scope, ast, timing } = useMemo(
-		() => runPipeline(deferredSource, overrides),
-		[deferredSource, overrides],
-	);
+	// Phase 1: compile (parse + optimize) — only re-runs when source changes
+	const compilation = useMemo(() => {
+		try {
+			return { ok: true as const, value: compile(deferredSource) };
+		} catch (err) {
+			return { ok: false as const, error: err instanceof Error ? err.message : String(err) };
+		}
+	}, [deferredSource]);
 
-	return { result, inputVariables, overrides, scope, ast, timing, setOverride, clearOverride };
+	// Phase 2: evaluate — re-runs when compilation or overrides change
+	const output = useMemo(() => {
+		if (!compilation.ok) {
+			return {
+				result: { ok: false as const, error: compilation.error } as Result,
+				inputVariables: [] as InputVariable[],
+				scope: null,
+				ast: null,
+				timing: null,
+			};
+		}
+
+		if (compilation.value === null) {
+			return {
+				result: null,
+				inputVariables: [] as InputVariable[],
+				scope: null,
+				ast: null,
+				timing: null,
+			};
+		}
+
+		const { optimizedAst, ast, inputVariables, parseMs, optimizeMs } = compilation.value;
+
+		try {
+			const { result, scope, evaluateMs } = run(optimizedAst, overrides);
+			const totalMs = parseMs + optimizeMs + evaluateMs;
+			return {
+				result,
+				inputVariables,
+				scope,
+				ast,
+				timing: { parseMs, optimizeMs, evaluateMs, totalMs },
+			};
+		} catch (err) {
+			return {
+				result: {
+					ok: false as const,
+					error: err instanceof Error ? err.message : String(err),
+				} as Result,
+				inputVariables,
+				scope: null,
+				ast,
+				timing: { parseMs, optimizeMs, evaluateMs: 0, totalMs: parseMs + optimizeMs },
+			};
+		}
+	}, [compilation, overrides]);
+
+	return { ...output, overrides, setOverride, clearOverride };
 }
