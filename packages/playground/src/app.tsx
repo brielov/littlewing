@@ -79,9 +79,13 @@ export function App() {
 	useEffect(() => {
 		if (!ready) return;
 		const id = setTimeout(() => {
-			void compress(source).then((hash) => {
-				history.replaceState(null, "", `#${hash}`);
-			});
+			if (source.trim() === "") {
+				history.replaceState(null, "", window.location.pathname + window.location.search);
+			} else {
+				void compress(source).then((hash) => {
+					history.replaceState(null, "", `#${hash}`);
+				});
+			}
 		}, 500);
 		return () => clearTimeout(id);
 	}, [source, ready]);
