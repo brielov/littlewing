@@ -1,4 +1,4 @@
-import { useCallback, useRef } from "react";
+import { Dialog } from "./dialog";
 
 const mono = { fontFamily: '"Maple Mono", monospace' };
 
@@ -222,61 +222,28 @@ interface ExamplesDialogProps {
 }
 
 export function ExamplesDialog({ onSelect }: ExamplesDialogProps) {
-	const ref = useRef<HTMLDialogElement>(null);
-
-	const open = useCallback(() => {
-		ref.current?.showModal();
-	}, []);
-
-	const close = useCallback(() => {
-		ref.current?.close();
-	}, []);
-
-	const select = useCallback(
-		(source: string) => {
-			onSelect(source);
-			close();
-		},
-		[onSelect, close],
-	);
-
 	return (
-		<>
-			<button
-				type="button"
-				onClick={open}
-				className="cursor-pointer text-xs"
-				style={{ color: "var(--color-fg-muted)" }}
-				title="Load an example"
-			>
-				Examples
-			</button>
-			<dialog
-				ref={ref}
-				onClick={(e) => {
-					if (e.target === e.currentTarget) close();
-				}}
-				className="m-auto max-h-[80vh] w-full max-w-lg rounded-lg p-0 backdrop:bg-black/50"
-				style={{
-					backgroundColor: "var(--color-bg)",
-					color: "var(--color-fg)",
-					border: "1px solid var(--color-border)",
-				}}
-			>
-				<div className="flex items-center justify-between px-5 pt-4 pb-2">
-					<h2 className="text-sm font-semibold" style={mono}>
-						examples
-					</h2>
-					<button
-						type="button"
-						onClick={close}
-						className="cursor-pointer text-lg leading-none"
-						style={{ color: "var(--color-fg-muted)" }}
-					>
-						&times;
-					</button>
-				</div>
-				<div className="overflow-y-auto px-5 pt-0 pb-5" style={{ maxHeight: "calc(80vh - 52px)" }}>
+		<Dialog
+			trigger={(open) => (
+				<button
+					type="button"
+					onClick={open}
+					className="cursor-pointer text-xs"
+					style={{ color: "var(--color-fg-muted)" }}
+					title="Load an example"
+				>
+					Examples
+				</button>
+			)}
+			title="examples"
+		>
+			{(close) => {
+				const select = (source: string) => {
+					onSelect(source);
+					close();
+				};
+
+				return (
 					<div className="flex flex-col gap-2">
 						{examples.map((example) => (
 							<button
@@ -304,8 +271,8 @@ export function ExamplesDialog({ onSelect }: ExamplesDialogProps) {
 							</button>
 						))}
 					</div>
-				</div>
-			</dialog>
-		</>
+				);
+			}}
+		</Dialog>
 	);
 }

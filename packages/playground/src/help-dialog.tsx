@@ -1,4 +1,4 @@
-import { useCallback, useRef } from "react";
+import { Dialog } from "./dialog";
 
 const mono = { fontFamily: '"Maple Mono", monospace' };
 
@@ -66,78 +66,46 @@ const sections: Array<{ title: string; items: Array<[string, string]> }> = [
 ];
 
 export function HelpDialog() {
-	const ref = useRef<HTMLDialogElement>(null);
-
-	const open = useCallback(() => {
-		ref.current?.showModal();
-	}, []);
-
-	const close = useCallback(() => {
-		ref.current?.close();
-	}, []);
-
 	return (
-		<>
-			<button
-				type="button"
-				onClick={open}
-				className="cursor-pointer text-xs"
-				style={{ color: "var(--color-fg-muted)" }}
-				title="Language reference"
-			>
-				?
-			</button>
-			<dialog
-				ref={ref}
-				onClick={(e) => {
-					if (e.target === e.currentTarget) close();
-				}}
-				className="m-auto max-h-[80vh] w-full max-w-lg rounded-lg p-0 backdrop:bg-black/50"
-				style={{
-					backgroundColor: "var(--color-bg)",
-					color: "var(--color-fg)",
-					border: "1px solid var(--color-border)",
-				}}
-			>
-				<div className="flex items-center justify-between px-5 pt-4 pb-2">
-					<h2 className="text-sm font-semibold" style={mono}>
-						littlewing reference
-					</h2>
-					<button
-						type="button"
-						onClick={close}
-						className="cursor-pointer text-lg leading-none"
-						style={{ color: "var(--color-fg-muted)" }}
-					>
-						&times;
-					</button>
-				</div>
-				<div className="overflow-y-auto px-5 pt-0 pb-5" style={{ maxHeight: "calc(80vh - 52px)" }}>
-					{sections.map((section) => (
-						<div key={section.title} className="mt-4 first:mt-0">
-							<h3
-								className="mb-2 text-[11px] font-semibold uppercase tracking-wider"
-								style={{ color: "var(--color-fg-muted)" }}
-							>
-								{section.title}
-							</h3>
-							<div className="flex flex-col gap-1.5">
-								{section.items.map(([label, desc]) => (
-									<div key={label} className="flex gap-3 text-xs">
-										<span
-											className="shrink-0"
-											style={{ color: "var(--color-accent)", ...mono, width: 110 }}
-										>
-											{label}
-										</span>
-										<span style={{ color: "var(--color-fg-muted)", ...mono }}>{desc}</span>
-									</div>
-								))}
-							</div>
+		<Dialog
+			trigger={(open) => (
+				<button
+					type="button"
+					onClick={open}
+					className="cursor-pointer text-xs"
+					style={{ color: "var(--color-fg-muted)" }}
+					title="Language reference"
+				>
+					?
+				</button>
+			)}
+			title="littlewing reference"
+		>
+			{() =>
+				sections.map((section) => (
+					<div key={section.title} className="mt-4 first:mt-0">
+						<h3
+							className="mb-2 text-[11px] font-semibold uppercase tracking-wider"
+							style={{ color: "var(--color-fg-muted)" }}
+						>
+							{section.title}
+						</h3>
+						<div className="flex flex-col gap-1.5">
+							{section.items.map(([label, desc]) => (
+								<div key={label} className="flex gap-3 text-xs">
+									<span
+										className="shrink-0"
+										style={{ color: "var(--color-accent)", ...mono, width: 110 }}
+									>
+										{label}
+									</span>
+									<span style={{ color: "var(--color-fg-muted)", ...mono }}>{desc}</span>
+								</div>
+							))}
 						</div>
-					))}
-				</div>
-			</dialog>
-		</>
+					</div>
+				))
+			}
+		</Dialog>
 	);
 }
