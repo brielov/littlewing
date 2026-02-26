@@ -1,5 +1,5 @@
 import { type ASTNode, type RuntimeValue, defaultContext, evaluate, visit } from "littlewing";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { UseEvaluationReturn } from "./use-evaluation.ts";
 
 interface SidebarProps {
@@ -12,7 +12,7 @@ export function Sidebar({ evaluation }: SidebarProps) {
 
 	return (
 		<div
-			className="flex h-full flex-col overflow-y-auto"
+			className="flex h-full w-full flex-col overflow-y-auto"
 			style={{
 				backgroundColor: "var(--color-bg)",
 			}}
@@ -161,18 +161,12 @@ function VariableInput({ inputId, name, type, currentValue, setOverride }: Varia
 	switch (type) {
 		case "number":
 			return (
-				<input
-					id={inputId}
-					type="number"
-					className="rounded px-2 py-1 text-xs"
-					style={inputStyle}
-					value={String(currentValue)}
-					onChange={(e) => {
-						const n = Number(e.target.value);
-						if (!Number.isNaN(n)) {
-							setOverride(name, n);
-						}
-					}}
+				<NumberInput
+					inputId={inputId}
+					name={name}
+					currentValue={currentValue as number}
+					setOverride={setOverride}
+					inputStyle={inputStyle}
 				/>
 			);
 
@@ -275,6 +269,46 @@ function VariableInput({ inputId, name, type, currentValue, setOverride }: Varia
 				</span>
 			);
 	}
+}
+
+function NumberInput({
+	inputId,
+	name,
+	currentValue,
+	setOverride,
+	inputStyle,
+}: {
+	inputId: string;
+	name: string;
+	currentValue: number;
+	setOverride: (name: string, value: RuntimeValue) => void;
+	inputStyle: React.CSSProperties;
+}) {
+	const ref = useRef<HTMLInputElement>(null);
+
+	useEffect(() => {
+		if (ref.current && ref.current !== document.activeElement) {
+			ref.current.value = String(currentValue);
+		}
+	}, [currentValue]);
+
+	return (
+		<input
+			ref={ref}
+			id={inputId}
+			type="number"
+			step="any"
+			className="rounded px-2 py-1 text-xs"
+			style={inputStyle}
+			defaultValue={currentValue}
+			onChange={(e) => {
+				const n = e.target.valueAsNumber;
+				if (!Number.isNaN(n)) {
+					setOverride(name, n);
+				}
+			}}
+		/>
+	);
 }
 
 function ExpressionInput({
