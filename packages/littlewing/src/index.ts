@@ -55,7 +55,18 @@ export { array, core, datetime, datetimefull, defaultContext, math, string, time
 // Type definitions
 export type { ExecutionContext, RuntimeValue } from "./types";
 // Utilities
-export { typeOf } from "./utils";
+export {
+	assertArray,
+	assertBoolean,
+	assertDate,
+	assertDateOrDateTime,
+	assertDateTime,
+	assertNumber,
+	assertString,
+	assertTime,
+	assertTimeOrDateTime,
+	typeOf,
+} from "./utils";
 
 // Visitor pattern
 export { type Visitor, visit, visitPartial } from "./visitor";

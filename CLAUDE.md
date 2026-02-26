@@ -115,7 +115,7 @@ Type guards (`isNumberLiteral`, `isStringLiteral`, `isBooleanLiteral`, `isArrayL
 
 **Standard Library:**
 
-- `defaultContext` - All 86 built-in functions
+- `defaultContext` - All 85 built-in functions
 - `core` - Type conversion: `STR`, `NUM`, `TYPE`
 - `math` - Math functions (14)
 - `string` - String functions (12)
@@ -387,7 +387,7 @@ interface RangeExpression {
 
 ## Built-in Functions Summary
 
-**Total: 86 built-in functions in `defaultContext`**
+**Total: 85 built-in functions in `defaultContext`**
 
 - **Type Conversion (3):** STR, NUM, TYPE
 - **Math (14):** ABS, CEIL, FLOOR, ROUND, SQRT, MIN, MAX, CLAMP, SIN, COS, TAN, LOG, LOG10, EXP

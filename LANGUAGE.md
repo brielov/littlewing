@@ -11,7 +11,7 @@ Littlewing is a **multi-type expression language** with seven value types: numbe
 - **Seven types** - Numbers, strings, booleans, dates (`Temporal.PlainDate`), times (`Temporal.PlainTime`), datetimes (`Temporal.PlainDateTime`), and homogeneous arrays
 - **No implicit coercion** - Explicit type conversion via `STR()`, `NUM()`, etc.
 - **Strict boolean logic** - `!`, `&&`, `||`, and `if` conditions require booleans
-- **Control flow** - `if/then/else` expressions and `for/in/then` comprehensions
+- **Control flow** - `if/then/else` expressions and `for/in/then` comprehensions with optional `when` guard and `into` accumulator
 - **Bracket indexing** - `arr[0]`, `str[1]`, with negative indexing and chaining
 - **Range expressions** - `1..5` (exclusive), `1..=5` (inclusive)
 - **Deep equality** - `[1, 2] == [1, 2]` evaluates to `true`
@@ -295,7 +295,7 @@ Variable names:
 - Start with letter or underscore
 - Contain letters, numbers, underscores
 - Case-sensitive (`myVar` ≠ `myvar`)
-- `true`, `false`, `if`, `then`, `else`, `for`, `in`, `when` are reserved
+- `true`, `false`, `if`, `then`, `else`, `for`, `in`, `when`, `into` are reserved
 
 ### Comments
 
@@ -400,9 +400,11 @@ discount = if quantity > 100 then price * 0.2 else price * 0.1
 
 #### For Comprehensions
 
-Syntax: `for variable in iterable [when guard] then body`
+Syntax: `for variable in iterable [when guard] [into accumulator = initial] then body`
 
-Creates a new array by mapping over each element. The optional `when` clause filters elements:
+Without `into`, creates a new array by mapping over each element (map semantics). With `into`, reduces to a single value (fold semantics). The optional `when` clause filters elements before processing.
+
+**Map (without `into`):**
 
 ```
 // Map over an array
@@ -422,7 +424,34 @@ squares = for i in 1..=5 then i ^ 2 // → [1, 4, 9, 16, 25]
 chars = for c in "hello" then STR_UPPER(c) // → ["H", "E", "L", "L", "O"]
 ```
 
-The `when` guard must be a boolean expression. The result must be a homogeneous array.
+The `when` guard must be a boolean expression. The map result must be a homogeneous array.
+
+**Reduce (with `into`):**
+
+```
+// Sum
+for x in [1, 2, 3, 4] into sum = 0 then sum + x // → 10
+
+// Product
+for x in [1, 2, 3, 4] into p = 1 then p * x // → 24
+
+// String concatenation
+for x in ["a", "b", "c"] into s = "" then s + x // → "abc"
+
+// With guard (filtered elements skip accumulator update)
+for x in [1, -2, 3] when x > 0 into total = 0 then total + x // → 4
+
+// Find maximum
+for x in [3, 1, 4, 1, 5] into best = 0 then if x > best then x else best // → 5
+
+// Flatten arrays
+for x in [[1, 2], [3, 4]] into flat = [] then flat + x // → [1, 2, 3, 4]
+
+// Empty iterable returns initial value
+for x in [] into sum = 0 then sum + x // → 0
+```
+
+The accumulator variable is scoped to the loop body and not accessible outside.
 
 ### Operator Precedence
 
@@ -491,33 +520,43 @@ principal * (1 + rate) ^ years // → 1157.625
 | `MAX(...)`         | Maximum value      | `MAX(3, 1, 5)` → `5`         |
 | `CLAMP(val, a, b)` | Constrain to range | `CLAMP(150, 0, 100)` → `100` |
 
-### String Functions (8 functions)
+### String Functions (12 functions)
 
-| Function                    | Description        | Example                                 |
-| --------------------------- | ------------------ | --------------------------------------- |
-| `STR_LEN(s)`                | String length      | `STR_LEN("hello")` → `5`                |
-| `STR_CHAR_AT(s, i)`         | Character at index | `STR_CHAR_AT("hello", 0)` → `"h"`       |
-| `STR_UPPER(s)`              | Uppercase          | `STR_UPPER("hello")` → `"HELLO"`        |
-| `STR_LOWER(s)`              | Lowercase          | `STR_LOWER("HELLO")` → `"hello"`        |
-| `STR_TRIM(s)`               | Trim whitespace    | `STR_TRIM("  hi  ")` → `"hi"`           |
-| `STR_SLICE(s, start, end?)` | Substring          | `STR_SLICE("hello", 1, 3)` → `"el"`     |
-| `STR_CONTAINS(s, search)`   | Contains check     | `STR_CONTAINS("hello", "ell")` → `true` |
-| `STR_INDEX_OF(s, search)`   | Find index         | `STR_INDEX_OF("hello", "ll")` → `2`     |
+| Function                       | Description        | Example                                      |
+| ------------------------------ | ------------------ | -------------------------------------------- |
+| `STR_LEN(s)`                   | String length      | `STR_LEN("hello")` → `5`                     |
+| `STR_UPPER(s)`                 | Uppercase          | `STR_UPPER("hello")` → `"HELLO"`             |
+| `STR_LOWER(s)`                 | Lowercase          | `STR_LOWER("HELLO")` → `"hello"`             |
+| `STR_TRIM(s)`                  | Trim whitespace    | `STR_TRIM("  hi  ")` → `"hi"`                |
+| `STR_SLICE(s, start, end?)`    | Substring          | `STR_SLICE("hello", 1, 3)` → `"el"`          |
+| `STR_CONTAINS(s, search)`      | Contains check     | `STR_CONTAINS("hello", "ell")` → `true`      |
+| `STR_INDEX_OF(s, search)`      | Find index         | `STR_INDEX_OF("hello", "ll")` → `2`          |
+| `STR_SPLIT(s, sep)`            | Split by separator | `STR_SPLIT("a,b,c", ",")` → `["a","b","c"]`  |
+| `STR_REPLACE(s, search, repl)` | Replace first      | `STR_REPLACE("hello", "l", "r")` → `"herlo"` |
+| `STR_STARTS_WITH(s, prefix)`   | Prefix check       | `STR_STARTS_WITH("hello", "he")` → `true`    |
+| `STR_ENDS_WITH(s, suffix)`     | Suffix check       | `STR_ENDS_WITH("hello", "lo")` → `true`      |
+| `STR_REPEAT(s, n)`             | Repeat n times     | `STR_REPEAT("ab", 3)` → `"ababab"`           |
 
-### Array Functions (8 functions)
+Note: Use bracket indexing for character access: `"hello"[0]` → `"h"`, `"hello"[-1]` → `"o"`.
 
-| Function                    | Description      | Example                                |
-| --------------------------- | ---------------- | -------------------------------------- |
-| `ARR_LEN(a)`                | Array length     | `ARR_LEN([1, 2, 3])` → `3`             |
-| `ARR_INDEX(a, i)`           | Element at index | `ARR_INDEX([10, 20], 0)` → `10`        |
-| `ARR_PUSH(a, v)`            | Append element   | `ARR_PUSH([1, 2], 3)` → `[1, 2, 3]`    |
-| `ARR_SLICE(a, start, end?)` | Sub-array        | `ARR_SLICE([1, 2, 3], 1)` → `[2, 3]`   |
-| `ARR_CONTAINS(a, v)`        | Contains check   | `ARR_CONTAINS([1, 2], 2)` → `true`     |
-| `ARR_REVERSE(a)`            | Reverse array    | `ARR_REVERSE([1, 2, 3])` → `[3, 2, 1]` |
-| `ARR_FIRST(a)`              | First element    | `ARR_FIRST([10, 20])` → `10`           |
-| `ARR_LAST(a)`               | Last element     | `ARR_LAST([10, 20])` → `20`            |
+### Array Functions (12 functions)
 
-Note: Bracket indexing (`arr[0]`, `arr[-1]`) is generally preferred over `ARR_INDEX()` for element access.
+| Function                    | Description       | Example                                  |
+| --------------------------- | ----------------- | ---------------------------------------- |
+| `ARR_LEN(a)`                | Array length      | `ARR_LEN([1, 2, 3])` → `3`               |
+| `ARR_PUSH(a, v)`            | Append element    | `ARR_PUSH([1, 2], 3)` → `[1, 2, 3]`      |
+| `ARR_SLICE(a, start, end?)` | Sub-array         | `ARR_SLICE([1, 2, 3], 1)` → `[2, 3]`     |
+| `ARR_CONTAINS(a, v)`        | Contains check    | `ARR_CONTAINS([1, 2], 2)` → `true`       |
+| `ARR_REVERSE(a)`            | Reverse array     | `ARR_REVERSE([1, 2, 3])` → `[3, 2, 1]`   |
+| `ARR_SORT(a)`               | Sort ascending    | `ARR_SORT([3, 1, 2])` → `[1, 2, 3]`      |
+| `ARR_UNIQUE(a)`             | Deduplicate       | `ARR_UNIQUE([1, 2, 2, 3])` → `[1, 2, 3]` |
+| `ARR_FLAT(a)`               | Flatten one level | `ARR_FLAT([[1, 2], [3]])` → `[1, 2, 3]`  |
+| `ARR_JOIN(a, sep)`          | Join to string    | `ARR_JOIN(["a", "b"], "-")` → `"a-b"`    |
+| `ARR_SUM(a)`                | Sum numbers       | `ARR_SUM([10, 20, 30])` → `60`           |
+| `ARR_MIN(a)`                | Minimum element   | `ARR_MIN([3, 1, 2])` → `1`               |
+| `ARR_MAX(a)`                | Maximum element   | `ARR_MAX([3, 1, 2])` → `3`               |
+
+Note: Use bracket indexing for element access: `arr[0]`, `arr[-1]`. `ARR_SORT` supports numbers, strings, dates, times, and datetimes. `ARR_MIN`/`ARR_MAX` support the same types. `ARR_FLAT` requires all elements to be arrays; result is validated for homogeneity. `ARR_JOIN` requires all elements to be strings.
 
 ### Date Functions (24 functions)
 
@@ -702,10 +741,17 @@ evaluate(script, { variables: { x: 10 } }); // → 20 (external x overrides)
 Extend littlewing with your own functions:
 
 ```typescript
+import { evaluate, assertNumber } from "littlewing";
+
 evaluate("CLAMP(x, 0, 100)", {
 	variables: { x: 150 },
 	functions: {
-		CLAMP: (value, min, max) => Math.min(Math.max(value, min), max),
+		CLAMP: (value, min, max) => {
+			assertNumber(value, "CLAMP", "value");
+			assertNumber(min, "CLAMP", "min");
+			assertNumber(max, "CLAMP", "max");
+			return Math.min(Math.max(value, min), max);
+		},
 	},
 }); // → 100
 ```
@@ -716,6 +762,24 @@ All custom functions must:
 - Return a `RuntimeValue`
 - Be pure (no side effects recommended)
 - **Use UPPERCASE naming** to match built-in function convention and avoid collisions with variables
+
+#### Type Assertions
+
+Littlewing exports the same assertion helpers used by the built-in standard library. Use them in custom functions for type-safe argument validation:
+
+| Function                       | Narrows to                                     |
+| ------------------------------ | ---------------------------------------------- |
+| `assertNumber(v, ctx, side?)`  | `number`                                       |
+| `assertString(v, ctx)`         | `string`                                       |
+| `assertBoolean(v, ctx, side?)` | `boolean`                                      |
+| `assertArray(v, ctx)`          | `readonly RuntimeValue[]`                      |
+| `assertDate(v, ctx)`           | `Temporal.PlainDate`                           |
+| `assertTime(v, ctx)`           | `Temporal.PlainTime`                           |
+| `assertDateTime(v, ctx)`       | `Temporal.PlainDateTime`                       |
+| `assertDateOrDateTime(v, ctx)` | `Temporal.PlainDate \| Temporal.PlainDateTime` |
+| `assertTimeOrDateTime(v, ctx)` | `Temporal.PlainTime \| Temporal.PlainDateTime` |
+
+Each throws a `TypeError` with a descriptive message on type mismatch. The `ctx` parameter is the function name for error context, and the optional `side` identifies the argument (e.g., `"left"`, `"price"`).
 
 ## Common Use Cases
 
@@ -759,6 +823,9 @@ shippingTotal = baseCost + weightCost + distanceCost
 prices = [10, 25, 50, 75, 100]
 discounted = for p in prices then p * 0.9 // → [9, 22.5, 45, 67.5, 90]
 expensive = for p in prices when p > 50 then p // → [75, 100]
+
+// Reduce arrays
+total = for p in prices into sum = 0 then sum + p // → 260
 
 // Generate sequences
 indices = 0..ARR_LEN(prices) // → [0, 1, 2, 3, 4]
@@ -815,7 +882,7 @@ evaluate(formula, { variables: { price: 20, quantity: 3, discount: 0.15 } }); //
 - **No mutations** - Variables are reassigned, not mutated; arrays are immutable
 - **No side effects** - Pure expression evaluation
 - **No implicit coercion** - Use explicit conversion functions
-- **No general-purpose loops** - `for` comprehensions produce arrays (no imperative looping)
+- **No general-purpose loops** - `for` comprehensions map or reduce (no imperative looping)
 
 These limitations are features! They ensure:
 
