@@ -447,6 +447,26 @@ describe("Bracket indexing", () => {
 		expect(evaluate('"hello"[-1]')).toBe("o");
 	});
 
+	test("unicode string indexing uses code points not UTF-16 code units", () => {
+		expect(evaluate('"😀"[0]')).toBe("😀");
+		expect(evaluate('"a😀b"[1]')).toBe("😀");
+		expect(evaluate('"a😀b"[2]')).toBe("b");
+		expect(evaluate('"a😀b"[-1]')).toBe("b");
+		expect(evaluate('"a😀b"[-2]')).toBe("😀");
+	});
+
+	test("unicode string indexing consistent with for iteration", () => {
+		const iterResult = evaluate('for x in "😀a" then x');
+		expect(iterResult).toEqual(["😀", "a"]);
+		expect(evaluate('"😀a"[0]')).toBe("😀");
+		expect(evaluate('"😀a"[1]')).toBe("a");
+	});
+
+	test("unicode string length reflects code points for indexing", () => {
+		expect(() => evaluate('"😀"[1]')).toThrow(RangeError);
+		expect(evaluate('"😀"[-1]')).toBe("😀");
+	});
+
 	test("chained indexing", () => {
 		expect(evaluate("[[1, 2], [3, 4]][0][1]")).toBe(2);
 		expect(evaluate("[[1, 2], [3, 4]][1][0]")).toBe(3);

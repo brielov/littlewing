@@ -610,6 +610,49 @@ describe("Dead Code Elimination", () => {
 		expect(prog.statements.length).toBe(2);
 		expect((prog.statements[0] as Assignment).name).toBe("c");
 	});
+
+	test("preserves assignments with function calls in RHS", () => {
+		const source = "x = COUNTER(); 0";
+		const optimized = optimize(parse(source));
+		// x is unused but COUNTER() may have side effects — must keep
+		expect(isProgram(optimized)).toBe(true);
+		const prog = optimized as Program;
+		expect(prog.statements.length).toBe(2);
+		expect(isAssignment(prog.statements[0]!)).toBe(true);
+		expect((prog.statements[0] as Assignment).name).toBe("x");
+		expect(isFunctionCall((prog.statements[0] as Assignment).value)).toBe(true);
+	});
+
+	test("preserves assignments with nested function calls in RHS", () => {
+		const source = "x = 1 + COUNTER(); 0";
+		const optimized = optimize(parse(source));
+		expect(isProgram(optimized)).toBe(true);
+		const prog = optimized as Program;
+		expect(prog.statements.length).toBe(2);
+		expect(isAssignment(prog.statements[0]!)).toBe(true);
+	});
+
+	test("preserves assignments with nested assignments in RHS", () => {
+		const source = "y = (x = 2); x";
+		const optimized = optimize(parse(source));
+		expect(isProgram(optimized)).toBe(true);
+		const prog = optimized as Program;
+		// y has a nested assignment to x, which is used — must keep y
+		expect(prog.statements.length).toBe(2);
+	});
+
+	test("side-effectful DCE preserves execution semantics", () => {
+		let counter = 0;
+		const ctx = {
+			functions: { COUNTER: () => ++counter },
+			variables: {},
+		};
+		const source = "x = COUNTER(); 0";
+		const optimized = optimize(parse(source));
+		const result = evaluate(optimized, ctx);
+		expect(result).toBe(0);
+		expect(counter).toBe(1);
+	});
 });
 
 describe("Constant Propagation", () => {
@@ -666,6 +709,21 @@ describe("Constant Propagation", () => {
 		expect(isProgram(optimized)).toBe(true);
 		const prog = optimized as Program;
 		expect(prog.statements.length).toBe(3);
+	});
+
+	test("does NOT propagate variables reassigned in nested expressions", () => {
+		const source = "x = 1; y = (x = 2); x";
+		const optimized = optimize(parse(source), noExternals);
+		// x is assigned at top-level AND inside y's RHS — must not propagate x
+		expect(evaluate(source)).toBe(2);
+		expect(evaluate(optimized)).toBe(2);
+	});
+
+	test("nested assignment: semantics preserved after optimization", () => {
+		const source = "x = 1; y = (x = 2); x + y";
+		const optimized = optimize(parse(source), noExternals);
+		expect(evaluate(source)).toBe(4);
+		expect(evaluate(optimized)).toBe(4);
 	});
 
 	test("does NOT propagate non-literal values (function calls)", () => {
@@ -769,6 +827,18 @@ describe("IndexAccess folding", () => {
 	test("does not fold variable index", () => {
 		const optimized = optimize(parse("[1, 2, 3][x]"));
 		expect(ast.isIndexAccess(optimized)).toBe(true);
+	});
+
+	test("folds unicode string index using code points", () => {
+		const optimized = optimize(parse('"😀"[0]'));
+		expect(isStringLiteral(optimized)).toBe(true);
+		expect((optimized as StringLiteral).value).toBe("😀");
+	});
+
+	test("folds unicode string index for multi-codepoint string", () => {
+		const optimized = optimize(parse('"a😀b"[1]'));
+		expect(isStringLiteral(optimized)).toBe(true);
+		expect((optimized as StringLiteral).value).toBe("😀");
 	});
 });
 

@@ -205,6 +205,44 @@ describe("extractInputVariables", () => {
 		});
 	});
 
+	describe("for-loop expressions", () => {
+		test("extracts variable assigned to for-loop with no external dependencies", () => {
+			const ast = parse("x = for y in [1, 2, 3] then y * 2");
+			const inputs = extractInputVariables(ast);
+			expect(inputs).toEqual(["x"]);
+		});
+
+		test("extracts variable assigned to for-loop with accumulator", () => {
+			const ast = parse("total = for x in [1, 2, 3] into sum = 0 then sum + x");
+			const inputs = extractInputVariables(ast);
+			expect(inputs).toEqual(["total"]);
+		});
+
+		test("excludes variable assigned to for-loop that references external variable", () => {
+			const ast = parse("factor = 2; x = for y in [1, 2, 3] then y * factor");
+			const inputs = extractInputVariables(ast);
+			expect(inputs).toEqual(["factor"]);
+		});
+
+		test("extracts variable assigned to for-loop with when guard using loop var", () => {
+			const ast = parse("x = for y in [1, 2, 3, 4] when y > 2 then y");
+			const inputs = extractInputVariables(ast);
+			expect(inputs).toEqual(["x"]);
+		});
+
+		test("excludes for-loop with external variable in iterable", () => {
+			const ast = parse("arr = [1, 2, 3]; x = for y in arr then y * 2");
+			const inputs = extractInputVariables(ast);
+			expect(inputs).toEqual(["arr"]);
+		});
+
+		test("excludes for-loop with external variable in accumulator initial", () => {
+			const ast = parse("start = 10; x = for y in [1, 2, 3] into sum = start then sum + y");
+			const inputs = extractInputVariables(ast);
+			expect(inputs).toEqual(["start"]);
+		});
+	});
+
 	describe("edge cases", () => {
 		test("returns empty array for program with no assignments", () => {
 			const ast = parse("2 + 3");

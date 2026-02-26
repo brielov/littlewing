@@ -9,6 +9,7 @@
         "oxlint": "^1.50.0",
         "oxlint-tsgolint": "^0.15.0",
         "simple-git-hooks": "^2.13.1",
+        "typescript": "^5.9.3",
       },
     },
     "packages/littlewing": {

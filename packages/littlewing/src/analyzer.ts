@@ -1,7 +1,6 @@
 import type { ASTNode } from "./ast";
 import { isAssignment, isProgram } from "./ast";
-import { collectAllIdentifiers } from "./utils";
-import { visitPartial } from "./visitor";
+import { visit, visitPartial } from "./visitor";
 
 /**
  * Extracts input variables from an AST.
@@ -103,13 +102,51 @@ export function extractAssignedVariables(ast: ASTNode): string[] {
 }
 
 /**
- * Recursively checks if an AST node contains any variable references (Identifier nodes).
+ * Recursively checks if an AST node references any external variables.
  *
- * Uses the shared collectAllIdentifiers utility to check for any identifiers in the tree.
+ * Scope-aware: for-loop variables and accumulator names are treated as local bindings
+ * and excluded from the check. Only identifiers not bound by an enclosing for-expression
+ * are considered external references.
  *
  * @param node - The AST node to check
- * @returns true if the node or any of its children contain an Identifier
+ * @param boundVars - Set of variable names bound by enclosing scopes
+ * @returns true if the node or any of its children reference an external variable
+ */
+function containsExternalReference(node: ASTNode, boundVars: ReadonlySet<string>): boolean {
+	return visit<boolean>(node, {
+		Program: (n, recurse) => n.statements.some(recurse),
+		NumberLiteral: () => false,
+		StringLiteral: () => false,
+		BooleanLiteral: () => false,
+		Identifier: (n) => !boundVars.has(n.name),
+		ArrayLiteral: (n, recurse) => n.elements.some(recurse),
+		BinaryOp: (n, recurse) => recurse(n.left) || recurse(n.right),
+		UnaryOp: (n, recurse) => recurse(n.argument),
+		FunctionCall: (n, recurse) => n.args.some(recurse),
+		Assignment: (n, recurse) => recurse(n.value),
+		IfExpression: (n, recurse) =>
+			recurse(n.condition) || recurse(n.consequent) || recurse(n.alternate),
+		ForExpression: (n, recurse) => {
+			const innerBound = new Set(boundVars);
+			innerBound.add(n.variable);
+			if (n.accumulator) innerBound.add(n.accumulator.name);
+
+			return (
+				recurse(n.iterable) ||
+				(n.guard ? containsExternalReference(n.guard, innerBound) : false) ||
+				(n.accumulator ? recurse(n.accumulator.initial) : false) ||
+				containsExternalReference(n.body, innerBound)
+			);
+		},
+		IndexAccess: (n, recurse) => recurse(n.object) || recurse(n.index),
+		RangeExpression: (n, recurse) => recurse(n.start) || recurse(n.end),
+	});
+}
+
+/**
+ * Checks if an AST node contains any variable references (Identifier nodes).
+ * Scope-aware: for-loop bindings are not counted as external references.
  */
 function containsVariableReference(node: ASTNode): boolean {
-	return collectAllIdentifiers(node).size > 0;
+	return containsExternalReference(node, new Set());
 }

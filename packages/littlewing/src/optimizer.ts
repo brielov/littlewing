@@ -49,7 +49,7 @@ function eliminateDeadCode(program: Program): Program {
 		}
 
 		if (isAssignment(stmt)) {
-			if (liveVars.has(stmt.name)) {
+			if (liveVars.has(stmt.name) || mightHaveSideEffects(stmt.value)) {
 				keptIndices.push(i);
 				const identifiers = collectAllIdentifiers(stmt.value);
 				for (const id of identifiers) {
@@ -91,6 +91,35 @@ function isLiteral(node: ASTNode): boolean {
 }
 
 /**
+ * Check if a node might have side effects (contains function calls or nested assignments).
+ * Function calls may invoke user-provided functions with side effects.
+ * Nested assignments write to variables as a side effect.
+ */
+function mightHaveSideEffects(node: ASTNode): boolean {
+	return visit<boolean>(node, {
+		Program: (n, recurse) => n.statements.some(recurse),
+		NumberLiteral: () => false,
+		StringLiteral: () => false,
+		BooleanLiteral: () => false,
+		Identifier: () => false,
+		ArrayLiteral: (n, recurse) => n.elements.some(recurse),
+		BinaryOp: (n, recurse) => recurse(n.left) || recurse(n.right),
+		UnaryOp: (n, recurse) => recurse(n.argument),
+		FunctionCall: () => true,
+		Assignment: () => true,
+		IfExpression: (n, recurse) =>
+			recurse(n.condition) || recurse(n.consequent) || recurse(n.alternate),
+		ForExpression: (n, recurse) =>
+			recurse(n.iterable) ||
+			(n.guard ? recurse(n.guard) : false) ||
+			(n.accumulator ? recurse(n.accumulator.initial) : false) ||
+			recurse(n.body),
+		IndexAccess: (n, recurse) => recurse(n.object) || recurse(n.index),
+		RangeExpression: (n, recurse) => recurse(n.start) || recurse(n.end),
+	});
+}
+
+/**
  * Propagate constants by substituting single-assignment literal variables.
  *
  * Only variables that are:
@@ -113,21 +142,22 @@ function propagateConstants(
 		collectForLoopVars(stmt, forLoopVars);
 	}
 
-	// Build map of variables assigned exactly once to a literal value
+	// Count all assignments at every depth to detect nested reassignment
+	const allAssignmentCounts = new Map<string, number>();
+	for (const stmt of statements) {
+		countAssignments(stmt, allAssignmentCounts);
+	}
+
+	// Build map of variables assigned exactly once (globally) to a literal value
 	const knownValues = new Map<string, ASTNode>();
-	const reassigned = new Set<string>();
 
 	for (const stmt of statements) {
 		if (!isAssignment(stmt)) continue;
 		if (externalVariables.has(stmt.name)) continue;
 		if (forLoopVars.has(stmt.name)) continue;
 
-		if (knownValues.has(stmt.name) || reassigned.has(stmt.name)) {
-			// Assigned more than once — unsafe to propagate
-			knownValues.delete(stmt.name);
-			reassigned.add(stmt.name);
-			continue;
-		}
+		const totalCount = allAssignmentCounts.get(stmt.name) ?? 0;
+		if (totalCount > 1) continue;
 
 		if (isLiteral(stmt.value)) {
 			knownValues.set(stmt.name, stmt.value);
@@ -256,6 +286,59 @@ function collectForLoopVars(node: ASTNode, vars: Set<string>): void {
 		ForExpression: (n, recurse) => {
 			vars.add(n.variable);
 			if (n.accumulator) vars.add(n.accumulator.name);
+			recurse(n.iterable);
+			if (n.guard) recurse(n.guard);
+			if (n.accumulator) recurse(n.accumulator.initial);
+			recurse(n.body);
+		},
+		IndexAccess: (n, recurse) => {
+			recurse(n.object);
+			recurse(n.index);
+		},
+		RangeExpression: (n, recurse) => {
+			recurse(n.start);
+			recurse(n.end);
+		},
+	});
+}
+
+/**
+ * Count all assignments at every depth in an AST node.
+ * Used to detect nested reassignment that the top-level scan would miss.
+ */
+function countAssignments(node: ASTNode, counts: Map<string, number>): void {
+	visit<void>(node, {
+		Program: (n, recurse) => {
+			for (const s of n.statements) recurse(s);
+		},
+		NumberLiteral: () => {},
+		StringLiteral: () => {},
+		BooleanLiteral: () => {},
+		ArrayLiteral: (n, recurse) => {
+			for (const e of n.elements) recurse(e);
+		},
+		Identifier: () => {},
+		BinaryOp: (n, recurse) => {
+			recurse(n.left);
+			recurse(n.right);
+		},
+		UnaryOp: (n, recurse) => {
+			recurse(n.argument);
+		},
+		FunctionCall: (n, recurse) => {
+			for (const a of n.args) recurse(a);
+		},
+		Assignment: (n, recurse) => {
+			// TODO: use counts.getOrInsert(n.name, 0) once Map.getOrInsert reaches baseline
+			counts.set(n.name, (counts.get(n.name) ?? 0) + 1);
+			recurse(n.value);
+		},
+		IfExpression: (n, recurse) => {
+			recurse(n.condition);
+			recurse(n.consequent);
+			recurse(n.alternate);
+		},
+		ForExpression: (n, recurse) => {
 			recurse(n.iterable);
 			if (n.guard) recurse(n.guard);
 			if (n.accumulator) recurse(n.accumulator.initial);

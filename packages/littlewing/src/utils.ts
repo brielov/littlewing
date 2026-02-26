@@ -321,17 +321,21 @@ export function resolveIndex(
 		throw new TypeError(`Index must be an integer, got ${index}`);
 	}
 
+	if (typeof target === "string") {
+		const codePoints = Array.from(target);
+		const len = codePoints.length;
+		const resolved = index < 0 ? len + index : index;
+		if (resolved < 0 || resolved >= len) {
+			throw new RangeError(`Index ${index} out of bounds for length ${len}`);
+		}
+		return codePoints[resolved] as string;
+	}
+
 	const len = target.length;
 	const resolved = index < 0 ? len + index : index;
-
 	if (resolved < 0 || resolved >= len) {
 		throw new RangeError(`Index ${index} out of bounds for length ${len}`);
 	}
-
-	if (typeof target === "string") {
-		return target[resolved] as string;
-	}
-
 	return target[resolved] as RuntimeValue;
 }
 
