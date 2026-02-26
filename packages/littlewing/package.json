@@ -1,0 +1,79 @@
+{
+	"name": "littlewing",
+	"version": "2.0.0",
+	"description": "A minimal, high-performance multi-type expression language with lexer, parser, and interpreter. Optimized for browsers with type-safe execution.",
+	"keywords": [
+		"calculator",
+		"evaluation",
+		"expression",
+		"formula",
+		"interpreter",
+		"language",
+		"lexer",
+		"math",
+		"parser",
+		"type-safe"
+	],
+	"homepage": "https://github.com/brielov/littlewing#readme",
+	"bugs": {
+		"url": "https://github.com/brielov/littlewing/issues"
+	},
+	"license": "MIT",
+	"author": "Gabriel Vaquer <brielov@icloud.com>",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/brielov/littlewing.git",
+		"directory": "packages/littlewing"
+	},
+	"funding": {
+		"type": "github",
+		"url": "https://github.com/sponsors/brielov"
+	},
+	"files": [
+		"dist"
+	],
+	"type": "module",
+	"main": "./dist/index.js",
+	"module": "./dist/index.js",
+	"types": "./dist/index.d.ts",
+	"exports": {
+		".": {
+			"import": {
+				"types": "./dist/index.d.ts",
+				"default": "./dist/index.js"
+			}
+		},
+		"./package.json": "./package.json"
+	},
+	"scripts": {
+		"build": "bunup",
+		"dev": "bunup --watch",
+		"test": "bun test",
+		"test:coverage": "bun test --coverage",
+		"test:watch": "bun test --watch",
+		"release": "bumpp --commit --push --tag"
+	},
+	"devDependencies": {
+		"@types/bun": "^1.3.9",
+		"bumpp": "^10.4.1",
+		"bunup": "^0.16.29",
+		"temporal-polyfill": "^0.3.0",
+		"temporal-spec": "^0.3.0",
+		"typescript": "^5.9.3"
+	},
+	"peerDependencies": {
+		"temporal-polyfill": ">=0.3.0",
+		"typescript": ">=4.5.0"
+	},
+	"peerDependenciesMeta": {
+		"temporal-polyfill": {
+			"optional": true
+		},
+		"typescript": {
+			"optional": true
+		}
+	},
+	"engines": {
+		"node": ">=18.0.0"
+	}
+}

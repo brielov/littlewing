@@ -1,0 +1,42 @@
+@import "tailwindcss";
+@import "@fontsource/maple-mono/400.css";
+@import "@fontsource/maple-mono/400-italic.css";
+
+:root {
+	--color-bg: #ffffff;
+	--color-bg-secondary: #efefef;
+	--color-fg: #4d4d4c;
+	--color-fg-muted: #8e908c;
+	--color-border: #d6d6d6;
+	--color-accent: #4271ae;
+	--color-success: #718c00;
+	--color-error: #c82829;
+	--color-warning: #f5871f;
+}
+
+@media (prefers-color-scheme: dark) {
+	:root {
+		--color-bg: #1d1f21;
+		--color-bg-secondary: #282a2e;
+		--color-fg: #c5c8c6;
+		--color-fg-muted: #969896;
+		--color-border: #373b41;
+		--color-accent: #81a2be;
+		--color-success: #b5bd68;
+		--color-error: #cc6666;
+		--color-warning: #de935f;
+	}
+}
+
+html,
+body,
+#root {
+	height: 100%;
+	margin: 0;
+}
+
+body {
+	font-family: "Maple Mono", monospace;
+	background-color: var(--color-bg);
+	color: var(--color-fg);
+}

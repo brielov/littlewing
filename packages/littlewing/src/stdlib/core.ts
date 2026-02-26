@@ -1,0 +1,41 @@
+import type { RuntimeValue } from "../types";
+import { typeOf } from "../utils";
+
+/**
+ * Convert a value to string representation
+ * Supports numbers, booleans, and dates. Arrays throw TypeError.
+ */
+export const STR = (v: RuntimeValue): RuntimeValue => {
+	if (typeof v === "string") return v;
+	if (typeof v === "number") return String(v);
+	if (typeof v === "boolean") return v ? "true" : "false";
+	if (typeof v === "object" && v !== null && "toString" in v && !Array.isArray(v)) {
+		return v.toString();
+	}
+	throw new TypeError(`STR: cannot convert ${typeOf(v)} to string`);
+};
+
+/**
+ * Convert a value to number
+ * Supports strings (via Number()) and booleans (true→1, false→0).
+ * Dates and arrays throw TypeError.
+ */
+export const NUM = (v: RuntimeValue): RuntimeValue => {
+	if (typeof v === "number") return v;
+	if (typeof v === "string") {
+		const n = Number(v);
+		if (Number.isNaN(n)) {
+			throw new TypeError(`NUM: cannot convert string "${v}" to number`);
+		}
+		return n;
+	}
+	if (typeof v === "boolean") return v ? 1 : 0;
+	throw new TypeError(`NUM: cannot convert ${typeOf(v)} to number`);
+};
+
+/**
+ * Returns the type name of a value as a string
+ */
+export const TYPE = (v: RuntimeValue): RuntimeValue => {
+	return typeOf(v);
+};
