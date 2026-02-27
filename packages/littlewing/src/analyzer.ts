@@ -1,6 +1,5 @@
 import type { ASTNode } from "./ast";
-import { isAssignment, isProgram } from "./ast";
-import { visit, visitPartial } from "./visitor";
+import { isAssignment, isProgram, NodeKind } from "./ast";
 
 /**
  * Extracts input variables from an AST.
@@ -57,54 +56,71 @@ export function extractInputVariables(ast: ASTNode): string[] {
 export function extractAssignedVariables(ast: ASTNode): string[] {
 	const seen = new Set<string>();
 	const names: string[] = [];
-
-	visitPartial(
-		ast,
-		{
-			Program: (n, recurse) => {
-				for (const statement of n.statements) {
-					recurse(statement);
-				}
-			},
-			Assignment: (n, recurse) => {
-				if (!seen.has(n.name)) {
-					seen.add(n.name);
-					names.push(n.name);
-				}
-				// Recurse into the value in case of nested assignments
-				recurse(n.value);
-			},
-			IfExpression: (n, recurse) => {
-				recurse(n.condition);
-				recurse(n.consequent);
-				recurse(n.alternate);
-			},
-			ForExpression: (n, recurse) => {
-				recurse(n.iterable);
-				if (n.guard) recurse(n.guard);
-				if (n.accumulator) recurse(n.accumulator.initial);
-				recurse(n.body);
-			},
-			IndexAccess: (n, recurse) => {
-				recurse(n.object);
-				recurse(n.index);
-			},
-			RangeExpression: (n, recurse) => {
-				recurse(n.start);
-				recurse(n.end);
-			},
-			PipeExpression: (n, recurse) => {
-				recurse(n.value);
-				for (const arg of n.args) {
-					recurse(arg);
-				}
-			},
-		},
-		// Default handler: no-op for all other node types
-		() => {},
-	);
-
+	collectAssignedVariables(ast, seen, names);
 	return names;
+}
+
+/**
+ * Walk the AST collecting assignment names in definition order.
+ */
+function collectAssignedVariables(node: ASTNode, seen: Set<string>, names: string[]): void {
+	switch (node.kind) {
+		case NodeKind.Program:
+			for (const statement of node.statements) {
+				collectAssignedVariables(statement, seen, names);
+			}
+			break;
+		case NodeKind.Assignment:
+			if (!seen.has(node.name)) {
+				seen.add(node.name);
+				names.push(node.name);
+			}
+			// Recurse into the value in case of nested assignments
+			collectAssignedVariables(node.value, seen, names);
+			break;
+		case NodeKind.BinaryOp:
+			collectAssignedVariables(node.left, seen, names);
+			collectAssignedVariables(node.right, seen, names);
+			break;
+		case NodeKind.UnaryOp:
+			collectAssignedVariables(node.argument, seen, names);
+			break;
+		case NodeKind.ArrayLiteral:
+			for (const e of node.elements) collectAssignedVariables(e, seen, names);
+			break;
+		case NodeKind.FunctionCall:
+			for (const a of node.args) collectAssignedVariables(a, seen, names);
+			break;
+		case NodeKind.IfExpression:
+			collectAssignedVariables(node.condition, seen, names);
+			collectAssignedVariables(node.consequent, seen, names);
+			collectAssignedVariables(node.alternate, seen, names);
+			break;
+		case NodeKind.ForExpression:
+			collectAssignedVariables(node.iterable, seen, names);
+			if (node.guard) collectAssignedVariables(node.guard, seen, names);
+			if (node.accumulator) collectAssignedVariables(node.accumulator.initial, seen, names);
+			collectAssignedVariables(node.body, seen, names);
+			break;
+		case NodeKind.IndexAccess:
+			collectAssignedVariables(node.object, seen, names);
+			collectAssignedVariables(node.index, seen, names);
+			break;
+		case NodeKind.RangeExpression:
+			collectAssignedVariables(node.start, seen, names);
+			collectAssignedVariables(node.end, seen, names);
+			break;
+		case NodeKind.PipeExpression:
+			collectAssignedVariables(node.value, seen, names);
+			for (const arg of node.args) collectAssignedVariables(arg, seen, names);
+			break;
+		case NodeKind.NumberLiteral:
+		case NodeKind.StringLiteral:
+		case NodeKind.BooleanLiteral:
+		case NodeKind.Identifier:
+		case NodeKind.Placeholder:
+			break;
+	}
 }
 
 /**
@@ -119,36 +135,49 @@ export function extractAssignedVariables(ast: ASTNode): string[] {
  * @returns true if the node or any of its children reference an external variable
  */
 function containsExternalReference(node: ASTNode, boundVars: ReadonlySet<string>): boolean {
-	return visit<boolean>(node, {
-		Program: (n, recurse) => n.statements.some(recurse),
-		NumberLiteral: () => false,
-		StringLiteral: () => false,
-		BooleanLiteral: () => false,
-		Identifier: (n) => !boundVars.has(n.name),
-		ArrayLiteral: (n, recurse) => n.elements.some(recurse),
-		BinaryOp: (n, recurse) => recurse(n.left) || recurse(n.right),
-		UnaryOp: (n, recurse) => recurse(n.argument),
-		FunctionCall: (n, recurse) => n.args.some(recurse),
-		Assignment: (n, recurse) => recurse(n.value),
-		IfExpression: (n, recurse) =>
-			recurse(n.condition) || recurse(n.consequent) || recurse(n.alternate),
-		ForExpression: (n, recurse) => {
+	const recurse = (n: ASTNode): boolean => containsExternalReference(n, boundVars);
+
+	switch (node.kind) {
+		case NodeKind.Program:
+			return node.statements.some(recurse);
+		case NodeKind.Identifier:
+			return !boundVars.has(node.name);
+		case NodeKind.ArrayLiteral:
+			return node.elements.some(recurse);
+		case NodeKind.BinaryOp:
+			return recurse(node.left) || recurse(node.right);
+		case NodeKind.UnaryOp:
+			return recurse(node.argument);
+		case NodeKind.FunctionCall:
+			return node.args.some(recurse);
+		case NodeKind.Assignment:
+			return recurse(node.value);
+		case NodeKind.IfExpression:
+			return recurse(node.condition) || recurse(node.consequent) || recurse(node.alternate);
+		case NodeKind.ForExpression: {
 			const innerBound = new Set(boundVars);
-			innerBound.add(n.variable);
-			if (n.accumulator) innerBound.add(n.accumulator.name);
+			innerBound.add(node.variable);
+			if (node.accumulator) innerBound.add(node.accumulator.name);
 
 			return (
-				recurse(n.iterable) ||
-				(n.guard ? containsExternalReference(n.guard, innerBound) : false) ||
-				(n.accumulator ? recurse(n.accumulator.initial) : false) ||
-				containsExternalReference(n.body, innerBound)
+				recurse(node.iterable) ||
+				(node.guard ? containsExternalReference(node.guard, innerBound) : false) ||
+				(node.accumulator ? recurse(node.accumulator.initial) : false) ||
+				containsExternalReference(node.body, innerBound)
 			);
-		},
-		IndexAccess: (n, recurse) => recurse(n.object) || recurse(n.index),
-		RangeExpression: (n, recurse) => recurse(n.start) || recurse(n.end),
-		PipeExpression: (n, recurse) => recurse(n.value) || n.args.some(recurse),
-		Placeholder: () => false,
-	});
+		}
+		case NodeKind.IndexAccess:
+			return recurse(node.object) || recurse(node.index);
+		case NodeKind.RangeExpression:
+			return recurse(node.start) || recurse(node.end);
+		case NodeKind.PipeExpression:
+			return recurse(node.value) || node.args.some(recurse);
+		case NodeKind.NumberLiteral:
+		case NodeKind.StringLiteral:
+		case NodeKind.BooleanLiteral:
+		case NodeKind.Placeholder:
+			return false;
+	}
 }
 
 /**

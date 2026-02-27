@@ -11,8 +11,6 @@ import {
 	typeOf,
 	validateHomogeneousArray,
 } from "./utils";
-import { visit } from "./visitor";
-
 /**
  * Evaluate an AST node with given context
  */
@@ -22,112 +20,118 @@ function evaluateNode(
 	variables: Map<string, RuntimeValue>,
 	externalVariables: Set<string>,
 ): RuntimeValue {
-	return visit<RuntimeValue>(node, {
-		Program: (n, recurse) => {
+	const recurse = (n: ASTNode): RuntimeValue =>
+		evaluateNode(n, context, variables, externalVariables);
+
+	switch (node.kind) {
+		case NodeKind.Program: {
 			let result: RuntimeValue = 0;
-			for (const statement of n.statements) {
+			for (const statement of node.statements) {
 				result = recurse(statement);
 			}
 			return result;
-		},
+		}
 
-		NumberLiteral: (n) => n.value,
+		case NodeKind.NumberLiteral:
+			return node.value;
 
-		StringLiteral: (n) => n.value,
+		case NodeKind.StringLiteral:
+			return node.value;
 
-		BooleanLiteral: (n) => n.value,
+		case NodeKind.BooleanLiteral:
+			return node.value;
 
-		ArrayLiteral: (n, recurse) => {
-			const elements = n.elements.map(recurse);
+		case NodeKind.ArrayLiteral: {
+			const elements = node.elements.map(recurse);
 			validateHomogeneousArray(elements);
 			return elements;
-		},
+		}
 
-		Identifier: (n) => {
-			const value = variables.get(n.name);
+		case NodeKind.Identifier: {
+			const value = variables.get(node.name);
 			if (value === undefined) {
-				throw new Error(`Undefined variable: ${n.name}`);
+				throw new Error(`Undefined variable: ${node.name}`);
 			}
 			return value;
-		},
+		}
 
-		BinaryOp: (n, recurse) => {
+		case NodeKind.BinaryOp: {
 			// Short-circuit && and ||
-			if (n.operator === "&&") {
-				const left = recurse(n.left);
+			if (node.operator === "&&") {
+				const left = recurse(node.left);
 				assertBoolean(left, "Operator '&&'", "left");
 				if (!left) return false;
-				const right = recurse(n.right);
+				const right = recurse(node.right);
 				assertBoolean(right, "Operator '&&'", "right");
 				return right;
 			}
 
-			if (n.operator === "||") {
-				const left = recurse(n.left);
+			if (node.operator === "||") {
+				const left = recurse(node.left);
 				assertBoolean(left, "Operator '||'", "left");
 				if (left) return true;
-				const right = recurse(n.right);
+				const right = recurse(node.right);
 				assertBoolean(right, "Operator '||'", "right");
 				return right;
 			}
 
-			const left = recurse(n.left);
-			const right = recurse(n.right);
-			return evaluateBinaryOperation(n.operator, left, right);
-		},
+			const left = recurse(node.left);
+			const right = recurse(node.right);
+			return evaluateBinaryOperation(node.operator, left, right);
+		}
 
-		UnaryOp: (n, recurse) => {
-			const arg = recurse(n.argument);
+		case NodeKind.UnaryOp: {
+			const arg = recurse(node.argument);
 
-			if (n.operator === "-") {
+			if (node.operator === "-") {
 				assertNumber(arg, "Operator '-' (unary)");
 				return -arg;
 			}
 
-			if (n.operator === "!") {
+			if (node.operator === "!") {
 				assertBoolean(arg, "Operator '!'");
 				return !arg;
 			}
 
-			throw new Error(`Unknown unary operator: ${String(n.operator)}`);
-		},
+			throw new Error(`Unknown unary operator: ${String(node.operator)}`);
+		}
 
-		FunctionCall: (n, recurse) => {
-			const fn = context.functions?.[n.name];
+		case NodeKind.FunctionCall: {
+			const fn = context.functions?.[node.name];
 			if (fn === undefined) {
-				throw new Error(`Undefined function: ${n.name}`);
+				throw new Error(`Undefined function: ${node.name}`);
 			}
 			if (typeof fn !== "function") {
-				throw new Error(`${n.name} is not a function`);
+				throw new Error(`${node.name} is not a function`);
 			}
 
-			const evaluatedArgs = n.args.map(recurse);
+			const evaluatedArgs = node.args.map(recurse);
 			return fn(...evaluatedArgs);
-		},
+		}
 
-		Assignment: (n, recurse) => {
-			const value = recurse(n.value);
+		case NodeKind.Assignment: {
+			const value = recurse(node.value);
 
-			if (externalVariables.has(n.name)) {
-				const externalValue = variables.get(n.name);
+			if (externalVariables.has(node.name)) {
+				const externalValue = variables.get(node.name);
 				if (externalValue !== undefined) {
 					return externalValue;
 				}
 			}
 
-			variables.set(n.name, value);
+			variables.set(node.name, value);
 			return value;
-		},
+		}
 
-		IfExpression: (n, recurse) => {
-			const condition = recurse(n.condition);
+		case NodeKind.IfExpression: {
+			const condition = recurse(node.condition);
 			assertBoolean(condition, "If condition");
-			return condition ? recurse(n.consequent) : recurse(n.alternate);
-		},
+			return condition ? recurse(node.consequent) : recurse(node.alternate);
+		}
 
-		IndexAccess: (n, recurse) => {
-			const object = recurse(n.object);
-			const index = recurse(n.index);
+		case NodeKind.IndexAccess: {
+			const object = recurse(node.object);
+			const index = recurse(node.index);
 
 			if (Array.isArray(object)) {
 				return resolveIndex(object, index);
@@ -136,37 +140,36 @@ function evaluateNode(
 				return resolveIndex(object, index);
 			}
 			throw new TypeError(`Index access expected array or string, got ${typeOf(object)}`);
-		},
+		}
 
-		RangeExpression: (n, recurse) => {
-			const start = recurse(n.start);
-			const end = recurse(n.end);
+		case NodeKind.RangeExpression: {
+			const start = recurse(node.start);
+			const end = recurse(node.end);
 			assertNumber(start, "Range start");
 			assertNumber(end, "Range end");
-			return buildRange(start, end, n.inclusive);
-		},
+			return buildRange(start, end, node.inclusive);
+		}
 
-		PipeExpression: (n, recurse) => {
-			const pipedValue = recurse(n.value);
-			const fn = context.functions?.[n.name];
+		case NodeKind.PipeExpression: {
+			const pipedValue = recurse(node.value);
+			const fn = context.functions?.[node.name];
 			if (fn === undefined) {
-				throw new Error(`Undefined function: ${n.name}`);
+				throw new Error(`Undefined function: ${node.name}`);
 			}
 			if (typeof fn !== "function") {
-				throw new Error(`${n.name} is not a function`);
+				throw new Error(`${node.name} is not a function`);
 			}
-			const evaluatedArgs = n.args.map((arg) =>
+			const evaluatedArgs = node.args.map((arg) =>
 				arg.kind === NodeKind.Placeholder ? pipedValue : recurse(arg),
 			);
 			return fn(...evaluatedArgs);
-		},
+		}
 
-		Placeholder: () => {
+		case NodeKind.Placeholder:
 			throw new Error("Placeholder outside pipe expression");
-		},
 
-		ForExpression: (n, recurse) => {
-			const iterable = recurse(n.iterable);
+		case NodeKind.ForExpression: {
+			const iterable = recurse(node.iterable);
 
 			let items: readonly RuntimeValue[];
 			if (Array.isArray(iterable)) {
@@ -177,41 +180,41 @@ function evaluateNode(
 				throw new TypeError(`For expression expected array or string, got ${typeOf(iterable)}`);
 			}
 
-			const previousValue = variables.get(n.variable);
-			const hadPreviousValue = variables.has(n.variable);
+			const previousValue = variables.get(node.variable);
+			const hadPreviousValue = variables.has(node.variable);
 
 			const restoreLoopVar = () => {
 				if (hadPreviousValue) {
-					variables.set(n.variable, previousValue as RuntimeValue);
+					variables.set(node.variable, previousValue as RuntimeValue);
 				} else {
-					variables.delete(n.variable);
+					variables.delete(node.variable);
 				}
 			};
 
 			// Accumulator mode: reduce/fold
-			if (n.accumulator) {
-				let acc = recurse(n.accumulator.initial);
-				const prevAcc = variables.get(n.accumulator.name);
-				const hadPrevAcc = variables.has(n.accumulator.name);
+			if (node.accumulator) {
+				let acc = recurse(node.accumulator.initial);
+				const prevAcc = variables.get(node.accumulator.name);
+				const hadPrevAcc = variables.has(node.accumulator.name);
 
 				for (const item of items) {
-					variables.set(n.variable, item);
+					variables.set(node.variable, item);
 
-					if (n.guard) {
-						const guardValue = recurse(n.guard);
+					if (node.guard) {
+						const guardValue = recurse(node.guard);
 						assertBoolean(guardValue, "For guard");
 						if (!guardValue) continue;
 					}
 
-					variables.set(n.accumulator.name, acc);
-					acc = recurse(n.body);
+					variables.set(node.accumulator.name, acc);
+					acc = recurse(node.body);
 				}
 
 				// Restore accumulator variable
 				if (hadPrevAcc) {
-					variables.set(n.accumulator.name, prevAcc as RuntimeValue);
+					variables.set(node.accumulator.name, prevAcc as RuntimeValue);
 				} else {
-					variables.delete(n.accumulator.name);
+					variables.delete(node.accumulator.name);
 				}
 
 				restoreLoopVar();
@@ -221,22 +224,22 @@ function evaluateNode(
 			// Map mode: collect into array
 			const result: RuntimeValue[] = [];
 			for (const item of items) {
-				variables.set(n.variable, item);
+				variables.set(node.variable, item);
 
-				if (n.guard) {
-					const guardValue = recurse(n.guard);
+				if (node.guard) {
+					const guardValue = recurse(node.guard);
 					assertBoolean(guardValue, "For guard");
 					if (!guardValue) continue;
 				}
 
-				result.push(recurse(n.body));
+				result.push(recurse(node.body));
 			}
 
 			restoreLoopVar();
 			validateHomogeneousArray(result);
 			return result;
-		},
-	});
+		}
+	}
 }
 
 /**

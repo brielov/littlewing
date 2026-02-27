@@ -1,4 +1,4 @@
-import { type ASTNode, type RuntimeValue, defaultContext, evaluate, visit } from "littlewing";
+import { type ASTNode, NodeKind, type RuntimeValue, defaultContext, evaluate } from "littlewing";
 import { useEffect, useRef, useState } from "react";
 import type { UseEvaluationReturn } from "./use-evaluation.ts";
 
@@ -503,108 +503,105 @@ interface AstEntry {
 }
 
 function buildAstEntries(node: ASTNode): AstEntry {
-	return visit<AstEntry>(node, {
-		Program: (n, recurse) => ({
-			label: "Program",
-			children: n.statements.map(recurse),
-		}),
-		NumberLiteral: (n) => ({
-			label: "NumberLiteral",
-			value: String(n.value),
-		}),
-		StringLiteral: (n) => ({
-			label: "StringLiteral",
-			value: `"${n.value}"`,
-		}),
-		BooleanLiteral: (n) => ({
-			label: "BooleanLiteral",
-			value: String(n.value),
-		}),
-		ArrayLiteral: (n, recurse) => ({
-			label: "ArrayLiteral",
-			children: n.elements.map(recurse),
-		}),
-		Identifier: (n) => ({
-			label: "Identifier",
-			value: n.name,
-		}),
-		BinaryOp: (n, recurse) => ({
-			label: "BinaryOp",
-			value: n.operator,
-			children: [
-				{ label: "left", children: [recurse(n.left)] },
-				{ label: "right", children: [recurse(n.right)] },
-			],
-		}),
-		UnaryOp: (n, recurse) => ({
-			label: "UnaryOp",
-			value: n.operator,
-			children: [recurse(n.argument)],
-		}),
-		FunctionCall: (n, recurse) => ({
-			label: "FunctionCall",
-			value: n.name,
-			children: n.args.length > 0 ? n.args.map(recurse) : undefined,
-		}),
-		Assignment: (n, recurse) => ({
-			label: "Assignment",
-			value: n.name,
-			children: [recurse(n.value)],
-		}),
-		IfExpression: (n, recurse) => ({
-			label: "IfExpression",
-			children: [
-				{ label: "condition", children: [recurse(n.condition)] },
-				{ label: "consequent", children: [recurse(n.consequent)] },
-				{ label: "alternate", children: [recurse(n.alternate)] },
-			],
-		}),
-		ForExpression: (n, recurse) => ({
-			label: "ForExpression",
-			value: n.variable,
-			children: [
-				{ label: "iterable", children: [recurse(n.iterable)] },
-				...(n.guard ? [{ label: "guard", children: [recurse(n.guard)] }] : []),
-				...(n.accumulator
-					? [
-							{
-								label: "accumulator",
-								value: n.accumulator.name,
-								children: [recurse(n.accumulator.initial)],
-							},
-						]
-					: []),
-				{ label: "body", children: [recurse(n.body)] },
-			],
-		}),
-		IndexAccess: (n, recurse) => ({
-			label: "IndexAccess",
-			children: [
-				{ label: "object", children: [recurse(n.object)] },
-				{ label: "index", children: [recurse(n.index)] },
-			],
-		}),
-		RangeExpression: (n, recurse) => ({
-			label: "RangeExpression",
-			value: n.inclusive ? "..=" : "..",
-			children: [
-				{ label: "start", children: [recurse(n.start)] },
-				{ label: "end", children: [recurse(n.end)] },
-			],
-		}),
-		PipeExpression: (n, recurse) => ({
-			label: "PipeExpression",
-			value: n.name,
-			children: [
-				{ label: "value", children: [recurse(n.value)] },
-				...(n.args.length > 0 ? n.args.map(recurse) : []),
-			],
-		}),
-		Placeholder: () => ({
-			label: "Placeholder",
-			value: "?",
-		}),
-	});
+	const recurse = buildAstEntries;
+
+	switch (node.kind) {
+		case NodeKind.Program:
+			return { label: "Program", children: node.statements.map(recurse) };
+		case NodeKind.NumberLiteral:
+			return { label: "NumberLiteral", value: String(node.value) };
+		case NodeKind.StringLiteral:
+			return { label: "StringLiteral", value: `"${node.value}"` };
+		case NodeKind.BooleanLiteral:
+			return { label: "BooleanLiteral", value: String(node.value) };
+		case NodeKind.ArrayLiteral:
+			return { label: "ArrayLiteral", children: node.elements.map(recurse) };
+		case NodeKind.Identifier:
+			return { label: "Identifier", value: node.name };
+		case NodeKind.BinaryOp:
+			return {
+				label: "BinaryOp",
+				value: node.operator,
+				children: [
+					{ label: "left", children: [recurse(node.left)] },
+					{ label: "right", children: [recurse(node.right)] },
+				],
+			};
+		case NodeKind.UnaryOp:
+			return {
+				label: "UnaryOp",
+				value: node.operator,
+				children: [recurse(node.argument)],
+			};
+		case NodeKind.FunctionCall:
+			return {
+				label: "FunctionCall",
+				value: node.name,
+				children: node.args.length > 0 ? node.args.map(recurse) : undefined,
+			};
+		case NodeKind.Assignment:
+			return {
+				label: "Assignment",
+				value: node.name,
+				children: [recurse(node.value)],
+			};
+		case NodeKind.IfExpression:
+			return {
+				label: "IfExpression",
+				children: [
+					{ label: "condition", children: [recurse(node.condition)] },
+					{ label: "consequent", children: [recurse(node.consequent)] },
+					{ label: "alternate", children: [recurse(node.alternate)] },
+				],
+			};
+		case NodeKind.ForExpression:
+			return {
+				label: "ForExpression",
+				value: node.variable,
+				children: [
+					{ label: "iterable", children: [recurse(node.iterable)] },
+					...(node.guard ? [{ label: "guard", children: [recurse(node.guard)] }] : []),
+					...(node.accumulator
+						? [
+								{
+									label: "accumulator",
+									value: node.accumulator.name,
+									children: [recurse(node.accumulator.initial)],
+								},
+							]
+						: []),
+					{ label: "body", children: [recurse(node.body)] },
+				],
+			};
+		case NodeKind.IndexAccess:
+			return {
+				label: "IndexAccess",
+				children: [
+					{ label: "object", children: [recurse(node.object)] },
+					{ label: "index", children: [recurse(node.index)] },
+				],
+			};
+		case NodeKind.RangeExpression:
+			return {
+				label: "RangeExpression",
+				value: node.inclusive ? "..=" : "..",
+				children: [
+					{ label: "start", children: [recurse(node.start)] },
+					{ label: "end", children: [recurse(node.end)] },
+				],
+			};
+		case NodeKind.PipeExpression:
+			return {
+				label: "PipeExpression",
+				value: node.name,
+				children: [
+					{ label: "value", children: [recurse(node.value)] },
+					...(node.args.length > 0 ? node.args.map(recurse) : []),
+				],
+			};
+		case NodeKind.Placeholder:
+			return { label: "Placeholder", value: "?" };
+	}
 }
 
 function AstNode({ node }: { node: ASTNode }) {

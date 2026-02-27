@@ -7,10 +7,10 @@ import {
 	isNumberLiteral,
 	isProgram,
 	isStringLiteral,
+	NodeKind,
 	type Program,
 } from "./ast";
 import { buildRange, collectAllIdentifiers, evaluateBinaryOperation, resolveIndex } from "./utils";
-import { visit } from "./visitor";
 
 /**
  * Copy leadingComments and trailingComments from original node to replacement node when present.
@@ -94,31 +94,47 @@ function isLiteral(node: ASTNode): boolean {
  * Check if a node might have side effects (contains function calls or nested assignments).
  * Function calls may invoke user-provided functions with side effects.
  * Nested assignments write to variables as a side effect.
+ *
+ * Uses direct recursion with switch dispatch to avoid visitor object and closure allocation.
  */
 function mightHaveSideEffects(node: ASTNode): boolean {
-	return visit<boolean>(node, {
-		Program: (n, recurse) => n.statements.some(recurse),
-		NumberLiteral: () => false,
-		StringLiteral: () => false,
-		BooleanLiteral: () => false,
-		Identifier: () => false,
-		ArrayLiteral: (n, recurse) => n.elements.some(recurse),
-		BinaryOp: (n, recurse) => recurse(n.left) || recurse(n.right),
-		UnaryOp: (n, recurse) => recurse(n.argument),
-		FunctionCall: () => true,
-		PipeExpression: () => true,
-		Placeholder: () => false,
-		Assignment: () => true,
-		IfExpression: (n, recurse) =>
-			recurse(n.condition) || recurse(n.consequent) || recurse(n.alternate),
-		ForExpression: (n, recurse) =>
-			recurse(n.iterable) ||
-			(n.guard ? recurse(n.guard) : false) ||
-			(n.accumulator ? recurse(n.accumulator.initial) : false) ||
-			recurse(n.body),
-		IndexAccess: (n, recurse) => recurse(n.object) || recurse(n.index),
-		RangeExpression: (n, recurse) => recurse(n.start) || recurse(n.end),
-	});
+	switch (node.kind) {
+		case NodeKind.Program:
+			return node.statements.some(mightHaveSideEffects);
+		case NodeKind.ArrayLiteral:
+			return node.elements.some(mightHaveSideEffects);
+		case NodeKind.BinaryOp:
+			return mightHaveSideEffects(node.left) || mightHaveSideEffects(node.right);
+		case NodeKind.UnaryOp:
+			return mightHaveSideEffects(node.argument);
+		case NodeKind.IfExpression:
+			return (
+				mightHaveSideEffects(node.condition) ||
+				mightHaveSideEffects(node.consequent) ||
+				mightHaveSideEffects(node.alternate)
+			);
+		case NodeKind.ForExpression:
+			return (
+				mightHaveSideEffects(node.iterable) ||
+				(node.guard !== null && mightHaveSideEffects(node.guard)) ||
+				(node.accumulator !== null && mightHaveSideEffects(node.accumulator.initial)) ||
+				mightHaveSideEffects(node.body)
+			);
+		case NodeKind.IndexAccess:
+			return mightHaveSideEffects(node.object) || mightHaveSideEffects(node.index);
+		case NodeKind.RangeExpression:
+			return mightHaveSideEffects(node.start) || mightHaveSideEffects(node.end);
+		case NodeKind.FunctionCall:
+		case NodeKind.PipeExpression:
+		case NodeKind.Assignment:
+			return true;
+		case NodeKind.NumberLiteral:
+		case NodeKind.StringLiteral:
+		case NodeKind.BooleanLiteral:
+		case NodeKind.Identifier:
+		case NodeKind.Placeholder:
+			return false;
+	}
 }
 
 /**
@@ -202,229 +218,300 @@ function propagateConstants(
  * Collect all identifier names referenced (read) in an AST node.
  * Unlike `collectAllIdentifiers` from utils, this does NOT collect
  * assignment LHS names — only identifiers used in expressions.
+ *
+ * Uses direct recursion with switch dispatch to avoid visitor object and closure allocation.
  */
 function collectReferencedIdentifiers(node: ASTNode, ids: Set<string>): void {
-	visit<void>(node, {
-		Program: (n, recurse) => {
-			for (const s of n.statements) recurse(s);
-		},
-		NumberLiteral: () => {},
-		StringLiteral: () => {},
-		BooleanLiteral: () => {},
-		ArrayLiteral: (n, recurse) => {
-			for (const e of n.elements) recurse(e);
-		},
-		Identifier: (n) => {
-			ids.add(n.name);
-		},
-		BinaryOp: (n, recurse) => {
-			recurse(n.left);
-			recurse(n.right);
-		},
-		UnaryOp: (n, recurse) => {
-			recurse(n.argument);
-		},
-		FunctionCall: (n, recurse) => {
-			for (const a of n.args) recurse(a);
-		},
-		Assignment: (n, recurse) => {
-			recurse(n.value);
-		},
-		IfExpression: (n, recurse) => {
-			recurse(n.condition);
-			recurse(n.consequent);
-			recurse(n.alternate);
-		},
-		ForExpression: (n, recurse) => {
-			recurse(n.iterable);
-			if (n.guard) recurse(n.guard);
-			if (n.accumulator) recurse(n.accumulator.initial);
-			recurse(n.body);
-		},
-		IndexAccess: (n, recurse) => {
-			recurse(n.object);
-			recurse(n.index);
-		},
-		RangeExpression: (n, recurse) => {
-			recurse(n.start);
-			recurse(n.end);
-		},
-		PipeExpression: (n, recurse) => {
-			recurse(n.value);
-			for (const a of n.args) recurse(a);
-		},
-		Placeholder: () => {},
-	});
+	switch (node.kind) {
+		case NodeKind.Program:
+			for (const s of node.statements) collectReferencedIdentifiers(s, ids);
+			break;
+		case NodeKind.Identifier:
+			ids.add(node.name);
+			break;
+		case NodeKind.ArrayLiteral:
+			for (const e of node.elements) collectReferencedIdentifiers(e, ids);
+			break;
+		case NodeKind.BinaryOp:
+			collectReferencedIdentifiers(node.left, ids);
+			collectReferencedIdentifiers(node.right, ids);
+			break;
+		case NodeKind.UnaryOp:
+			collectReferencedIdentifiers(node.argument, ids);
+			break;
+		case NodeKind.FunctionCall:
+			for (const a of node.args) collectReferencedIdentifiers(a, ids);
+			break;
+		case NodeKind.Assignment:
+			collectReferencedIdentifiers(node.value, ids);
+			break;
+		case NodeKind.IfExpression:
+			collectReferencedIdentifiers(node.condition, ids);
+			collectReferencedIdentifiers(node.consequent, ids);
+			collectReferencedIdentifiers(node.alternate, ids);
+			break;
+		case NodeKind.ForExpression:
+			collectReferencedIdentifiers(node.iterable, ids);
+			if (node.guard) collectReferencedIdentifiers(node.guard, ids);
+			if (node.accumulator) collectReferencedIdentifiers(node.accumulator.initial, ids);
+			collectReferencedIdentifiers(node.body, ids);
+			break;
+		case NodeKind.IndexAccess:
+			collectReferencedIdentifiers(node.object, ids);
+			collectReferencedIdentifiers(node.index, ids);
+			break;
+		case NodeKind.RangeExpression:
+			collectReferencedIdentifiers(node.start, ids);
+			collectReferencedIdentifiers(node.end, ids);
+			break;
+		case NodeKind.PipeExpression:
+			collectReferencedIdentifiers(node.value, ids);
+			for (const a of node.args) collectReferencedIdentifiers(a, ids);
+			break;
+		case NodeKind.NumberLiteral:
+		case NodeKind.StringLiteral:
+		case NodeKind.BooleanLiteral:
+		case NodeKind.Placeholder:
+			break;
+	}
 }
 
 /**
  * Collect all `for` loop variable names from an AST node (recursive).
+ *
+ * Uses direct recursion with switch dispatch to avoid visitor object and closure allocation.
  */
 function collectForLoopVars(node: ASTNode, vars: Set<string>): void {
-	visit<void>(node, {
-		Program: (n, recurse) => {
-			for (const s of n.statements) recurse(s);
-		},
-		NumberLiteral: () => {},
-		StringLiteral: () => {},
-		BooleanLiteral: () => {},
-		ArrayLiteral: (n, recurse) => {
-			for (const e of n.elements) recurse(e);
-		},
-		Identifier: () => {},
-		BinaryOp: (n, recurse) => {
-			recurse(n.left);
-			recurse(n.right);
-		},
-		UnaryOp: (n, recurse) => {
-			recurse(n.argument);
-		},
-		FunctionCall: (n, recurse) => {
-			for (const a of n.args) recurse(a);
-		},
-		Assignment: (n, recurse) => {
-			recurse(n.value);
-		},
-		IfExpression: (n, recurse) => {
-			recurse(n.condition);
-			recurse(n.consequent);
-			recurse(n.alternate);
-		},
-		ForExpression: (n, recurse) => {
-			vars.add(n.variable);
-			if (n.accumulator) vars.add(n.accumulator.name);
-			recurse(n.iterable);
-			if (n.guard) recurse(n.guard);
-			if (n.accumulator) recurse(n.accumulator.initial);
-			recurse(n.body);
-		},
-		IndexAccess: (n, recurse) => {
-			recurse(n.object);
-			recurse(n.index);
-		},
-		RangeExpression: (n, recurse) => {
-			recurse(n.start);
-			recurse(n.end);
-		},
-		PipeExpression: (n, recurse) => {
-			recurse(n.value);
-			for (const a of n.args) recurse(a);
-		},
-		Placeholder: () => {},
-	});
+	switch (node.kind) {
+		case NodeKind.Program:
+			for (const s of node.statements) collectForLoopVars(s, vars);
+			break;
+		case NodeKind.ArrayLiteral:
+			for (const e of node.elements) collectForLoopVars(e, vars);
+			break;
+		case NodeKind.BinaryOp:
+			collectForLoopVars(node.left, vars);
+			collectForLoopVars(node.right, vars);
+			break;
+		case NodeKind.UnaryOp:
+			collectForLoopVars(node.argument, vars);
+			break;
+		case NodeKind.FunctionCall:
+			for (const a of node.args) collectForLoopVars(a, vars);
+			break;
+		case NodeKind.Assignment:
+			collectForLoopVars(node.value, vars);
+			break;
+		case NodeKind.IfExpression:
+			collectForLoopVars(node.condition, vars);
+			collectForLoopVars(node.consequent, vars);
+			collectForLoopVars(node.alternate, vars);
+			break;
+		case NodeKind.ForExpression:
+			vars.add(node.variable);
+			if (node.accumulator) vars.add(node.accumulator.name);
+			collectForLoopVars(node.iterable, vars);
+			if (node.guard) collectForLoopVars(node.guard, vars);
+			if (node.accumulator) collectForLoopVars(node.accumulator.initial, vars);
+			collectForLoopVars(node.body, vars);
+			break;
+		case NodeKind.IndexAccess:
+			collectForLoopVars(node.object, vars);
+			collectForLoopVars(node.index, vars);
+			break;
+		case NodeKind.RangeExpression:
+			collectForLoopVars(node.start, vars);
+			collectForLoopVars(node.end, vars);
+			break;
+		case NodeKind.PipeExpression:
+			collectForLoopVars(node.value, vars);
+			for (const a of node.args) collectForLoopVars(a, vars);
+			break;
+		case NodeKind.NumberLiteral:
+		case NodeKind.StringLiteral:
+		case NodeKind.BooleanLiteral:
+		case NodeKind.Identifier:
+		case NodeKind.Placeholder:
+			break;
+	}
 }
 
 /**
  * Count all assignments at every depth in an AST node.
  * Used to detect nested reassignment that the top-level scan would miss.
+ *
+ * Uses direct recursion with switch dispatch to avoid visitor object and closure allocation.
  */
 function countAssignments(node: ASTNode, counts: Map<string, number>): void {
-	visit<void>(node, {
-		Program: (n, recurse) => {
-			for (const s of n.statements) recurse(s);
-		},
-		NumberLiteral: () => {},
-		StringLiteral: () => {},
-		BooleanLiteral: () => {},
-		ArrayLiteral: (n, recurse) => {
-			for (const e of n.elements) recurse(e);
-		},
-		Identifier: () => {},
-		BinaryOp: (n, recurse) => {
-			recurse(n.left);
-			recurse(n.right);
-		},
-		UnaryOp: (n, recurse) => {
-			recurse(n.argument);
-		},
-		FunctionCall: (n, recurse) => {
-			for (const a of n.args) recurse(a);
-		},
-		Assignment: (n, recurse) => {
-			// TODO: use counts.getOrInsert(n.name, 0) once Map.getOrInsert reaches baseline
-			counts.set(n.name, (counts.get(n.name) ?? 0) + 1);
-			recurse(n.value);
-		},
-		IfExpression: (n, recurse) => {
-			recurse(n.condition);
-			recurse(n.consequent);
-			recurse(n.alternate);
-		},
-		ForExpression: (n, recurse) => {
-			recurse(n.iterable);
-			if (n.guard) recurse(n.guard);
-			if (n.accumulator) recurse(n.accumulator.initial);
-			recurse(n.body);
-		},
-		IndexAccess: (n, recurse) => {
-			recurse(n.object);
-			recurse(n.index);
-		},
-		RangeExpression: (n, recurse) => {
-			recurse(n.start);
-			recurse(n.end);
-		},
-		PipeExpression: (n, recurse) => {
-			recurse(n.value);
-			for (const a of n.args) recurse(a);
-		},
-		Placeholder: () => {},
-	});
+	switch (node.kind) {
+		case NodeKind.Program:
+			for (const s of node.statements) countAssignments(s, counts);
+			break;
+		case NodeKind.Assignment:
+			counts.set(node.name, (counts.get(node.name) ?? 0) + 1);
+			countAssignments(node.value, counts);
+			break;
+		case NodeKind.ArrayLiteral:
+			for (const e of node.elements) countAssignments(e, counts);
+			break;
+		case NodeKind.BinaryOp:
+			countAssignments(node.left, counts);
+			countAssignments(node.right, counts);
+			break;
+		case NodeKind.UnaryOp:
+			countAssignments(node.argument, counts);
+			break;
+		case NodeKind.FunctionCall:
+			for (const a of node.args) countAssignments(a, counts);
+			break;
+		case NodeKind.IfExpression:
+			countAssignments(node.condition, counts);
+			countAssignments(node.consequent, counts);
+			countAssignments(node.alternate, counts);
+			break;
+		case NodeKind.ForExpression:
+			countAssignments(node.iterable, counts);
+			if (node.guard) countAssignments(node.guard, counts);
+			if (node.accumulator) countAssignments(node.accumulator.initial, counts);
+			countAssignments(node.body, counts);
+			break;
+		case NodeKind.IndexAccess:
+			countAssignments(node.object, counts);
+			countAssignments(node.index, counts);
+			break;
+		case NodeKind.RangeExpression:
+			countAssignments(node.start, counts);
+			countAssignments(node.end, counts);
+			break;
+		case NodeKind.PipeExpression:
+			countAssignments(node.value, counts);
+			for (const a of node.args) countAssignments(a, counts);
+			break;
+		case NodeKind.NumberLiteral:
+		case NodeKind.StringLiteral:
+		case NodeKind.BooleanLiteral:
+		case NodeKind.Identifier:
+		case NodeKind.Placeholder:
+			break;
+	}
+}
+
+/**
+ * Returns true if all elements in original and mapped are reference-equal.
+ * Used to detect when a recursive map produced no changes, enabling identity return.
+ */
+function unchangedArray(original: readonly ASTNode[], mapped: readonly ASTNode[]): boolean {
+	for (let i = 0; i < original.length; i++) {
+		if (original[i] !== mapped[i]) return false;
+	}
+	return true;
 }
 
 /**
  * Replace Identifier nodes whose names are in `knownValues` with their literal values.
+ * Returns the original node unchanged when no substitution occurs (identity optimization).
  */
 function substituteIdentifiers(node: ASTNode, knownValues: ReadonlyMap<string, ASTNode>): ASTNode {
-	return visit<ASTNode>(node, {
-		Program: (n, recurse) => {
-			const result = ast.program(n.statements.map(recurse));
-			if (n.trailingComments && n.trailingComments.length > 0) {
-				return { ...result, trailingComments: n.trailingComments };
+	const recurse = (n: ASTNode): ASTNode => substituteIdentifiers(n, knownValues);
+
+	switch (node.kind) {
+		case NodeKind.Program: {
+			const stmts = node.statements.map(recurse);
+			if (unchangedArray(node.statements, stmts)) return node;
+			const result = ast.program(stmts);
+			if (node.trailingComments && node.trailingComments.length > 0) {
+				return { ...result, trailingComments: node.trailingComments };
 			}
 			return result;
-		},
-		NumberLiteral: (n) => n,
-		StringLiteral: (n) => n,
-		BooleanLiteral: (n) => n,
-		ArrayLiteral: (n, recurse) => preserveComments(n, ast.array(n.elements.map(recurse))),
-		Identifier: (n) => {
-			const replacement = knownValues.get(n.name);
-			return replacement ? preserveComments(n, replacement) : n;
-		},
-		BinaryOp: (n, recurse) =>
-			preserveComments(n, ast.binaryOp(recurse(n.left), n.operator, recurse(n.right))),
-		UnaryOp: (n, recurse) => preserveComments(n, ast.unaryOp(n.operator, recurse(n.argument))),
-		FunctionCall: (n, recurse) =>
-			preserveComments(n, ast.functionCall(n.name, n.args.map(recurse))),
-		Assignment: (n, recurse) => preserveComments(n, ast.assign(n.name, recurse(n.value))),
-		IfExpression: (n, recurse) =>
-			preserveComments(
-				n,
-				ast.ifExpr(recurse(n.condition), recurse(n.consequent), recurse(n.alternate)),
-			),
-		ForExpression: (n, recurse) => {
+		}
+		case NodeKind.NumberLiteral:
+		case NodeKind.StringLiteral:
+		case NodeKind.BooleanLiteral:
+		case NodeKind.Placeholder:
+			return node;
+		case NodeKind.ArrayLiteral: {
+			const elements = node.elements.map(recurse);
+			if (unchangedArray(node.elements, elements)) return node;
+			return preserveComments(node, ast.array(elements));
+		}
+		case NodeKind.Identifier: {
+			const replacement = knownValues.get(node.name);
+			return replacement ? preserveComments(node, replacement) : node;
+		}
+		case NodeKind.BinaryOp: {
+			const left = recurse(node.left);
+			const right = recurse(node.right);
+			if (left === node.left && right === node.right) return node;
+			return preserveComments(node, ast.binaryOp(left, node.operator, right));
+		}
+		case NodeKind.UnaryOp: {
+			const argument = recurse(node.argument);
+			if (argument === node.argument) return node;
+			return preserveComments(node, ast.unaryOp(node.operator, argument));
+		}
+		case NodeKind.FunctionCall: {
+			const args = node.args.map(recurse);
+			if (unchangedArray(node.args, args)) return node;
+			return preserveComments(node, ast.functionCall(node.name, args));
+		}
+		case NodeKind.Assignment: {
+			const value = recurse(node.value);
+			if (value === node.value) return node;
+			return preserveComments(node, ast.assign(node.name, value));
+		}
+		case NodeKind.IfExpression: {
+			const condition = recurse(node.condition);
+			const consequent = recurse(node.consequent);
+			const alternate = recurse(node.alternate);
+			if (
+				condition === node.condition &&
+				consequent === node.consequent &&
+				alternate === node.alternate
+			)
+				return node;
+			return preserveComments(node, ast.ifExpr(condition, consequent, alternate));
+		}
+		case NodeKind.ForExpression: {
 			// Do not substitute the loop variable or accumulator name inside for body/guard
 			const innerKnown = new Map(knownValues);
-			innerKnown.delete(n.variable);
-			if (n.accumulator) innerKnown.delete(n.accumulator.name);
-			const iterable = recurse(n.iterable);
-			const guard = n.guard ? substituteIdentifiers(n.guard, innerKnown) : null;
+			innerKnown.delete(node.variable);
+			if (node.accumulator) innerKnown.delete(node.accumulator.name);
+			const iterable = recurse(node.iterable);
+			const guard = node.guard ? substituteIdentifiers(node.guard, innerKnown) : null;
 			// Accumulator initial is evaluated in outer scope, so use outer knownValues
-			const accumulator = n.accumulator
-				? { name: n.accumulator.name, initial: recurse(n.accumulator.initial) }
+			const initial = node.accumulator ? recurse(node.accumulator.initial) : null;
+			const body = substituteIdentifiers(node.body, innerKnown);
+			if (
+				iterable === node.iterable &&
+				guard === node.guard &&
+				(node.accumulator === null || initial === node.accumulator.initial) &&
+				body === node.body
+			)
+				return node;
+			const accumulator = node.accumulator
+				? { name: node.accumulator.name, initial: initial as ASTNode }
 				: null;
-			const body = substituteIdentifiers(n.body, innerKnown);
-			return preserveComments(n, ast.forExpr(n.variable, iterable, guard, accumulator, body));
-		},
-		IndexAccess: (n, recurse) =>
-			preserveComments(n, ast.indexAccess(recurse(n.object), recurse(n.index))),
-		RangeExpression: (n, recurse) =>
-			preserveComments(n, ast.rangeExpr(recurse(n.start), recurse(n.end), n.inclusive)),
-		PipeExpression: (n, recurse) =>
-			preserveComments(n, ast.pipeExpr(recurse(n.value), n.name, n.args.map(recurse))),
-		Placeholder: (n) => n,
-	});
+			return preserveComments(node, ast.forExpr(node.variable, iterable, guard, accumulator, body));
+		}
+		case NodeKind.IndexAccess: {
+			const object = recurse(node.object);
+			const index = recurse(node.index);
+			if (object === node.object && index === node.index) return node;
+			return preserveComments(node, ast.indexAccess(object, index));
+		}
+		case NodeKind.RangeExpression: {
+			const start = recurse(node.start);
+			const end = recurse(node.end);
+			if (start === node.start && end === node.end) return node;
+			return preserveComments(node, ast.rangeExpr(start, end, node.inclusive));
+		}
+		case NodeKind.PipeExpression: {
+			const value = recurse(node.value);
+			const args = node.args.map(recurse);
+			if (value === node.value && unchangedArray(node.args, args)) return node;
+			return preserveComments(node, ast.pipeExpr(value, node.name, args));
+		}
+	}
 }
 
 /**
@@ -469,121 +556,160 @@ export function optimize(node: ASTNode, externalVariables?: ReadonlySet<string>)
 
 /**
  * Constant-fold an AST node, evaluating pure expressions at compile time.
+ * Returns the original node unchanged when no folding occurs (identity optimization).
  */
 function fold(node: ASTNode): ASTNode {
-	return visit<ASTNode>(node, {
-		NumberLiteral: (n) => n,
-		StringLiteral: (n) => n,
-		BooleanLiteral: (n) => n,
+	const recurse = fold;
 
-		ArrayLiteral: (n, recurse) => {
-			const elements = n.elements.map(recurse);
-			return preserveComments(n, ast.array(elements));
-		},
+	switch (node.kind) {
+		case NodeKind.NumberLiteral:
+		case NodeKind.StringLiteral:
+		case NodeKind.BooleanLiteral:
+		case NodeKind.Identifier:
+		case NodeKind.Placeholder:
+			return node;
 
-		Identifier: (n) => n,
+		case NodeKind.Program: {
+			const optimizedStatements = node.statements.map(recurse);
+			if (unchangedArray(node.statements, optimizedStatements)) return node;
+			const result = ast.program(optimizedStatements);
+			if (node.trailingComments && node.trailingComments.length > 0) {
+				return { ...result, trailingComments: node.trailingComments };
+			}
+			return result;
+		}
 
-		BinaryOp: (n, recurse) => {
-			const left = recurse(n.left);
-			const right = recurse(n.right);
+		case NodeKind.ArrayLiteral: {
+			const elements = node.elements.map(recurse);
+			if (unchangedArray(node.elements, elements)) return node;
+			return preserveComments(node, ast.array(elements));
+		}
+
+		case NodeKind.BinaryOp: {
+			const left = recurse(node.left);
+			const right = recurse(node.right);
 
 			// Both sides are number literals: fold arithmetic and comparison
 			if (isNumberLiteral(left) && isNumberLiteral(right)) {
-				const result = evaluateBinaryOperation(n.operator, left.value, right.value);
-				if (typeof result === "number") return preserveComments(n, ast.number(result));
-				if (typeof result === "boolean") return preserveComments(n, ast.boolean(result));
+				const result = evaluateBinaryOperation(node.operator, left.value, right.value);
+				if (typeof result === "number") return preserveComments(node, ast.number(result));
+				if (typeof result === "boolean") return preserveComments(node, ast.boolean(result));
 			}
 
 			// Both sides are string literals
 			if (isStringLiteral(left) && isStringLiteral(right)) {
-				if (n.operator === "+") return preserveComments(n, ast.string(left.value + right.value));
+				if (node.operator === "+")
+					return preserveComments(node, ast.string(left.value + right.value));
 				if (
-					n.operator === "<" ||
-					n.operator === ">" ||
-					n.operator === "<=" ||
-					n.operator === ">="
+					node.operator === "<" ||
+					node.operator === ">" ||
+					node.operator === "<=" ||
+					node.operator === ">="
 				) {
-					const result = evaluateBinaryOperation(n.operator, left.value, right.value);
-					return preserveComments(n, ast.boolean(result as boolean));
+					const result = evaluateBinaryOperation(node.operator, left.value, right.value);
+					return preserveComments(node, ast.boolean(result as boolean));
 				}
-				if (n.operator === "==")
-					return preserveComments(n, ast.boolean(left.value === right.value));
-				if (n.operator === "!=")
-					return preserveComments(n, ast.boolean(left.value !== right.value));
+				if (node.operator === "==")
+					return preserveComments(node, ast.boolean(left.value === right.value));
+				if (node.operator === "!=")
+					return preserveComments(node, ast.boolean(left.value !== right.value));
 			}
 
 			// Both sides are boolean literals
 			if (isBooleanLiteral(left) && isBooleanLiteral(right)) {
-				if (n.operator === "&&") return preserveComments(n, ast.boolean(left.value && right.value));
-				if (n.operator === "||") return preserveComments(n, ast.boolean(left.value || right.value));
-				if (n.operator === "==")
-					return preserveComments(n, ast.boolean(left.value === right.value));
-				if (n.operator === "!=")
-					return preserveComments(n, ast.boolean(left.value !== right.value));
+				if (node.operator === "&&")
+					return preserveComments(node, ast.boolean(left.value && right.value));
+				if (node.operator === "||")
+					return preserveComments(node, ast.boolean(left.value || right.value));
+				if (node.operator === "==")
+					return preserveComments(node, ast.boolean(left.value === right.value));
+				if (node.operator === "!=")
+					return preserveComments(node, ast.boolean(left.value !== right.value));
 			}
 
 			// Cross-type literal pairs: == is false, != is true
 			if (isLiteral(left) && isLiteral(right)) {
 				// Different types (we've already handled same-type above)
 				if (left.kind !== right.kind) {
-					if (n.operator === "==") return preserveComments(n, ast.boolean(false));
-					if (n.operator === "!=") return preserveComments(n, ast.boolean(true));
+					if (node.operator === "==") return preserveComments(node, ast.boolean(false));
+					if (node.operator === "!=") return preserveComments(node, ast.boolean(true));
 				}
 			}
 
-			return preserveComments(n, ast.binaryOp(left, n.operator, right));
-		},
+			if (left === node.left && right === node.right) return node;
+			return preserveComments(node, ast.binaryOp(left, node.operator, right));
+		}
 
-		UnaryOp: (n, recurse) => {
-			const argument = recurse(n.argument);
+		case NodeKind.UnaryOp: {
+			const argument = recurse(node.argument);
 
-			if (n.operator === "-" && isNumberLiteral(argument)) {
-				return preserveComments(n, ast.number(-argument.value));
+			if (node.operator === "-" && isNumberLiteral(argument)) {
+				return preserveComments(node, ast.number(-argument.value));
 			}
 
-			if (n.operator === "!" && isBooleanLiteral(argument)) {
-				return preserveComments(n, ast.boolean(!argument.value));
+			if (node.operator === "!" && isBooleanLiteral(argument)) {
+				return preserveComments(node, ast.boolean(!argument.value));
 			}
 
-			return preserveComments(n, ast.unaryOp(n.operator, argument));
-		},
+			if (argument === node.argument) return node;
+			return preserveComments(node, ast.unaryOp(node.operator, argument));
+		}
 
-		FunctionCall: (n, recurse) => {
-			const optimizedArgs = n.args.map(recurse);
-			return preserveComments(n, ast.functionCall(n.name, optimizedArgs));
-		},
+		case NodeKind.FunctionCall: {
+			const optimizedArgs = node.args.map(recurse);
+			if (unchangedArray(node.args, optimizedArgs)) return node;
+			return preserveComments(node, ast.functionCall(node.name, optimizedArgs));
+		}
 
-		Assignment: (n, recurse) => {
-			return preserveComments(n, ast.assign(n.name, recurse(n.value)));
-		},
+		case NodeKind.Assignment: {
+			const value = recurse(node.value);
+			if (value === node.value) return node;
+			return preserveComments(node, ast.assign(node.name, value));
+		}
 
-		IfExpression: (n, recurse) => {
-			const condition = recurse(n.condition);
+		case NodeKind.IfExpression: {
+			const condition = recurse(node.condition);
 
 			if (isBooleanLiteral(condition)) {
-				const result = condition.value ? recurse(n.consequent) : recurse(n.alternate);
-				return preserveComments(n, result);
+				const result = condition.value ? recurse(node.consequent) : recurse(node.alternate);
+				return preserveComments(node, result);
 			}
 
-			const consequent = recurse(n.consequent);
-			const alternate = recurse(n.alternate);
+			const consequent = recurse(node.consequent);
+			const alternate = recurse(node.alternate);
 
-			return preserveComments(n, ast.ifExpr(condition, consequent, alternate));
-		},
+			if (
+				condition === node.condition &&
+				consequent === node.consequent &&
+				alternate === node.alternate
+			)
+				return node;
+			return preserveComments(node, ast.ifExpr(condition, consequent, alternate));
+		}
 
-		ForExpression: (n, recurse) => {
-			const iterable = recurse(n.iterable);
-			const guard = n.guard ? recurse(n.guard) : null;
-			const accumulator = n.accumulator
-				? { name: n.accumulator.name, initial: recurse(n.accumulator.initial) }
+		case NodeKind.ForExpression: {
+			const iterable = recurse(node.iterable);
+			const guard = node.guard ? recurse(node.guard) : null;
+			const initial = node.accumulator ? recurse(node.accumulator.initial) : null;
+			const body = recurse(node.body);
+
+			if (
+				iterable === node.iterable &&
+				guard === node.guard &&
+				(node.accumulator === null || initial === node.accumulator.initial) &&
+				body === node.body
+			)
+				return node;
+
+			const accumulator = node.accumulator
+				? { name: node.accumulator.name, initial: initial as ASTNode }
 				: null;
-			const body = recurse(n.body);
-			return preserveComments(n, ast.forExpr(n.variable, iterable, guard, accumulator, body));
-		},
+			return preserveComments(node, ast.forExpr(node.variable, iterable, guard, accumulator, body));
+		}
 
-		IndexAccess: (n, recurse) => {
-			const object = recurse(n.object);
-			const index = recurse(n.index);
+		case NodeKind.IndexAccess: {
+			const object = recurse(node.object);
+			const index = recurse(node.index);
 
 			// Fold array[number] at compile time
 			if (isArrayLiteral(object) && isNumberLiteral(index)) {
@@ -592,7 +718,7 @@ function fold(node: ASTNode): ASTNode {
 					const len = object.elements.length;
 					const resolved = idx < 0 ? len + idx : idx;
 					if (resolved >= 0 && resolved < len) {
-						return preserveComments(n, object.elements[resolved] as ASTNode);
+						return preserveComments(node, object.elements[resolved] as ASTNode);
 					}
 				}
 			}
@@ -601,51 +727,43 @@ function fold(node: ASTNode): ASTNode {
 			if (isStringLiteral(object) && isNumberLiteral(index)) {
 				try {
 					const char = resolveIndex(object.value, index.value);
-					return preserveComments(n, ast.string(char as string));
+					return preserveComments(node, ast.string(char as string));
 				} catch {
 					// Out of bounds — leave unfoldable
 				}
 			}
 
-			return preserveComments(n, ast.indexAccess(object, index));
-		},
+			if (object === node.object && index === node.index) return node;
+			return preserveComments(node, ast.indexAccess(object, index));
+		}
 
-		RangeExpression: (n, recurse) => {
-			const start = recurse(n.start);
-			const end = recurse(n.end);
+		case NodeKind.RangeExpression: {
+			const start = recurse(node.start);
+			const end = recurse(node.end);
 
 			// Fold constant ranges at compile time (cap at 10000 elements)
 			if (isNumberLiteral(start) && isNumberLiteral(end)) {
 				try {
-					const limit = n.inclusive ? end.value + 1 : end.value;
+					const limit = node.inclusive ? end.value + 1 : end.value;
 					const count = limit - start.value;
 					if (count >= 0 && count <= 10000) {
-						const values = buildRange(start.value, end.value, n.inclusive);
-						return preserveComments(n, ast.array(values.map(ast.number)));
+						const values = buildRange(start.value, end.value, node.inclusive);
+						return preserveComments(node, ast.array(values.map(ast.number)));
 					}
 				} catch {
 					// Invalid range — leave unfoldable
 				}
 			}
 
-			return preserveComments(n, ast.rangeExpr(start, end, n.inclusive));
-		},
+			if (start === node.start && end === node.end) return node;
+			return preserveComments(node, ast.rangeExpr(start, end, node.inclusive));
+		}
 
-		PipeExpression: (n, recurse) => {
-			const value = recurse(n.value);
-			const optimizedArgs = n.args.map(recurse);
-			return preserveComments(n, ast.pipeExpr(value, n.name, optimizedArgs));
-		},
-
-		Placeholder: (n) => n,
-
-		Program: (n, recurse) => {
-			const optimizedStatements = n.statements.map(recurse);
-			const result = ast.program(optimizedStatements);
-			if (n.trailingComments && n.trailingComments.length > 0) {
-				return { ...result, trailingComments: n.trailingComments };
-			}
-			return result;
-		},
-	});
+		case NodeKind.PipeExpression: {
+			const value = recurse(node.value);
+			const optimizedArgs = node.args.map(recurse);
+			if (value === node.value && unchangedArray(node.args, optimizedArgs)) return node;
+			return preserveComments(node, ast.pipeExpr(value, node.name, optimizedArgs));
+		}
+	}
 }

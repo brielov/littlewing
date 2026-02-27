@@ -74,6 +74,3 @@ export {
 	assertTimeOrDateTime,
 	typeOf,
 } from "./utils";
-
-// Visitor pattern
-export { type Visitor, type VisitorHandler, visit, visitPartial } from "./visitor";

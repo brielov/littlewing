@@ -1,7 +1,7 @@
 import type { ASTNode, Operator } from "./ast";
+import { NodeKind } from "./ast";
 import { TokenKind } from "./lexer";
 import type { RuntimeValue } from "./types";
-import { visit } from "./visitor";
 
 /**
  * Return the type name of a runtime value
@@ -406,72 +406,69 @@ export function getOperatorPrecedence(operator: Operator): number {
 
 /**
  * Collect all identifier names from an AST node.
+ *
+ * Uses direct recursion with switch dispatch to avoid visitor object and closure allocation.
  */
 export function collectAllIdentifiers(node: ASTNode): Set<string> {
 	const identifiers = new Set<string>();
-
-	visit<void>(node, {
-		Program: (n, recurse) => {
-			for (const stmt of n.statements) {
-				recurse(stmt);
-			}
-		},
-		NumberLiteral: () => {},
-		StringLiteral: () => {},
-		BooleanLiteral: () => {},
-		ArrayLiteral: (n, recurse) => {
-			for (const elem of n.elements) {
-				recurse(elem);
-			}
-		},
-		Identifier: (n) => {
-			identifiers.add(n.name);
-		},
-		BinaryOp: (n, recurse) => {
-			recurse(n.left);
-			recurse(n.right);
-		},
-		UnaryOp: (n, recurse) => {
-			recurse(n.argument);
-		},
-		FunctionCall: (n, recurse) => {
-			for (const arg of n.args) {
-				recurse(arg);
-			}
-		},
-		Assignment: (n, recurse) => {
-			recurse(n.value);
-		},
-		IfExpression: (n, recurse) => {
-			recurse(n.condition);
-			recurse(n.consequent);
-			recurse(n.alternate);
-		},
-		ForExpression: (n, recurse) => {
-			// Do NOT collect the loop variable or accumulator name — they're bindings, not references
-			recurse(n.iterable);
-			if (n.guard) recurse(n.guard);
-			if (n.accumulator) recurse(n.accumulator.initial);
-			recurse(n.body);
-		},
-		IndexAccess: (n, recurse) => {
-			recurse(n.object);
-			recurse(n.index);
-		},
-		RangeExpression: (n, recurse) => {
-			recurse(n.start);
-			recurse(n.end);
-		},
-		PipeExpression: (n, recurse) => {
-			recurse(n.value);
-			for (const arg of n.args) {
-				recurse(arg);
-			}
-		},
-		Placeholder: () => {},
-	});
-
+	collectIdentifiers(node, identifiers);
 	return identifiers;
+}
+
+function collectIdentifiers(node: ASTNode, ids: Set<string>): void {
+	switch (node.kind) {
+		case NodeKind.Program:
+			for (const s of node.statements) collectIdentifiers(s, ids);
+			break;
+		case NodeKind.Identifier:
+			ids.add(node.name);
+			break;
+		case NodeKind.ArrayLiteral:
+			for (const e of node.elements) collectIdentifiers(e, ids);
+			break;
+		case NodeKind.BinaryOp:
+			collectIdentifiers(node.left, ids);
+			collectIdentifiers(node.right, ids);
+			break;
+		case NodeKind.UnaryOp:
+			collectIdentifiers(node.argument, ids);
+			break;
+		case NodeKind.FunctionCall:
+			for (const a of node.args) collectIdentifiers(a, ids);
+			break;
+		case NodeKind.Assignment:
+			collectIdentifiers(node.value, ids);
+			break;
+		case NodeKind.IfExpression:
+			collectIdentifiers(node.condition, ids);
+			collectIdentifiers(node.consequent, ids);
+			collectIdentifiers(node.alternate, ids);
+			break;
+		case NodeKind.ForExpression:
+			// Do NOT collect the loop variable or accumulator name — they're bindings, not references
+			collectIdentifiers(node.iterable, ids);
+			if (node.guard) collectIdentifiers(node.guard, ids);
+			if (node.accumulator) collectIdentifiers(node.accumulator.initial, ids);
+			collectIdentifiers(node.body, ids);
+			break;
+		case NodeKind.IndexAccess:
+			collectIdentifiers(node.object, ids);
+			collectIdentifiers(node.index, ids);
+			break;
+		case NodeKind.RangeExpression:
+			collectIdentifiers(node.start, ids);
+			collectIdentifiers(node.end, ids);
+			break;
+		case NodeKind.PipeExpression:
+			collectIdentifiers(node.value, ids);
+			for (const a of node.args) collectIdentifiers(a, ids);
+			break;
+		case NodeKind.NumberLiteral:
+		case NodeKind.StringLiteral:
+		case NodeKind.BooleanLiteral:
+		case NodeKind.Placeholder:
+			break;
+	}
 }
 
 /**
