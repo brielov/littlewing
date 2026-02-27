@@ -311,8 +311,11 @@ export function string(value: string): StringLiteral {
 /**
  * Create a boolean literal node
  */
+const TRUE_LITERAL: BooleanLiteral = { kind: NodeKind.BooleanLiteral, value: true };
+const FALSE_LITERAL: BooleanLiteral = { kind: NodeKind.BooleanLiteral, value: false };
+
 export function boolean(value: boolean): BooleanLiteral {
-	return { kind: NodeKind.BooleanLiteral, value };
+	return value ? TRUE_LITERAL : FALSE_LITERAL;
 }
 
 /**
@@ -413,8 +416,10 @@ export function pipeExpr(value: ASTNode, name: string, args: readonly ASTNode[])
 /**
  * Create a placeholder node (?) for use in pipe expression arguments
  */
+const PLACEHOLDER_SINGLETON: Placeholder = { kind: NodeKind.Placeholder };
+
 export function placeholder(): Placeholder {
-	return { kind: NodeKind.Placeholder };
+	return PLACEHOLDER_SINGLETON;
 }
 
 /**

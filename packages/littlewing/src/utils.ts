@@ -178,7 +178,21 @@ function concatenateArrays(
  */
 export function validateHomogeneousArray(elements: readonly RuntimeValue[]): void {
 	if (elements.length <= 1) return;
-	const firstType = typeOf(elements[0] as RuntimeValue);
+	const first = elements[0] as RuntimeValue;
+	const firstPrimitive = typeof first;
+	// Fast path: primitives can use typeof directly, avoiding typeOf() instanceof checks
+	if (firstPrimitive === "number" || firstPrimitive === "string" || firstPrimitive === "boolean") {
+		for (let i = 1; i < elements.length; i++) {
+			if (typeof elements[i] !== firstPrimitive) {
+				throw new TypeError(
+					`Heterogeneous array: expected ${firstPrimitive}, got ${typeOf(elements[i] as RuntimeValue)} at index ${i}`,
+				);
+			}
+		}
+		return;
+	}
+	// Slow path: objects (dates, times, datetimes, nested arrays)
+	const firstType = typeOf(first);
 	for (let i = 1; i < elements.length; i++) {
 		const elemType = typeOf(elements[i] as RuntimeValue);
 		if (elemType !== firstType) {
@@ -322,13 +336,28 @@ export function resolveIndex(
 	}
 
 	if (typeof target === "string") {
-		const codePoints = Array.from(target);
-		const len = codePoints.length;
-		const resolved = index < 0 ? len + index : index;
-		if (resolved < 0 || resolved >= len) {
+		if (index >= 0) {
+			// Positive index: single-pass iteration to the target code point (O(1) memory)
+			let i = 0;
+			for (const cp of target) {
+				if (i === index) return cp;
+				i++;
+			}
+			throw new RangeError(`Index ${index} out of bounds for length ${i}`);
+		}
+		// Negative index: count code points first, then iterate to resolved position
+		let len = 0;
+		for (const _ of target) len++;
+		const resolved = len + index;
+		if (resolved < 0) {
 			throw new RangeError(`Index ${index} out of bounds for length ${len}`);
 		}
-		return codePoints[resolved] as string;
+		let i = 0;
+		for (const cp of target) {
+			if (i === resolved) return cp;
+			i++;
+		}
+		throw new RangeError(`Index ${index} out of bounds for length ${len}`);
 	}
 
 	const len = target.length;
@@ -355,11 +384,7 @@ export function buildRange(start: number, end: number, inclusive: boolean): read
 	}
 
 	const limit = inclusive ? end + 1 : end;
-	const result: number[] = [];
-	for (let i = start; i < limit; i++) {
-		result.push(i);
-	}
-	return result;
+	return Array.from({ length: limit - start }, (_, i) => start + i);
 }
 
 /**
