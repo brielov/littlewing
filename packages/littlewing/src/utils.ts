@@ -430,63 +430,71 @@ export function getOperatorPrecedence(operator: Operator): number {
 }
 
 /**
- * Collect all identifier names from an AST node.
+ * Collect all free identifier names referenced from an AST node.
  *
- * Uses direct recursion with switch dispatch to avoid visitor object and closure allocation.
+ * Scope-aware: `for` loop variables and accumulator names are treated as local bindings and
+ * excluded from identifiers collected from the loop body and guard.
  */
 export function collectAllIdentifiers(node: ASTNode): Set<string> {
 	const identifiers = new Set<string>();
-	collectIdentifiers(node, identifiers);
+	collectIdentifiers(node, identifiers, new Set());
 	return identifiers;
 }
 
-function collectIdentifiers(node: ASTNode, ids: Set<string>): void {
+function collectIdentifiers(
+	node: ASTNode,
+	ids: Set<string>,
+	boundVars: ReadonlySet<string>,
+): void {
 	switch (node.kind) {
 		case NodeKind.Program:
-			for (const s of node.statements) collectIdentifiers(s, ids);
+			for (const s of node.statements) collectIdentifiers(s, ids, boundVars);
 			break;
 		case NodeKind.Identifier:
-			ids.add(node.name);
+			if (!boundVars.has(node.name)) ids.add(node.name);
 			break;
 		case NodeKind.ArrayLiteral:
-			for (const e of node.elements) collectIdentifiers(e, ids);
+			for (const e of node.elements) collectIdentifiers(e, ids, boundVars);
 			break;
 		case NodeKind.BinaryOp:
-			collectIdentifiers(node.left, ids);
-			collectIdentifiers(node.right, ids);
+			collectIdentifiers(node.left, ids, boundVars);
+			collectIdentifiers(node.right, ids, boundVars);
 			break;
 		case NodeKind.UnaryOp:
-			collectIdentifiers(node.argument, ids);
+			collectIdentifiers(node.argument, ids, boundVars);
 			break;
 		case NodeKind.FunctionCall:
-			for (const a of node.args) collectIdentifiers(a, ids);
+			for (const a of node.args) collectIdentifiers(a, ids, boundVars);
 			break;
 		case NodeKind.Assignment:
-			collectIdentifiers(node.value, ids);
+			collectIdentifiers(node.value, ids, boundVars);
 			break;
 		case NodeKind.IfExpression:
-			collectIdentifiers(node.condition, ids);
-			collectIdentifiers(node.consequent, ids);
-			collectIdentifiers(node.alternate, ids);
+			collectIdentifiers(node.condition, ids, boundVars);
+			collectIdentifiers(node.consequent, ids, boundVars);
+			collectIdentifiers(node.alternate, ids, boundVars);
 			break;
-		case NodeKind.ForExpression:
-			// Do NOT collect the loop variable or accumulator name — they're bindings, not references
-			collectIdentifiers(node.iterable, ids);
-			if (node.guard) collectIdentifiers(node.guard, ids);
-			if (node.accumulator) collectIdentifiers(node.accumulator.initial, ids);
-			collectIdentifiers(node.body, ids);
+		case NodeKind.ForExpression: {
+			collectIdentifiers(node.iterable, ids, boundVars);
+			if (node.accumulator) collectIdentifiers(node.accumulator.initial, ids, boundVars);
+			const innerBound = new Set(boundVars);
+			innerBound.add(node.variable);
+			if (node.accumulator) innerBound.add(node.accumulator.name);
+			if (node.guard) collectIdentifiers(node.guard, ids, innerBound);
+			collectIdentifiers(node.body, ids, innerBound);
 			break;
+		}
 		case NodeKind.IndexAccess:
-			collectIdentifiers(node.object, ids);
-			collectIdentifiers(node.index, ids);
+			collectIdentifiers(node.object, ids, boundVars);
+			collectIdentifiers(node.index, ids, boundVars);
 			break;
 		case NodeKind.RangeExpression:
-			collectIdentifiers(node.start, ids);
-			collectIdentifiers(node.end, ids);
+			collectIdentifiers(node.start, ids, boundVars);
+			collectIdentifiers(node.end, ids, boundVars);
 			break;
 		case NodeKind.PipeExpression:
-			collectIdentifiers(node.value, ids);
-			for (const a of node.args) collectIdentifiers(a, ids);
+			collectIdentifiers(node.value, ids, boundVars);
+			for (const a of node.args) collectIdentifiers(a, ids, boundVars);
 			break;
 		case NodeKind.NumberLiteral:
 		case NodeKind.StringLiteral:

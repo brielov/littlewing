@@ -188,11 +188,9 @@ function propagateConstants(
 	// If not, substitution would be a no-op — return null to terminate iteration.
 	const referencedIds = new Set<string>();
 	for (const stmt of statements) {
-		if (isAssignment(stmt)) {
-			// Only collect identifiers from the RHS of assignments and non-assignment stmts
-			collectReferencedIdentifiers(stmt.value, referencedIds);
-		} else {
-			collectReferencedIdentifiers(stmt, referencedIds);
+		const identifiers = collectAllIdentifiers(isAssignment(stmt) ? stmt.value : stmt);
+		for (const id of identifiers) {
+			referencedIds.add(id);
 		}
 	}
 
@@ -212,68 +210,6 @@ function propagateConstants(
 		return { ...result, trailingComments: program.trailingComments };
 	}
 	return result;
-}
-
-/**
- * Collect all identifier names referenced (read) in an AST node.
- * Unlike `collectAllIdentifiers` from utils, this does NOT collect
- * assignment LHS names — only identifiers used in expressions.
- *
- * Uses direct recursion with switch dispatch to avoid visitor object and closure allocation.
- */
-function collectReferencedIdentifiers(node: ASTNode, ids: Set<string>): void {
-	switch (node.kind) {
-		case NodeKind.Program:
-			for (const s of node.statements) collectReferencedIdentifiers(s, ids);
-			break;
-		case NodeKind.Identifier:
-			ids.add(node.name);
-			break;
-		case NodeKind.ArrayLiteral:
-			for (const e of node.elements) collectReferencedIdentifiers(e, ids);
-			break;
-		case NodeKind.BinaryOp:
-			collectReferencedIdentifiers(node.left, ids);
-			collectReferencedIdentifiers(node.right, ids);
-			break;
-		case NodeKind.UnaryOp:
-			collectReferencedIdentifiers(node.argument, ids);
-			break;
-		case NodeKind.FunctionCall:
-			for (const a of node.args) collectReferencedIdentifiers(a, ids);
-			break;
-		case NodeKind.Assignment:
-			collectReferencedIdentifiers(node.value, ids);
-			break;
-		case NodeKind.IfExpression:
-			collectReferencedIdentifiers(node.condition, ids);
-			collectReferencedIdentifiers(node.consequent, ids);
-			collectReferencedIdentifiers(node.alternate, ids);
-			break;
-		case NodeKind.ForExpression:
-			collectReferencedIdentifiers(node.iterable, ids);
-			if (node.guard) collectReferencedIdentifiers(node.guard, ids);
-			if (node.accumulator) collectReferencedIdentifiers(node.accumulator.initial, ids);
-			collectReferencedIdentifiers(node.body, ids);
-			break;
-		case NodeKind.IndexAccess:
-			collectReferencedIdentifiers(node.object, ids);
-			collectReferencedIdentifiers(node.index, ids);
-			break;
-		case NodeKind.RangeExpression:
-			collectReferencedIdentifiers(node.start, ids);
-			collectReferencedIdentifiers(node.end, ids);
-			break;
-		case NodeKind.PipeExpression:
-			collectReferencedIdentifiers(node.value, ids);
-			for (const a of node.args) collectReferencedIdentifiers(a, ids);
-			break;
-		case NodeKind.NumberLiteral:
-		case NodeKind.StringLiteral:
-		case NodeKind.BooleanLiteral:
-		case NodeKind.Placeholder:
-			break;
-	}
 }
 
 /**

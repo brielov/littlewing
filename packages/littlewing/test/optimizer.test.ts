@@ -571,6 +571,22 @@ describe("Dead Code Elimination", () => {
 		expect((prog.statements[1] as Assignment).name).toBe("y");
 	});
 
+	test("does not keep outer assignments alive when a for loop shadows them", () => {
+		const optimized = optimize(parse("x = 5; for x in [1, 2, 3] then x * 2"));
+		expect(isForExpression(optimized)).toBe(true);
+		if (isForExpression(optimized)) {
+			expect(optimized.variable).toBe("x");
+		}
+	});
+
+	test("does not keep outer accumulator names alive when a for loop shadows them", () => {
+		const optimized = optimize(parse("acc = 1; for x in [1, 2, 3] into acc = 0 then acc + x"));
+		expect(isForExpression(optimized)).toBe(true);
+		if (isForExpression(optimized)) {
+			expect(optimized.accumulator?.name).toBe("acc");
+		}
+	});
+
 	test("combines constant folding with DCE", () => {
 		const source = "x = 2 + 3; y = 4 * 5; z = x * 2; z";
 		const optimized = optimize(parse(source));
@@ -760,10 +776,9 @@ describe("Constant Propagation", () => {
 	test("does NOT propagate for loop variables", () => {
 		const source = "x = 5; for x in [1, 2, 3] then x * 2";
 		const optimized = optimize(parse(source), noExternals);
-		expect(isProgram(optimized)).toBe(true);
-		const prog = optimized as Program;
-		// x is a for-loop variable, so x=5 is not propagated
-		expect(prog.statements.length).toBe(2);
+		expect(isForExpression(optimized)).toBe(true);
+		const forNode = optimized as ForExpression;
+		expect(forNode.variable).toBe("x");
 	});
 
 	test("preserves execution semantics with propagation", () => {
@@ -914,6 +929,8 @@ describe("Comment preservation through optimizer", () => {
 	test("for accumulator variable not propagated", () => {
 		const source = "sum = 10; for x in [1, 2] into sum = 0 then sum + x";
 		const optimized = optimize(parse(source), new Set());
-		expect(isProgram(optimized)).toBe(true);
+		expect(isForExpression(optimized)).toBe(true);
+		const forNode = optimized as ForExpression;
+		expect(forNode.accumulator?.name).toBe("sum");
 	});
 });

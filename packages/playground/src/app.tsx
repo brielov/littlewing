@@ -177,6 +177,7 @@ export function App() {
 							theme={monacoTheme}
 							diagnostics={evaluation.diagnostics}
 							scope={evaluation.scope}
+							assignedVariables={evaluation.assignedVariables}
 						/>
 					</div>
 					<div
@@ -196,6 +197,7 @@ export function App() {
 								theme={monacoTheme}
 								diagnostics={evaluation.diagnostics}
 								scope={evaluation.scope}
+								assignedVariables={evaluation.assignedVariables}
 							/>
 						) : (
 							<Sidebar evaluation={evaluation} />

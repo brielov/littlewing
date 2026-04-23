@@ -216,6 +216,64 @@ export type ASTNode =
 	| PipeExpression
 	| Placeholder;
 
+export interface Visitor<T> {
+	Program: (node: Program, recurse: (child: ASTNode) => T) => T;
+	NumberLiteral: (node: NumberLiteral, recurse: (child: ASTNode) => T) => T;
+	StringLiteral: (node: StringLiteral, recurse: (child: ASTNode) => T) => T;
+	BooleanLiteral: (node: BooleanLiteral, recurse: (child: ASTNode) => T) => T;
+	ArrayLiteral: (node: ArrayLiteral, recurse: (child: ASTNode) => T) => T;
+	Identifier: (node: Identifier, recurse: (child: ASTNode) => T) => T;
+	BinaryOp: (node: BinaryOp, recurse: (child: ASTNode) => T) => T;
+	UnaryOp: (node: UnaryOp, recurse: (child: ASTNode) => T) => T;
+	FunctionCall: (node: FunctionCall, recurse: (child: ASTNode) => T) => T;
+	Assignment: (node: Assignment, recurse: (child: ASTNode) => T) => T;
+	IfExpression: (node: IfExpression, recurse: (child: ASTNode) => T) => T;
+	ForExpression: (node: ForExpression, recurse: (child: ASTNode) => T) => T;
+	IndexAccess: (node: IndexAccess, recurse: (child: ASTNode) => T) => T;
+	RangeExpression: (node: RangeExpression, recurse: (child: ASTNode) => T) => T;
+	PipeExpression: (node: PipeExpression, recurse: (child: ASTNode) => T) => T;
+	Placeholder: (node: Placeholder, recurse: (child: ASTNode) => T) => T;
+}
+
+export function visit<T>(node: ASTNode, visitor: Visitor<T>): T {
+	const recurse = (child: ASTNode): T => visit(child, visitor);
+
+	switch (node.kind) {
+		case NodeKind.Program:
+			return visitor.Program(node, recurse);
+		case NodeKind.NumberLiteral:
+			return visitor.NumberLiteral(node, recurse);
+		case NodeKind.StringLiteral:
+			return visitor.StringLiteral(node, recurse);
+		case NodeKind.BooleanLiteral:
+			return visitor.BooleanLiteral(node, recurse);
+		case NodeKind.ArrayLiteral:
+			return visitor.ArrayLiteral(node, recurse);
+		case NodeKind.Identifier:
+			return visitor.Identifier(node, recurse);
+		case NodeKind.BinaryOp:
+			return visitor.BinaryOp(node, recurse);
+		case NodeKind.UnaryOp:
+			return visitor.UnaryOp(node, recurse);
+		case NodeKind.FunctionCall:
+			return visitor.FunctionCall(node, recurse);
+		case NodeKind.Assignment:
+			return visitor.Assignment(node, recurse);
+		case NodeKind.IfExpression:
+			return visitor.IfExpression(node, recurse);
+		case NodeKind.ForExpression:
+			return visitor.ForExpression(node, recurse);
+		case NodeKind.IndexAccess:
+			return visitor.IndexAccess(node, recurse);
+		case NodeKind.RangeExpression:
+			return visitor.RangeExpression(node, recurse);
+		case NodeKind.PipeExpression:
+			return visitor.PipeExpression(node, recurse);
+		case NodeKind.Placeholder:
+			return visitor.Placeholder(node, recurse);
+	}
+}
+
 /**
  * Type guard functions for discriminated union narrowing
  */

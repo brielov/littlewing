@@ -48,11 +48,13 @@ export {
 	type RangeExpression,
 	type StringLiteral,
 	type UnaryOp,
+	type Visitor,
+	visit,
 } from "./ast";
 // Code generation
 export { generate } from "./codegen";
 // Interpreter
-export { evaluate, evaluateScope } from "./interpreter";
+export { evaluate, evaluateScope, evaluateWithScope } from "./interpreter";
 // Optimizer
 export { optimize } from "./optimizer";
 // Parser
@@ -60,7 +62,7 @@ export { parse } from "./parser";
 // Standard library
 export { array, core, datetime, datetimefull, defaultContext, math, string, time } from "./stdlib";
 // Type definitions
-export type { ExecutionContext, RuntimeValue } from "./types";
+export type { ExecutionContext, ExecutionResult, RuntimeValue } from "./types";
 // Utilities
 export {
 	assertArray,

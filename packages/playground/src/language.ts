@@ -2,9 +2,6 @@ import type { Monaco } from "@monaco-editor/react";
 import {
 	type RuntimeValue,
 	defaultContext,
-	evaluateScope,
-	extractAssignedVariables,
-	parse,
 	typeOf,
 } from "littlewing";
 import type { CancellationToken, IDisposable, Position, editor, languages } from "monaco-editor";
@@ -68,41 +65,28 @@ function formatValue(value: RuntimeValue): string {
  * read updates from newer module instances.
  */
 interface PlaygroundLanguageState {
-	hoverScope: Record<string, RuntimeValue> | null;
+	hoverState: HoverState;
 	providerDisposables: IDisposable[];
-	modelScopeCache: Map<string, { version: number; scope: Record<string, RuntimeValue> | null }>;
+}
+
+interface HoverState {
+	runtimeScope: Record<string, RuntimeValue> | null;
+	assignedVariables: readonly string[];
 }
 
 const languageState: PlaygroundLanguageState = import.meta.hot?.data?.languageState ?? {
-	hoverScope: null,
+	hoverState: {
+		runtimeScope: null,
+		assignedVariables: [],
+	},
 	providerDisposables: [],
-	modelScopeCache: new Map(),
 };
 
-function getModelScope(model: editor.ITextModel): Record<string, RuntimeValue> | null {
-	const modelId = model.uri.toString();
-	const version = model.getVersionId();
-	const cached = languageState.modelScopeCache.get(modelId);
-	if (cached && cached.version === version) {
-		return cached.scope;
-	}
-
-	let scope: Record<string, RuntimeValue> | null = null;
-	try {
-		scope = evaluateScope(parse(model.getValue()), defaultContext);
-	} catch {
-		scope = null;
-	}
-
-	languageState.modelScopeCache.set(modelId, { version, scope });
-	return scope;
-}
-
 /**
- * Update the scope used by the hover provider to display variable types and values.
+ * Update the compiler-derived metadata consumed by Monaco providers.
  */
-export function setHoverScope(scope: Record<string, RuntimeValue> | null): void {
-	languageState.hoverScope = scope;
+export function setLanguageAnalysis(state: HoverState): void {
+	languageState.hoverState = state;
 }
 
 /**
@@ -368,20 +352,9 @@ export function registerLittlewingLanguage(monaco: Monaco): void {
 				}
 
 				// Variable hover
-				const runtimeScope = languageState.hoverScope;
+				const { runtimeScope } = languageState.hoverState;
 				if (runtimeScope && Object.hasOwn(runtimeScope, word.word)) {
 					const value = runtimeScope[word.word] as RuntimeValue;
-					const type = typeOf(value);
-					const preview = formatValue(value);
-					return {
-						contents: [{ value: `\`\`\`\n${word.word}: ${type} = ${preview}\n\`\`\`` }],
-						range,
-					};
-				}
-
-				const modelScope = getModelScope(model);
-				if (modelScope && Object.hasOwn(modelScope, word.word)) {
-					const value = modelScope[word.word] as RuntimeValue;
 					const type = typeOf(value);
 					const preview = formatValue(value);
 					return {
@@ -414,24 +387,13 @@ export function registerLittlewingLanguage(monaco: Monaco): void {
 
 					if (msg.startsWith("Undefined variable: ")) {
 						prefix = "Undefined variable: ";
-						// Collect variable names from all available sources.
-						// hoverScope/modelScope may be null when evaluation fails,
-						// so also extract assigned names directly from the AST.
 						const names = new Set<string>();
-						const runtimeScope = languageState.hoverScope;
+						const { runtimeScope, assignedVariables } = languageState.hoverState;
 						if (runtimeScope) {
 							for (const key of Object.keys(runtimeScope)) names.add(key);
 						}
-						const modelScope = getModelScope(model);
-						if (modelScope) {
-							for (const key of Object.keys(modelScope)) names.add(key);
-						}
-						try {
-							for (const name of extractAssignedVariables(parse(model.getValue()))) {
-								names.add(name);
-							}
-						} catch {
-							// Parse failure — no additional candidates
+						for (const name of assignedVariables) {
+							names.add(name);
 						}
 						candidates = [...names];
 					} else if (msg.startsWith("Undefined function: ")) {

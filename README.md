@@ -37,7 +37,7 @@ evaluate("-5 |> ABS(?) |> STR(?)", defaultContext); // → "5"
 - **Pipe operator** — `x |> FUN(?) |> OTHER(?, 1)` chains values through function calls
 - **Range expressions** — `1..5` (exclusive), `1..=5` (inclusive)
 - **Deep equality** — `[1, 2] == [1, 2]` → `true`; cross-type `==` → `false`
-- **85 built-in functions** — Math, string, array, date, time, and datetime operations
+- **82 built-in functions** — Math, string, array, date, time, and datetime operations
 - **O(n) performance** — Linear time parsing and execution
 - **Safe evaluation** — Tree-walk interpreter, no code generation
 - **Extensible** — Add custom functions and variables via context
@@ -195,6 +195,15 @@ Evaluate and return all assigned variables as a record.
 
 ```typescript
 evaluateScope("x = 10; y = x * 2"); // → { x: 10, y: 20 }
+```
+
+#### `evaluateWithScope(input: string | ASTNode, context?: ExecutionContext): ExecutionResult`
+
+Evaluate once and return both the final value and the full variable scope.
+
+```typescript
+evaluateWithScope("x = 10; y = x * 2; y + 1");
+// → { value: 21, scope: { x: 10, y: 20 } }
 ```
 
 #### `parse(source: string): ASTNode`

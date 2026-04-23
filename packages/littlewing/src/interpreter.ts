@@ -1,7 +1,7 @@
 import type { ASTNode } from "./ast";
 import { NodeKind } from "./ast";
 import { parse } from "./parser";
-import type { ExecutionContext, RuntimeValue } from "./types";
+import type { ExecutionContext, ExecutionResult, RuntimeValue } from "./types";
 import {
 	assertBoolean,
 	assertNumber,
@@ -284,6 +284,19 @@ export function evaluateScope(
 	input: string | ASTNode,
 	context: ExecutionContext = {},
 ): Record<string, RuntimeValue> {
-	const { variables } = run(input, context);
-	return Object.fromEntries(variables);
+	return evaluateWithScope(input, context).scope;
+}
+
+/**
+ * Evaluate source code or AST and return both the result value and full variable scope.
+ */
+export function evaluateWithScope(
+	input: string | ASTNode,
+	context: ExecutionContext = {},
+): ExecutionResult {
+	const { value, variables } = run(input, context);
+	return {
+		value,
+		scope: Object.fromEntries(variables),
+	};
 }

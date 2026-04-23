@@ -4,8 +4,11 @@ import {
 	type RuntimeValue,
 	defaultContext,
 	evaluate,
-	evaluateScope,
+	evaluateWithScope,
+	extractAssignedVariables,
 	extractInputVariables,
+	isAssignment,
+	isProgram,
 	optimize,
 	parse,
 	toLineColumn,
@@ -41,6 +44,7 @@ export interface UseEvaluationReturn {
 	inputVariables: InputVariable[];
 	overrides: Map<string, RuntimeValue>;
 	scope: Record<string, RuntimeValue> | null;
+	assignedVariables: readonly string[];
 	ast: ASTNode | null;
 	timing: Timing | null;
 	diagnostics: readonly Diagnostic[];
@@ -52,8 +56,34 @@ interface CompilationResult {
 	optimizedAst: ASTNode;
 	ast: ASTNode;
 	inputVariables: InputVariable[];
+	assignedVariables: string[];
 	parseMs: number;
 	optimizeMs: number;
+}
+
+function resolveInputVariables(ast: ASTNode): InputVariable[] {
+	const inputVarNames = new Set(extractInputVariables(ast));
+	if (inputVarNames.size === 0) return [];
+
+	const statements = isProgram(ast) ? ast.statements : [ast];
+	const seen = new Set<string>();
+	const inputVariables: InputVariable[] = [];
+
+	for (const statement of statements) {
+		if (!isAssignment(statement) || !inputVarNames.has(statement.name) || seen.has(statement.name)) {
+			continue;
+		}
+
+		const defaultValue = evaluate(statement.value, defaultContext);
+		inputVariables.push({
+			name: statement.name,
+			type: typeOf(defaultValue),
+			defaultValue,
+		});
+		seen.add(statement.name);
+	}
+
+	return inputVariables;
 }
 
 function compile(src: string): CompilationResult | null {
@@ -63,22 +93,14 @@ function compile(src: string): CompilationResult | null {
 	const ast = parse(src);
 	const parseMs = performance.now() - parseStart;
 
-	const inputVarNames = extractInputVariables(ast);
+	const inputVariables = resolveInputVariables(ast);
+	const assignedVariables = extractAssignedVariables(ast);
 
 	const optimizeStart = performance.now();
-	const optimizedAst = optimize(ast, new Set(inputVarNames));
+	const optimizedAst = optimize(ast, new Set(inputVariables.map((variable) => variable.name)));
 	const optimizeMs = performance.now() - optimizeStart;
 
-	const defaultScope = evaluateScope(optimizedAst, defaultContext);
-	const inputVariables: InputVariable[] = inputVarNames
-		.filter((name) => name in defaultScope)
-		.map((name) => ({
-			name,
-			type: typeOf(defaultScope[name] as RuntimeValue),
-			defaultValue: defaultScope[name] as RuntimeValue,
-		}));
-
-	return { optimizedAst, ast, inputVariables, parseMs, optimizeMs };
+	return { optimizedAst, ast, inputVariables, assignedVariables, parseMs, optimizeMs };
 }
 
 interface EvaluationResult {
@@ -181,8 +203,7 @@ function run(optimizedAst: ASTNode, overrides: Map<string, RuntimeValue>): Evalu
 	};
 
 	const evaluateStart = performance.now();
-	const value = evaluate(optimizedAst, mergedContext);
-	const scope = evaluateScope(optimizedAst, mergedContext);
+	const { value, scope } = evaluateWithScope(optimizedAst, mergedContext);
 	const evaluateMs = performance.now() - evaluateStart;
 
 	return { result: { ok: true, value }, scope, evaluateMs };
@@ -237,6 +258,7 @@ export function useEvaluation(source: string): UseEvaluationReturn {
 				result: { ok: false as const, error: compilation.error } as Result,
 				inputVariables: [] as InputVariable[],
 				scope: null,
+				assignedVariables: [],
 				ast: null,
 				timing: null,
 				diagnostics: compilation.diagnostics,
@@ -248,13 +270,15 @@ export function useEvaluation(source: string): UseEvaluationReturn {
 				result: null,
 				inputVariables: [] as InputVariable[],
 				scope: null,
+				assignedVariables: [],
 				ast: null,
 				timing: null,
 				diagnostics: [],
 			};
 		}
 
-		const { optimizedAst, ast, inputVariables, parseMs, optimizeMs } = compilation.value;
+		const { optimizedAst, ast, inputVariables, assignedVariables, parseMs, optimizeMs } =
+			compilation.value;
 
 		try {
 			const { result, scope, evaluateMs } = run(optimizedAst, overrides);
@@ -263,6 +287,7 @@ export function useEvaluation(source: string): UseEvaluationReturn {
 				result,
 				inputVariables,
 				scope,
+				assignedVariables,
 				ast,
 				timing: { parseMs, optimizeMs, evaluateMs, totalMs },
 				diagnostics: [],
@@ -277,6 +302,7 @@ export function useEvaluation(source: string): UseEvaluationReturn {
 				} as Result,
 				inputVariables,
 				scope: null,
+				assignedVariables,
 				ast,
 				timing: { parseMs, optimizeMs, evaluateMs: 0, totalMs: parseMs + optimizeMs },
 				diagnostics: diagnostic ? [diagnostic] : [],

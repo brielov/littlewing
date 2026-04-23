@@ -10,15 +10,22 @@
 		"lint:fix": "oxlint --type-check --type-aware --fix",
 		"fmt": "oxfmt",
 		"fmt:check": "oxfmt --check",
+		"build:littlewing": "bun run --cwd packages/littlewing build",
+		"build:playground": "bun run --cwd packages/playground build",
 		"test": "bun run --cwd packages/littlewing test",
-		"build": "bun run --cwd packages/littlewing build"
+		"build": "bun run build:littlewing && bun run build:playground"
 	},
 	"devDependencies": {
-		"oxfmt": "^0.35.0",
-		"oxlint": "^1.50.0",
-		"oxlint-tsgolint": "^0.15.0",
+		"oxfmt": "^0.46.0",
+		"oxlint": "^1.61.0",
+		"oxlint-tsgolint": "^0.21.1",
 		"simple-git-hooks": "^2.13.1",
-		"typescript": "^5.9.3"
+		"typescript": "^6.0.3"
+	},
+	"overrides": {
+		"defu": "^6.1.5",
+		"dompurify": "^3.3.2",
+		"yaml": "^2.8.3"
 	},
 	"simple-git-hooks": {
 		"pre-commit": "bun run fmt:check && bun run lint"

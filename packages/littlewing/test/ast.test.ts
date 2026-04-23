@@ -229,4 +229,42 @@ describe("AST Builders", () => {
 		const result = evaluate(node);
 		expect(result).toEqual([1, 2, 3]);
 	});
+
+	test("visit traverses every node kind", () => {
+		const node = ast.forExpr(
+			"x",
+			ast.array([ast.number(1), ast.number(2)]),
+			ast.greaterThan(ast.identifier("x"), ast.number(0)),
+			{ name: "sum", initial: ast.number(0) },
+			ast.add(ast.identifier("sum"), ast.identifier("x")),
+		);
+
+		const count = ast.visit(node, {
+			Program: (n, recurse) => 1 + n.statements.reduce((sum, stmt) => sum + recurse(stmt), 0),
+			NumberLiteral: () => 1,
+			StringLiteral: () => 1,
+			BooleanLiteral: () => 1,
+			ArrayLiteral: (n, recurse) => 1 + n.elements.reduce((sum, elem) => sum + recurse(elem), 0),
+			Identifier: () => 1,
+			BinaryOp: (n, recurse) => 1 + recurse(n.left) + recurse(n.right),
+			UnaryOp: (n, recurse) => 1 + recurse(n.argument),
+			FunctionCall: (n, recurse) => 1 + n.args.reduce((sum, arg) => sum + recurse(arg), 0),
+			Assignment: (n, recurse) => 1 + recurse(n.value),
+			IfExpression: (n, recurse) =>
+				1 + recurse(n.condition) + recurse(n.consequent) + recurse(n.alternate),
+			ForExpression: (n, recurse) =>
+				1 +
+				recurse(n.iterable) +
+				(n.guard ? recurse(n.guard) : 0) +
+				(n.accumulator ? recurse(n.accumulator.initial) : 0) +
+				recurse(n.body),
+			IndexAccess: (n, recurse) => 1 + recurse(n.object) + recurse(n.index),
+			RangeExpression: (n, recurse) => 1 + recurse(n.start) + recurse(n.end),
+			PipeExpression: (n, recurse) =>
+				1 + recurse(n.value) + n.args.reduce((sum, arg) => sum + recurse(arg), 0),
+			Placeholder: () => 1,
+		});
+
+		expect(count).toBe(11);
+	});
 });

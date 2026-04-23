@@ -21,3 +21,11 @@ export interface ExecutionContext {
 	functions?: Record<string, (...args: RuntimeValue[]) => RuntimeValue>;
 	variables?: Record<string, RuntimeValue>;
 }
+
+/**
+ * Result of evaluating source or an AST in a single pass.
+ */
+export interface ExecutionResult {
+	value: RuntimeValue;
+	scope: Record<string, RuntimeValue>;
+}

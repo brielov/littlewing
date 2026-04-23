@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { Temporal } from "temporal-polyfill";
 import * as ast from "../src/ast";
-import { evaluate, evaluateScope } from "../src/interpreter";
+import { evaluate, evaluateScope, evaluateWithScope } from "../src/interpreter";
 import { parse } from "../src/parser";
 import { defaultContext } from "../src/stdlib";
 
@@ -632,6 +632,32 @@ describe("evaluateScope", () => {
 	test("supports multi-type variables in scope", () => {
 		const scope = evaluateScope('x = "hello"; y = true; z = [1, 2, 3]');
 		expect(scope).toEqual({ x: "hello", y: true, z: [1, 2, 3] });
+	});
+});
+
+describe("evaluateWithScope", () => {
+	test("returns result and scope from a single evaluation", () => {
+		const execution = evaluateWithScope("x = 10; y = x * 2; y + 1");
+		expect(execution).toEqual({
+			value: 21,
+			scope: { x: 10, y: 20 },
+		});
+	});
+
+	test("keeps result and scope consistent for impure functions", () => {
+		let calls = 0;
+		const execution = evaluateWithScope("x = IMPURE(); x", {
+			functions: {
+				IMPURE: () => {
+					calls++;
+					return calls;
+				},
+			},
+		});
+
+		expect(calls).toBe(1);
+		expect(execution.value).toBe(1);
+		expect(execution.scope).toEqual({ x: 1 });
 	});
 });
 

@@ -4,7 +4,7 @@ import type monaco from "monaco-editor";
 import type { editor as MonacoEditorNs } from "monaco-editor";
 import { useEffect, useRef } from "react";
 import type { Diagnostic } from "./use-evaluation.ts";
-import { registerLittlewingLanguage, registerLittlewingThemes, setHoverScope } from "./language.ts";
+import { registerLittlewingLanguage, registerLittlewingThemes, setLanguageAnalysis } from "./language.ts";
 
 interface EditorProps {
 	value: string;
@@ -12,6 +12,7 @@ interface EditorProps {
 	theme: "tomorrow" | "tomorrow-night";
 	diagnostics?: readonly Diagnostic[];
 	scope?: Record<string, RuntimeValue> | null;
+	assignedVariables?: readonly string[];
 }
 
 /**
@@ -36,7 +37,14 @@ if (import.meta.hot) {
 	});
 }
 
-export function Editor({ value, onChange, theme, diagnostics = [], scope = null }: EditorProps) {
+export function Editor({
+	value,
+	onChange,
+	theme,
+	diagnostics = [],
+	scope = null,
+	assignedVariables = [],
+}: EditorProps) {
 	const monacoRef = useRef<typeof monaco | null>(null);
 	const editorRef = useRef<MonacoEditorNs.IStandaloneCodeEditor | null>(null);
 
@@ -48,6 +56,9 @@ export function Editor({ value, onChange, theme, diagnostics = [], scope = null 
 
 	const scopeRef = useRef(scope);
 	scopeRef.current = scope;
+
+	const assignedVariablesRef = useRef(assignedVariables);
+	assignedVariablesRef.current = assignedVariables;
 
 	const applyDiagnostics = () => {
 		const m = monacoRef.current;
@@ -77,17 +88,23 @@ export function Editor({ value, onChange, theme, diagnostics = [], scope = null 
 
 	const handleMount: OnMount = (editor) => {
 		editorRef.current = editor;
-		setHoverScope(scopeRef.current);
+		setLanguageAnalysis({
+			runtimeScope: scopeRef.current,
+			assignedVariables: assignedVariablesRef.current,
+		});
 		applyDiagnostics();
 		editor.focus();
 	};
 
-	// Sync scope for variable hover and re-register providers after HMR.
+	// Sync compiler-derived editor metadata as the evaluation result changes.
 	useEffect(() => {
 		const m = monacoRef.current;
 		if (m) ensureInitialized(m);
-		setHoverScope(scope);
-	}, [scope]);
+		setLanguageAnalysis({
+			runtimeScope: scope,
+			assignedVariables,
+		});
+	}, [assignedVariables, scope]);
 
 	useEffect(() => {
 		applyDiagnostics();
