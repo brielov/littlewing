@@ -1,5 +1,5 @@
-import type { RuntimeValue } from "../types";
-import { assertNumber, assertTimeOrDateTime, typeOf } from "../utils";
+import type { RuntimeValue } from '../types';
+import { assertNumber, assertTimeOrDateTime, typeOf } from '../utils';
 
 /**
  * Time utility functions using Temporal.PlainTime and Temporal.PlainDateTime
@@ -19,9 +19,9 @@ export const TIME = (
 	minute: RuntimeValue,
 	second: RuntimeValue,
 ): RuntimeValue => {
-	assertNumber(hour, "TIME", "hour");
-	assertNumber(minute, "TIME", "minute");
-	assertNumber(second, "TIME", "second");
+	assertNumber(hour, 'TIME', 'hour');
+	assertNumber(minute, 'TIME', 'minute');
+	assertNumber(second, 'TIME', 'second');
 	return new Temporal.PlainTime(hour, minute, second);
 };
 
@@ -38,7 +38,7 @@ export const NOW_TIME = (): RuntimeValue => Temporal.Now.plainTimeISO();
  * Get the hour (0-23) from a time or datetime
  */
 export const HOUR = (t: RuntimeValue): RuntimeValue => {
-	assertTimeOrDateTime(t, "HOUR");
+	assertTimeOrDateTime(t, 'HOUR');
 	return t.hour;
 };
 
@@ -46,7 +46,7 @@ export const HOUR = (t: RuntimeValue): RuntimeValue => {
  * Get the minute (0-59) from a time or datetime
  */
 export const MINUTE = (t: RuntimeValue): RuntimeValue => {
-	assertTimeOrDateTime(t, "MINUTE");
+	assertTimeOrDateTime(t, 'MINUTE');
 	return t.minute;
 };
 
@@ -54,7 +54,7 @@ export const MINUTE = (t: RuntimeValue): RuntimeValue => {
  * Get the second (0-59) from a time or datetime
  */
 export const SECOND = (t: RuntimeValue): RuntimeValue => {
-	assertTimeOrDateTime(t, "SECOND");
+	assertTimeOrDateTime(t, 'SECOND');
 	return t.second;
 };
 
@@ -62,7 +62,7 @@ export const SECOND = (t: RuntimeValue): RuntimeValue => {
  * Get the millisecond (0-999) from a time or datetime
  */
 export const MILLISECOND = (t: RuntimeValue): RuntimeValue => {
-	assertTimeOrDateTime(t, "MILLISECOND");
+	assertTimeOrDateTime(t, 'MILLISECOND');
 	return t.millisecond;
 };
 
@@ -75,8 +75,8 @@ export const MILLISECOND = (t: RuntimeValue): RuntimeValue => {
  * PlainTime wraps around at midnight boundaries.
  */
 export const ADD_HOURS = (t: RuntimeValue, hours: RuntimeValue): RuntimeValue => {
-	assertTimeOrDateTime(t, "ADD_HOURS");
-	assertNumber(hours, "ADD_HOURS", "hours");
+	assertTimeOrDateTime(t, 'ADD_HOURS');
+	assertNumber(hours, 'ADD_HOURS', 'hours');
 	return t.add({ hours });
 };
 
@@ -85,8 +85,8 @@ export const ADD_HOURS = (t: RuntimeValue, hours: RuntimeValue): RuntimeValue =>
  * PlainTime wraps around at midnight boundaries.
  */
 export const ADD_MINUTES = (t: RuntimeValue, minutes: RuntimeValue): RuntimeValue => {
-	assertTimeOrDateTime(t, "ADD_MINUTES");
-	assertNumber(minutes, "ADD_MINUTES", "minutes");
+	assertTimeOrDateTime(t, 'ADD_MINUTES');
+	assertNumber(minutes, 'ADD_MINUTES', 'minutes');
 	return t.add({ minutes });
 };
 
@@ -95,8 +95,8 @@ export const ADD_MINUTES = (t: RuntimeValue, minutes: RuntimeValue): RuntimeValu
  * PlainTime wraps around at midnight boundaries.
  */
 export const ADD_SECONDS = (t: RuntimeValue, seconds: RuntimeValue): RuntimeValue => {
-	assertTimeOrDateTime(t, "ADD_SECONDS");
-	assertNumber(seconds, "ADD_SECONDS", "seconds");
+	assertTimeOrDateTime(t, 'ADD_SECONDS');
+	assertNumber(seconds, 'ADD_SECONDS', 'seconds');
 	return t.add({ seconds });
 };
 
@@ -125,15 +125,15 @@ function assertSameTimeType(
  * Get the absolute difference in hours between two times or datetimes (same type required)
  */
 export const DIFFERENCE_IN_HOURS = (t1: RuntimeValue, t2: RuntimeValue): RuntimeValue => {
-	assertTimeOrDateTime(t1, "DIFFERENCE_IN_HOURS");
-	assertSameTimeType(t1, t2, "DIFFERENCE_IN_HOURS");
+	assertTimeOrDateTime(t1, 'DIFFERENCE_IN_HOURS');
+	assertSameTimeType(t1, t2, 'DIFFERENCE_IN_HOURS');
 	if (t1 instanceof Temporal.PlainTime && t2 instanceof Temporal.PlainTime) {
-		const duration = t1.until(t2, { largestUnit: "hour" });
+		const duration = t1.until(t2, { largestUnit: 'hour' });
 		return Math.abs(duration.hours);
 	}
 	const dt1 = t1 as Temporal.PlainDateTime;
 	const dt2 = t2 as Temporal.PlainDateTime;
-	const duration = dt1.until(dt2, { largestUnit: "hour" });
+	const duration = dt1.until(dt2, { largestUnit: 'hour' });
 	return Math.abs(duration.hours);
 };
 
@@ -141,15 +141,15 @@ export const DIFFERENCE_IN_HOURS = (t1: RuntimeValue, t2: RuntimeValue): Runtime
  * Get the absolute difference in minutes between two times or datetimes (same type required)
  */
 export const DIFFERENCE_IN_MINUTES = (t1: RuntimeValue, t2: RuntimeValue): RuntimeValue => {
-	assertTimeOrDateTime(t1, "DIFFERENCE_IN_MINUTES");
-	assertSameTimeType(t1, t2, "DIFFERENCE_IN_MINUTES");
+	assertTimeOrDateTime(t1, 'DIFFERENCE_IN_MINUTES');
+	assertSameTimeType(t1, t2, 'DIFFERENCE_IN_MINUTES');
 	if (t1 instanceof Temporal.PlainTime && t2 instanceof Temporal.PlainTime) {
-		const duration = t1.until(t2, { largestUnit: "minute" });
+		const duration = t1.until(t2, { largestUnit: 'minute' });
 		return Math.abs(duration.minutes);
 	}
 	const dt1 = t1 as Temporal.PlainDateTime;
 	const dt2 = t2 as Temporal.PlainDateTime;
-	const duration = dt1.until(dt2, { largestUnit: "minute" });
+	const duration = dt1.until(dt2, { largestUnit: 'minute' });
 	return Math.abs(duration.minutes);
 };
 
@@ -157,15 +157,15 @@ export const DIFFERENCE_IN_MINUTES = (t1: RuntimeValue, t2: RuntimeValue): Runti
  * Get the absolute difference in seconds between two times or datetimes (same type required)
  */
 export const DIFFERENCE_IN_SECONDS = (t1: RuntimeValue, t2: RuntimeValue): RuntimeValue => {
-	assertTimeOrDateTime(t1, "DIFFERENCE_IN_SECONDS");
-	assertSameTimeType(t1, t2, "DIFFERENCE_IN_SECONDS");
+	assertTimeOrDateTime(t1, 'DIFFERENCE_IN_SECONDS');
+	assertSameTimeType(t1, t2, 'DIFFERENCE_IN_SECONDS');
 	if (t1 instanceof Temporal.PlainTime && t2 instanceof Temporal.PlainTime) {
-		const duration = t1.until(t2, { largestUnit: "second" });
+		const duration = t1.until(t2, { largestUnit: 'second' });
 		return Math.abs(duration.seconds);
 	}
 	const dt1 = t1 as Temporal.PlainDateTime;
 	const dt2 = t2 as Temporal.PlainDateTime;
-	const duration = dt1.until(dt2, { largestUnit: "second" });
+	const duration = dt1.until(dt2, { largestUnit: 'second' });
 	return Math.abs(duration.seconds);
 };
 
@@ -179,8 +179,8 @@ export const DIFFERENCE_IN_SECONDS = (t1: RuntimeValue, t2: RuntimeValue): Runti
  * Mixed time+datetime is allowed (datetime is converted to time for comparison).
  */
 export const IS_SAME_TIME = (t1: RuntimeValue, t2: RuntimeValue): RuntimeValue => {
-	assertTimeOrDateTime(t1, "IS_SAME_TIME");
-	assertTimeOrDateTime(t2, "IS_SAME_TIME");
+	assertTimeOrDateTime(t1, 'IS_SAME_TIME');
+	assertTimeOrDateTime(t2, 'IS_SAME_TIME');
 	const time1 = t1 instanceof Temporal.PlainDateTime ? t1.toPlainTime() : t1;
 	const time2 = t2 instanceof Temporal.PlainDateTime ? t2.toPlainTime() : t2;
 	return time1.equals(time2);

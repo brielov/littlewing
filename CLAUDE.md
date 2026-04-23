@@ -228,7 +228,7 @@ The codebase uses a centralized visitor pattern for AST traversal, implemented i
 **Example (custom traversal):**
 
 ```typescript
-import { visit } from "littlewing";
+import { visit } from 'littlewing';
 
 const count = visit(ast, {
 	Program: (n, recurse) => n.statements.reduce((sum, s) => sum + recurse(s), 0),
@@ -355,7 +355,7 @@ interface BinaryOp {
 }
 interface UnaryOp {
 	readonly kind: NodeKind.UnaryOp;
-	readonly operator: "-" | "!";
+	readonly operator: '-' | '!';
 	readonly argument: ASTNode;
 }
 interface FunctionCall {

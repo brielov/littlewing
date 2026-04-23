@@ -3,7 +3,7 @@
  * so callers can display precise error locations.
  */
 export class ParseError extends Error {
-	override readonly name = "ParseError";
+	override readonly name = 'ParseError';
 	constructor(
 		message: string,
 		readonly start: number,

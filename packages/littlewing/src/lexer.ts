@@ -1,4 +1,4 @@
-import { ParseError } from "./errors";
+import { ParseError } from './errors';
 
 /**
  * Token types for the lexer
@@ -63,13 +63,13 @@ export const enum TokenKind {
  * Keyword lookup table for identifier classification
  */
 const KEYWORDS = new Map<string, TokenKind>([
-	["if", TokenKind.If],
-	["then", TokenKind.Then],
-	["else", TokenKind.Else],
-	["for", TokenKind.For],
-	["in", TokenKind.In],
-	["when", TokenKind.When],
-	["into", TokenKind.Into],
+	['if', TokenKind.If],
+	['then', TokenKind.Then],
+	['else', TokenKind.Else],
+	['for', TokenKind.For],
+	['in', TokenKind.In],
+	['when', TokenKind.When],
+	['into', TokenKind.Into],
 ]);
 
 /**
@@ -189,22 +189,22 @@ export function readStringValue(cursor: Cursor, token: Token): string {
 	// Slice between the quotes
 	const raw = cursor.source.slice(token[1] + 1, token[2] - 1);
 	// Fast path: no backslashes
-	if (!raw.includes("\\")) return raw;
+	if (!raw.includes('\\')) return raw;
 
-	let result = "";
+	let result = '';
 	for (let i = 0; i < raw.length; i++) {
-		if (raw[i] === "\\" && i + 1 < raw.length) {
+		if (raw[i] === '\\' && i + 1 < raw.length) {
 			i++;
 			const ch = raw[i];
 			switch (ch) {
-				case "n":
-					result += "\n";
+				case 'n':
+					result += '\n';
 					break;
-				case "t":
-					result += "\t";
+				case 't':
+					result += '\t';
 					break;
-				case "\\":
-					result += "\\";
+				case '\\':
+					result += '\\';
 					break;
 				case '"':
 					result += '"';
@@ -375,7 +375,7 @@ function lexString(cursor: Cursor): Token {
 		}
 	}
 
-	throw new ParseError("Unterminated string", start, cursor.pos);
+	throw new ParseError('Unterminated string', start, cursor.pos);
 }
 
 /**

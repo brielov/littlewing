@@ -1,6 +1,6 @@
-import { type ASTNode, NodeKind, type RuntimeValue, defaultContext, evaluate } from "littlewing";
-import { useEffect, useRef, useState } from "react";
-import type { UseEvaluationReturn } from "./use-evaluation.ts";
+import { type ASTNode, NodeKind, type RuntimeValue, defaultContext, evaluate } from 'littlewing';
+import { useEffect, useRef, useState } from 'react';
+import type { UseEvaluationReturn } from './use-evaluation.ts';
 
 interface SidebarProps {
 	evaluation: UseEvaluationReturn;
@@ -14,7 +14,7 @@ export function Sidebar({ evaluation }: SidebarProps) {
 		<div
 			className="flex h-full w-full flex-col overflow-y-auto"
 			style={{
-				backgroundColor: "var(--color-bg)",
+				backgroundColor: 'var(--color-bg)',
 			}}
 		>
 			<VariablesSection
@@ -34,7 +34,7 @@ export function Sidebar({ evaluation }: SidebarProps) {
 // --- Variables Section ---
 
 interface VariablesSectionProps {
-	inputVariables: UseEvaluationReturn["inputVariables"];
+	inputVariables: UseEvaluationReturn['inputVariables'];
 	overrides: Map<string, RuntimeValue>;
 	setOverride: (name: string, value: RuntimeValue) => void;
 	clearOverride: (name: string) => void;
@@ -47,10 +47,10 @@ function VariablesSection({
 	clearOverride,
 }: VariablesSectionProps) {
 	return (
-		<section style={{ borderBottom: "1px solid var(--color-border)" }}>
+		<section style={{ borderBottom: '1px solid var(--color-border)' }}>
 			<SectionHeader>Variables</SectionHeader>
 			{inputVariables.length === 0 ? (
-				<p className="px-4 pb-4 text-xs" style={{ color: "var(--color-fg-muted)" }}>
+				<p className="px-4 pb-4 text-xs" style={{ color: 'var(--color-fg-muted)' }}>
 					No input variables detected.
 				</p>
 			) : (
@@ -109,7 +109,7 @@ function VariableRow({
 						type="button"
 						onClick={() => clearOverride(name)}
 						className="ml-auto cursor-pointer text-xs"
-						style={{ color: "var(--color-fg-muted)" }}
+						style={{ color: 'var(--color-fg-muted)' }}
 						title="Reset to default"
 						aria-label={`Reset ${name} to default`}
 					>
@@ -133,8 +133,8 @@ function TypeBadge({ type }: { type: string }) {
 		<span
 			className="rounded px-1.5 py-0.5 text-[10px] uppercase"
 			style={{
-				backgroundColor: "var(--color-bg-secondary)",
-				color: "var(--color-fg-muted)",
+				backgroundColor: 'var(--color-bg-secondary)',
+				color: 'var(--color-fg-muted)',
 			}}
 		>
 			{type}
@@ -152,14 +152,14 @@ interface VariableInputProps {
 
 function VariableInput({ inputId, name, type, currentValue, setOverride }: VariableInputProps) {
 	const inputStyle = {
-		backgroundColor: "var(--color-bg-secondary)",
-		color: "var(--color-fg)",
-		border: "1px solid var(--color-border)",
+		backgroundColor: 'var(--color-bg-secondary)',
+		color: 'var(--color-fg)',
+		border: '1px solid var(--color-border)',
 		fontFamily: '"Maple Mono", monospace',
 	};
 
 	switch (type) {
-		case "number":
+		case 'number':
 			return (
 				<NumberInput
 					inputId={inputId}
@@ -170,7 +170,7 @@ function VariableInput({ inputId, name, type, currentValue, setOverride }: Varia
 				/>
 			);
 
-		case "string":
+		case 'string':
 			return (
 				<input
 					id={inputId}
@@ -182,7 +182,7 @@ function VariableInput({ inputId, name, type, currentValue, setOverride }: Varia
 				/>
 			);
 
-		case "boolean":
+		case 'boolean':
 			return (
 				<button
 					id={inputId}
@@ -196,7 +196,7 @@ function VariableInput({ inputId, name, type, currentValue, setOverride }: Varia
 				</button>
 			);
 
-		case "date":
+		case 'date':
 			return (
 				<input
 					id={inputId}
@@ -212,7 +212,7 @@ function VariableInput({ inputId, name, type, currentValue, setOverride }: Varia
 				/>
 			);
 
-		case "time":
+		case 'time':
 			return (
 				<input
 					id={inputId}
@@ -229,7 +229,7 @@ function VariableInput({ inputId, name, type, currentValue, setOverride }: Varia
 				/>
 			);
 
-		case "datetime":
+		case 'datetime':
 			return (
 				<input
 					id={inputId}
@@ -246,7 +246,7 @@ function VariableInput({ inputId, name, type, currentValue, setOverride }: Varia
 				/>
 			);
 
-		case "array":
+		case 'array':
 			return (
 				<ExpressionInput
 					inputId={inputId}
@@ -261,8 +261,8 @@ function VariableInput({ inputId, name, type, currentValue, setOverride }: Varia
 				<span
 					className="rounded px-2 py-1 text-xs"
 					style={{
-						backgroundColor: "var(--color-bg-secondary)",
-						color: "var(--color-fg-muted)",
+						backgroundColor: 'var(--color-bg-secondary)',
+						color: 'var(--color-fg-muted)',
 					}}
 				>
 					{formatValue(currentValue)}
@@ -350,9 +350,9 @@ function ExpressionInput({
 			type="text"
 			className="rounded px-2 py-1 text-xs"
 			style={{
-				backgroundColor: "var(--color-bg-secondary)",
-				color: "var(--color-fg)",
-				border: `1px solid ${error ? "var(--color-error)" : "var(--color-border)"}`,
+				backgroundColor: 'var(--color-bg-secondary)',
+				color: 'var(--color-fg)',
+				border: `1px solid ${error ? 'var(--color-error)' : 'var(--color-border)'}`,
 				fontFamily: '"Maple Mono", monospace',
 			}}
 			value={text}
@@ -371,26 +371,26 @@ function ExpressionInput({
 
 // --- Output Section ---
 
-function OutputSection({ result }: { result: UseEvaluationReturn["result"] }) {
+function OutputSection({ result }: { result: UseEvaluationReturn['result'] }) {
 	return (
-		<section style={{ borderBottom: "1px solid var(--color-border)" }}>
+		<section style={{ borderBottom: '1px solid var(--color-border)' }}>
 			<SectionHeader>Output</SectionHeader>
 			<div className="px-4 pb-4">
 				{result === null ? (
-					<span className="text-xs" style={{ color: "var(--color-fg-muted)" }}>
+					<span className="text-xs" style={{ color: 'var(--color-fg-muted)' }}>
 						No output
 					</span>
 				) : result.ok ? (
 					<pre
 						className="whitespace-pre-wrap text-xs"
-						style={{ color: "var(--color-success)", fontFamily: '"Maple Mono", monospace' }}
+						style={{ color: 'var(--color-success)', fontFamily: '"Maple Mono", monospace' }}
 					>
 						{formatValue(result.value)}
 					</pre>
 				) : (
 					<pre
 						className="whitespace-pre-wrap text-xs"
-						style={{ color: "var(--color-error)", fontFamily: '"Maple Mono", monospace' }}
+						style={{ color: 'var(--color-error)', fontFamily: '"Maple Mono", monospace' }}
 					>
 						{result.error}
 					</pre>
@@ -409,19 +409,19 @@ function ScopeSection({ scope }: { scope: Record<string, RuntimeValue> | null })
 	if (entries.length === 0) return null;
 
 	return (
-		<section style={{ borderBottom: "1px solid var(--color-border)" }}>
+		<section style={{ borderBottom: '1px solid var(--color-border)' }}>
 			<SectionHeader>Scope</SectionHeader>
 			<div className="px-4 pb-4">
-				<table className="w-full text-xs" style={{ tableLayout: "fixed" }}>
+				<table className="w-full text-xs" style={{ tableLayout: 'fixed' }}>
 					<tbody>
 						{entries.map(([name, value]) => (
 							<tr key={name}>
 								<td
 									className="py-0.5"
 									style={{
-										color: "var(--color-fg-muted)",
+										color: 'var(--color-fg-muted)',
 										fontFamily: '"Maple Mono", monospace',
-										width: "40%",
+										width: '40%',
 									}}
 								>
 									{name}
@@ -444,25 +444,25 @@ function ScopeSection({ scope }: { scope: Record<string, RuntimeValue> | null })
 
 // --- Performance Section ---
 
-function PerformanceSection({ timing }: { timing: UseEvaluationReturn["timing"] }) {
+function PerformanceSection({ timing }: { timing: UseEvaluationReturn['timing'] }) {
 	if (timing === null) return null;
 
 	const rows: Array<[string, number]> = [
-		["Parse", timing.parseMs],
-		["Optimize", timing.optimizeMs],
-		["Evaluate", timing.evaluateMs],
-		["Total", timing.totalMs],
+		['Parse', timing.parseMs],
+		['Optimize', timing.optimizeMs],
+		['Evaluate', timing.evaluateMs],
+		['Total', timing.totalMs],
 	];
 
 	return (
-		<section style={{ borderBottom: "1px solid var(--color-border)" }}>
+		<section style={{ borderBottom: '1px solid var(--color-border)' }}>
 			<SectionHeader>Performance</SectionHeader>
 			<div className="px-4 pb-4">
 				<table className="w-full text-xs">
 					<tbody>
 						{rows.map(([label, ms]) => (
 							<tr key={label}>
-								<td className="py-0.5" style={{ color: "var(--color-fg-muted)" }}>
+								<td className="py-0.5" style={{ color: 'var(--color-fg-muted)' }}>
 									{label}
 								</td>
 								<td className="py-0.5 text-right" style={{ fontFamily: '"Maple Mono", monospace' }}>
@@ -483,7 +483,7 @@ function AstSection({ ast }: { ast: ASTNode | null }) {
 	if (ast === null) return null;
 
 	return (
-		<section style={{ borderBottom: "1px solid var(--color-border)" }}>
+		<section style={{ borderBottom: '1px solid var(--color-border)' }}>
 			<SectionHeader>AST</SectionHeader>
 			<div className="px-4 pb-4">
 				<AstNode node={ast} />
@@ -507,100 +507,100 @@ function buildAstEntries(node: ASTNode): AstEntry {
 
 	switch (node.kind) {
 		case NodeKind.Program:
-			return { label: "Program", children: node.statements.map(recurse) };
+			return { label: 'Program', children: node.statements.map(recurse) };
 		case NodeKind.NumberLiteral:
-			return { label: "NumberLiteral", value: String(node.value) };
+			return { label: 'NumberLiteral', value: String(node.value) };
 		case NodeKind.StringLiteral:
-			return { label: "StringLiteral", value: `"${node.value}"` };
+			return { label: 'StringLiteral', value: `"${node.value}"` };
 		case NodeKind.BooleanLiteral:
-			return { label: "BooleanLiteral", value: String(node.value) };
+			return { label: 'BooleanLiteral', value: String(node.value) };
 		case NodeKind.ArrayLiteral:
-			return { label: "ArrayLiteral", children: node.elements.map(recurse) };
+			return { label: 'ArrayLiteral', children: node.elements.map(recurse) };
 		case NodeKind.Identifier:
-			return { label: "Identifier", value: node.name };
+			return { label: 'Identifier', value: node.name };
 		case NodeKind.BinaryOp:
 			return {
-				label: "BinaryOp",
+				label: 'BinaryOp',
 				value: node.operator,
 				children: [
-					{ label: "left", children: [recurse(node.left)] },
-					{ label: "right", children: [recurse(node.right)] },
+					{ label: 'left', children: [recurse(node.left)] },
+					{ label: 'right', children: [recurse(node.right)] },
 				],
 			};
 		case NodeKind.UnaryOp:
 			return {
-				label: "UnaryOp",
+				label: 'UnaryOp',
 				value: node.operator,
 				children: [recurse(node.argument)],
 			};
 		case NodeKind.FunctionCall:
 			return {
-				label: "FunctionCall",
+				label: 'FunctionCall',
 				value: node.name,
 				children: node.args.length > 0 ? node.args.map(recurse) : undefined,
 			};
 		case NodeKind.Assignment:
 			return {
-				label: "Assignment",
+				label: 'Assignment',
 				value: node.name,
 				children: [recurse(node.value)],
 			};
 		case NodeKind.IfExpression:
 			return {
-				label: "IfExpression",
+				label: 'IfExpression',
 				children: [
-					{ label: "condition", children: [recurse(node.condition)] },
-					{ label: "consequent", children: [recurse(node.consequent)] },
-					{ label: "alternate", children: [recurse(node.alternate)] },
+					{ label: 'condition', children: [recurse(node.condition)] },
+					{ label: 'consequent', children: [recurse(node.consequent)] },
+					{ label: 'alternate', children: [recurse(node.alternate)] },
 				],
 			};
 		case NodeKind.ForExpression:
 			return {
-				label: "ForExpression",
+				label: 'ForExpression',
 				value: node.variable,
 				children: [
-					{ label: "iterable", children: [recurse(node.iterable)] },
-					...(node.guard ? [{ label: "guard", children: [recurse(node.guard)] }] : []),
+					{ label: 'iterable', children: [recurse(node.iterable)] },
+					...(node.guard ? [{ label: 'guard', children: [recurse(node.guard)] }] : []),
 					...(node.accumulator
 						? [
 								{
-									label: "accumulator",
+									label: 'accumulator',
 									value: node.accumulator.name,
 									children: [recurse(node.accumulator.initial)],
 								},
 							]
 						: []),
-					{ label: "body", children: [recurse(node.body)] },
+					{ label: 'body', children: [recurse(node.body)] },
 				],
 			};
 		case NodeKind.IndexAccess:
 			return {
-				label: "IndexAccess",
+				label: 'IndexAccess',
 				children: [
-					{ label: "object", children: [recurse(node.object)] },
-					{ label: "index", children: [recurse(node.index)] },
+					{ label: 'object', children: [recurse(node.object)] },
+					{ label: 'index', children: [recurse(node.index)] },
 				],
 			};
 		case NodeKind.RangeExpression:
 			return {
-				label: "RangeExpression",
-				value: node.inclusive ? "..=" : "..",
+				label: 'RangeExpression',
+				value: node.inclusive ? '..=' : '..',
 				children: [
-					{ label: "start", children: [recurse(node.start)] },
-					{ label: "end", children: [recurse(node.end)] },
+					{ label: 'start', children: [recurse(node.start)] },
+					{ label: 'end', children: [recurse(node.end)] },
 				],
 			};
 		case NodeKind.PipeExpression:
 			return {
-				label: "PipeExpression",
+				label: 'PipeExpression',
 				value: node.name,
 				children: [
-					{ label: "value", children: [recurse(node.value)] },
+					{ label: 'value', children: [recurse(node.value)] },
 					...(node.args.length > 0 ? node.args.map(recurse) : []),
 				],
 			};
 		case NodeKind.Placeholder:
-			return { label: "Placeholder", value: "?" };
+			return { label: 'Placeholder', value: '?' };
 	}
 }
 
@@ -622,36 +622,36 @@ function AstEntryNode({ entry }: { entry: AstEntry }) {
 					type="button"
 					className="flex items-center gap-1 py-0.5 text-left"
 					style={{
-						cursor: "pointer",
-						width: "100%",
-						border: "none",
-						background: "transparent",
+						cursor: 'pointer',
+						width: '100%',
+						border: 'none',
+						background: 'transparent',
 						padding: 0,
-						color: "inherit",
+						color: 'inherit',
 					}}
 					onClick={() => setOpen((o) => !o)}
 					aria-expanded={open}
 					aria-label={`Toggle ${entry.label}`}
 				>
-					<span className="inline-block w-3 text-center" style={{ color: "var(--color-fg-muted)" }}>
-						{open ? "\u25BE" : "\u25B8"}
+					<span className="inline-block w-3 text-center" style={{ color: 'var(--color-fg-muted)' }}>
+						{open ? '\u25BE' : '\u25B8'}
 					</span>
-					<span style={{ color: "var(--color-accent)" }}>{entry.label}</span>
+					<span style={{ color: 'var(--color-accent)' }}>{entry.label}</span>
 					{entry.value !== undefined && (
-						<span style={{ color: "var(--color-fg-muted)" }}>{entry.value}</span>
+						<span style={{ color: 'var(--color-fg-muted)' }}>{entry.value}</span>
 					)}
 				</button>
 			) : (
 				<div className="flex items-center gap-1 py-0.5">
 					<span className="inline-block w-3" />
-					<span style={{ color: "var(--color-accent)" }}>{entry.label}</span>
+					<span style={{ color: 'var(--color-accent)' }}>{entry.label}</span>
 					{entry.value !== undefined && (
-						<span style={{ color: "var(--color-fg-muted)" }}>{entry.value}</span>
+						<span style={{ color: 'var(--color-fg-muted)' }}>{entry.value}</span>
 					)}
 				</div>
 			)}
 			{open && hasChildren && (
-				<div className="ml-3" style={{ borderLeft: "1px solid var(--color-border)" }}>
+				<div className="ml-3" style={{ borderLeft: '1px solid var(--color-border)' }}>
 					<div className="ml-2">
 						{entry.children!.map((child, i) => (
 							<AstEntryNode key={i} entry={child} />
@@ -669,7 +669,7 @@ function SectionHeader({ children }: { children: React.ReactNode }) {
 	return (
 		<h2
 			className="px-4 py-2.5 text-[11px] font-semibold uppercase tracking-wider"
-			style={{ color: "var(--color-fg-muted)" }}
+			style={{ color: 'var(--color-fg-muted)' }}
 		>
 			{children}
 		</h2>
@@ -678,9 +678,9 @@ function SectionHeader({ children }: { children: React.ReactNode }) {
 
 function formatValue(value: RuntimeValue): string {
 	if (Array.isArray(value)) {
-		return `[${value.map(formatValue).join(", ")}]`;
+		return `[${value.map(formatValue).join(', ')}]`;
 	}
-	if (typeof value === "string") {
+	if (typeof value === 'string') {
 		return `"${value}"`;
 	}
 	return String(value);

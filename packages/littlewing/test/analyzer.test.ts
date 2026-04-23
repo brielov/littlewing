@@ -1,164 +1,164 @@
-import { describe, expect, test } from "bun:test";
-import { extractAssignedVariables, extractInputVariables } from "../src/analyzer";
-import { parse } from "../src/parser";
+import { describe, expect, test } from 'bun:test';
+import { extractAssignedVariables, extractInputVariables } from '../src/analyzer';
+import { parse } from '../src/parser';
 
-describe("extractInputVariables", () => {
-	describe("literals as inputs", () => {
-		test("extracts variable assigned to positive literal", () => {
-			const ast = parse("x = 10");
+describe('extractInputVariables', () => {
+	describe('literals as inputs', () => {
+		test('extracts variable assigned to positive literal', () => {
+			const ast = parse('x = 10');
 			const inputs = extractInputVariables(ast);
-			expect(inputs).toEqual(["x"]);
+			expect(inputs).toEqual(['x']);
 		});
 
-		test("extracts variable assigned to decimal literal", () => {
-			const ast = parse("rate = 0.08");
+		test('extracts variable assigned to decimal literal', () => {
+			const ast = parse('rate = 0.08');
 			const inputs = extractInputVariables(ast);
-			expect(inputs).toEqual(["rate"]);
+			expect(inputs).toEqual(['rate']);
 		});
 
-		test("extracts variable assigned to negative literal (unary minus)", () => {
-			const ast = parse("x = -10");
+		test('extracts variable assigned to negative literal (unary minus)', () => {
+			const ast = parse('x = -10');
 			const inputs = extractInputVariables(ast);
-			expect(inputs).toEqual(["x"]);
+			expect(inputs).toEqual(['x']);
 		});
 
-		test("extracts variable assigned to decimal", () => {
-			const ast = parse("x = 0.5");
+		test('extracts variable assigned to decimal', () => {
+			const ast = parse('x = 0.5');
 			const inputs = extractInputVariables(ast);
-			expect(inputs).toEqual(["x"]);
+			expect(inputs).toEqual(['x']);
 		});
 
-		test("extracts multiple literal variables", () => {
-			const ast = parse("x = 10; y = 20; z = -5");
+		test('extracts multiple literal variables', () => {
+			const ast = parse('x = 10; y = 20; z = -5');
 			const inputs = extractInputVariables(ast);
-			expect(inputs).toEqual(["x", "y", "z"]);
-		});
-	});
-
-	describe("constant expressions as inputs", () => {
-		test("extracts variable assigned to constant addition", () => {
-			const ast = parse("x = 2 + 3");
-			const inputs = extractInputVariables(ast);
-			expect(inputs).toEqual(["x"]);
-		});
-
-		test("extracts variable assigned to constant multiplication", () => {
-			const ast = parse("hours = 24 * 7");
-			const inputs = extractInputVariables(ast);
-			expect(inputs).toEqual(["hours"]);
-		});
-
-		test("extracts variable assigned to complex constant expression", () => {
-			const ast = parse("x = (2 + 3) * 4 - 1");
-			const inputs = extractInputVariables(ast);
-			expect(inputs).toEqual(["x"]);
-		});
-
-		test("extracts variable assigned to unary minus of constant expression", () => {
-			const ast = parse("x = -(2 + 3)");
-			const inputs = extractInputVariables(ast);
-			expect(inputs).toEqual(["x"]);
+			expect(inputs).toEqual(['x', 'y', 'z']);
 		});
 	});
 
-	describe("function calls as inputs", () => {
-		test("extracts variable assigned to function with no args", () => {
-			const ast = parse("start = NOW()");
+	describe('constant expressions as inputs', () => {
+		test('extracts variable assigned to constant addition', () => {
+			const ast = parse('x = 2 + 3');
 			const inputs = extractInputVariables(ast);
-			expect(inputs).toEqual(["start"]);
+			expect(inputs).toEqual(['x']);
 		});
 
-		test("extracts variable assigned to function with constant args", () => {
-			const ast = parse("max_val = MAX(10, 20)");
+		test('extracts variable assigned to constant multiplication', () => {
+			const ast = parse('hours = 24 * 7');
 			const inputs = extractInputVariables(ast);
-			expect(inputs).toEqual(["max_val"]);
+			expect(inputs).toEqual(['hours']);
 		});
 
-		test("extracts variable assigned to function with constant expression args", () => {
-			const ast = parse("result = MAX(2 + 3, 4 * 5)");
+		test('extracts variable assigned to complex constant expression', () => {
+			const ast = parse('x = (2 + 3) * 4 - 1');
 			const inputs = extractInputVariables(ast);
-			expect(inputs).toEqual(["result"]);
+			expect(inputs).toEqual(['x']);
 		});
 
-		test("extracts variable assigned to nested function calls", () => {
-			const ast = parse("x = ABS(MAX(-10, -20))");
+		test('extracts variable assigned to unary minus of constant expression', () => {
+			const ast = parse('x = -(2 + 3)');
 			const inputs = extractInputVariables(ast);
-			expect(inputs).toEqual(["x"]);
-		});
-	});
-
-	describe("computed variables (excluded)", () => {
-		test("excludes variable that references another variable", () => {
-			const ast = parse("x = 10; y = x");
-			const inputs = extractInputVariables(ast);
-			expect(inputs).toEqual(["x"]);
-		});
-
-		test("excludes variable computed from binary operation with variable", () => {
-			const ast = parse("price = 100; tax = price * 0.08");
-			const inputs = extractInputVariables(ast);
-			expect(inputs).toEqual(["price"]);
-		});
-
-		test("excludes variable computed from multiple variables", () => {
-			const ast = parse("x = 10; y = 20; sum = x + y");
-			const inputs = extractInputVariables(ast);
-			expect(inputs).toEqual(["x", "y"]);
-		});
-
-		test("excludes variable with unary minus of variable", () => {
-			const ast = parse("x = 10; y = -x");
-			const inputs = extractInputVariables(ast);
-			expect(inputs).toEqual(["x"]);
-		});
-
-		test("excludes variable from function call with variable argument", () => {
-			const ast = parse("x = 10; y = ABS(x)");
-			const inputs = extractInputVariables(ast);
-			expect(inputs).toEqual(["x"]);
-		});
-
-		test("excludes variable from function call mixing constants and variables", () => {
-			const ast = parse("x = 10; y = MAX(x, 20)");
-			const inputs = extractInputVariables(ast);
-			expect(inputs).toEqual(["x"]);
-		});
-
-		test("excludes variable from nested expression with variable reference", () => {
-			const ast = parse("x = 10; y = (x + 5) * 2");
-			const inputs = extractInputVariables(ast);
-			expect(inputs).toEqual(["x"]);
+			expect(inputs).toEqual(['x']);
 		});
 	});
 
-	describe("if expressions", () => {
-		test("extracts variable assigned to if expression with constant condition", () => {
-			const ast = parse("x = if true then 100 else 50");
+	describe('function calls as inputs', () => {
+		test('extracts variable assigned to function with no args', () => {
+			const ast = parse('start = NOW()');
 			const inputs = extractInputVariables(ast);
-			expect(inputs).toEqual(["x"]);
+			expect(inputs).toEqual(['start']);
 		});
 
-		test("extracts variable assigned to if expression with constant comparison", () => {
-			const ast = parse("x = if 5 > 3 then 100 else 50");
+		test('extracts variable assigned to function with constant args', () => {
+			const ast = parse('max_val = MAX(10, 20)');
 			const inputs = extractInputVariables(ast);
-			expect(inputs).toEqual(["x"]);
+			expect(inputs).toEqual(['max_val']);
 		});
 
-		test("excludes variable with if expression that references variable", () => {
-			const ast = parse("x = 10; y = if x > 5 then 100 else 50");
+		test('extracts variable assigned to function with constant expression args', () => {
+			const ast = parse('result = MAX(2 + 3, 4 * 5)');
 			const inputs = extractInputVariables(ast);
-			expect(inputs).toEqual(["x"]);
+			expect(inputs).toEqual(['result']);
 		});
 
-		test("excludes variable with if expression that has variable in branches", () => {
-			const ast = parse("x = 10; y = if true then x else 50");
+		test('extracts variable assigned to nested function calls', () => {
+			const ast = parse('x = ABS(MAX(-10, -20))');
 			const inputs = extractInputVariables(ast);
-			expect(inputs).toEqual(["x"]);
+			expect(inputs).toEqual(['x']);
 		});
 	});
 
-	describe("complex scenarios", () => {
-		test("extracts input variables from realistic formula", () => {
+	describe('computed variables (excluded)', () => {
+		test('excludes variable that references another variable', () => {
+			const ast = parse('x = 10; y = x');
+			const inputs = extractInputVariables(ast);
+			expect(inputs).toEqual(['x']);
+		});
+
+		test('excludes variable computed from binary operation with variable', () => {
+			const ast = parse('price = 100; tax = price * 0.08');
+			const inputs = extractInputVariables(ast);
+			expect(inputs).toEqual(['price']);
+		});
+
+		test('excludes variable computed from multiple variables', () => {
+			const ast = parse('x = 10; y = 20; sum = x + y');
+			const inputs = extractInputVariables(ast);
+			expect(inputs).toEqual(['x', 'y']);
+		});
+
+		test('excludes variable with unary minus of variable', () => {
+			const ast = parse('x = 10; y = -x');
+			const inputs = extractInputVariables(ast);
+			expect(inputs).toEqual(['x']);
+		});
+
+		test('excludes variable from function call with variable argument', () => {
+			const ast = parse('x = 10; y = ABS(x)');
+			const inputs = extractInputVariables(ast);
+			expect(inputs).toEqual(['x']);
+		});
+
+		test('excludes variable from function call mixing constants and variables', () => {
+			const ast = parse('x = 10; y = MAX(x, 20)');
+			const inputs = extractInputVariables(ast);
+			expect(inputs).toEqual(['x']);
+		});
+
+		test('excludes variable from nested expression with variable reference', () => {
+			const ast = parse('x = 10; y = (x + 5) * 2');
+			const inputs = extractInputVariables(ast);
+			expect(inputs).toEqual(['x']);
+		});
+	});
+
+	describe('if expressions', () => {
+		test('extracts variable assigned to if expression with constant condition', () => {
+			const ast = parse('x = if true then 100 else 50');
+			const inputs = extractInputVariables(ast);
+			expect(inputs).toEqual(['x']);
+		});
+
+		test('extracts variable assigned to if expression with constant comparison', () => {
+			const ast = parse('x = if 5 > 3 then 100 else 50');
+			const inputs = extractInputVariables(ast);
+			expect(inputs).toEqual(['x']);
+		});
+
+		test('excludes variable with if expression that references variable', () => {
+			const ast = parse('x = 10; y = if x > 5 then 100 else 50');
+			const inputs = extractInputVariables(ast);
+			expect(inputs).toEqual(['x']);
+		});
+
+		test('excludes variable with if expression that has variable in branches', () => {
+			const ast = parse('x = 10; y = if true then x else 50');
+			const inputs = extractInputVariables(ast);
+			expect(inputs).toEqual(['x']);
+		});
+	});
+
+	describe('complex scenarios', () => {
+		test('extracts input variables from realistic formula', () => {
 			const ast = parse(`
 				principal = 1000
 				rate = 0.05
@@ -167,10 +167,10 @@ describe("extractInputVariables", () => {
 				total = principal + interest
 			`);
 			const inputs = extractInputVariables(ast);
-			expect(inputs).toEqual(["principal", "rate", "time"]);
+			expect(inputs).toEqual(['principal', 'rate', 'time']);
 		});
 
-		test("extracts input variables from date calculation", () => {
+		test('extracts input variables from date calculation', () => {
 			const ast = parse(`
 				start_date = NOW()
 				days_to_add = 7
@@ -179,10 +179,10 @@ describe("extractInputVariables", () => {
 				deadline = ADD_HOURS(start_date, hours_offset)
 			`);
 			const inputs = extractInputVariables(ast);
-			expect(inputs).toEqual(["start_date", "days_to_add", "hours_offset"]);
+			expect(inputs).toEqual(['start_date', 'days_to_add', 'hours_offset']);
 		});
 
-		test("extracts input variables from mixed computation", () => {
+		test('extracts input variables from mixed computation', () => {
 			const ast = parse(`
 				price = 100
 				tax_rate = 0.08
@@ -191,134 +191,134 @@ describe("extractInputVariables", () => {
 				final_price = price + tax - discount
 			`);
 			const inputs = extractInputVariables(ast);
-			expect(inputs).toEqual(["price", "tax_rate", "discount"]);
+			expect(inputs).toEqual(['price', 'tax_rate', 'discount']);
 		});
 
-		test("handles variable shadowing correctly", () => {
+		test('handles variable shadowing correctly', () => {
 			const ast = parse(`
 				x = 10
 				x = x + 5
 			`);
 			const inputs = extractInputVariables(ast);
 			// First x is input, second x references a variable (itself)
-			expect(inputs).toEqual(["x"]);
+			expect(inputs).toEqual(['x']);
 		});
 	});
 
-	describe("for-loop expressions", () => {
-		test("extracts variable assigned to for-loop with no external dependencies", () => {
-			const ast = parse("x = for y in [1, 2, 3] then y * 2");
+	describe('for-loop expressions', () => {
+		test('extracts variable assigned to for-loop with no external dependencies', () => {
+			const ast = parse('x = for y in [1, 2, 3] then y * 2');
 			const inputs = extractInputVariables(ast);
-			expect(inputs).toEqual(["x"]);
+			expect(inputs).toEqual(['x']);
 		});
 
-		test("extracts variable assigned to for-loop with accumulator", () => {
-			const ast = parse("total = for x in [1, 2, 3] into sum = 0 then sum + x");
+		test('extracts variable assigned to for-loop with accumulator', () => {
+			const ast = parse('total = for x in [1, 2, 3] into sum = 0 then sum + x');
 			const inputs = extractInputVariables(ast);
-			expect(inputs).toEqual(["total"]);
+			expect(inputs).toEqual(['total']);
 		});
 
-		test("excludes variable assigned to for-loop that references external variable", () => {
-			const ast = parse("factor = 2; x = for y in [1, 2, 3] then y * factor");
+		test('excludes variable assigned to for-loop that references external variable', () => {
+			const ast = parse('factor = 2; x = for y in [1, 2, 3] then y * factor');
 			const inputs = extractInputVariables(ast);
-			expect(inputs).toEqual(["factor"]);
+			expect(inputs).toEqual(['factor']);
 		});
 
-		test("extracts variable assigned to for-loop with when guard using loop var", () => {
-			const ast = parse("x = for y in [1, 2, 3, 4] when y > 2 then y");
+		test('extracts variable assigned to for-loop with when guard using loop var', () => {
+			const ast = parse('x = for y in [1, 2, 3, 4] when y > 2 then y');
 			const inputs = extractInputVariables(ast);
-			expect(inputs).toEqual(["x"]);
+			expect(inputs).toEqual(['x']);
 		});
 
-		test("excludes for-loop with external variable in iterable", () => {
-			const ast = parse("arr = [1, 2, 3]; x = for y in arr then y * 2");
+		test('excludes for-loop with external variable in iterable', () => {
+			const ast = parse('arr = [1, 2, 3]; x = for y in arr then y * 2');
 			const inputs = extractInputVariables(ast);
-			expect(inputs).toEqual(["arr"]);
+			expect(inputs).toEqual(['arr']);
 		});
 
-		test("excludes for-loop with external variable in accumulator initial", () => {
-			const ast = parse("start = 10; x = for y in [1, 2, 3] into sum = start then sum + y");
+		test('excludes for-loop with external variable in accumulator initial', () => {
+			const ast = parse('start = 10; x = for y in [1, 2, 3] into sum = start then sum + y');
 			const inputs = extractInputVariables(ast);
-			expect(inputs).toEqual(["start"]);
+			expect(inputs).toEqual(['start']);
 		});
 	});
 
-	describe("edge cases", () => {
-		test("returns empty array for program with no assignments", () => {
-			const ast = parse("2 + 3");
+	describe('edge cases', () => {
+		test('returns empty array for program with no assignments', () => {
+			const ast = parse('2 + 3');
 			const inputs = extractInputVariables(ast);
 			expect(inputs).toEqual([]);
 		});
 
-		test("throws error for empty program", () => {
-			expect(() => parse("")).toThrow("Empty program");
+		test('throws error for empty program', () => {
+			expect(() => parse('')).toThrow('Empty program');
 		});
 
-		test("preserves order of first occurrence", () => {
-			const ast = parse("z = 30; a = 10; m = 20");
+		test('preserves order of first occurrence', () => {
+			const ast = parse('z = 30; a = 10; m = 20');
 			const inputs = extractInputVariables(ast);
-			expect(inputs).toEqual(["z", "a", "m"]);
+			expect(inputs).toEqual(['z', 'a', 'm']);
 		});
 	});
 });
 
-describe("extractAssignedVariables", () => {
-	test("extracts single assignment", () => {
-		const ast = parse("x = 10");
-		expect(extractAssignedVariables(ast)).toEqual(["x"]);
+describe('extractAssignedVariables', () => {
+	test('extracts single assignment', () => {
+		const ast = parse('x = 10');
+		expect(extractAssignedVariables(ast)).toEqual(['x']);
 	});
 
-	test("extracts multiple assignments", () => {
-		const ast = parse("x = 10; y = 20; z = 30");
-		expect(extractAssignedVariables(ast)).toEqual(["x", "y", "z"]);
+	test('extracts multiple assignments', () => {
+		const ast = parse('x = 10; y = 20; z = 30');
+		expect(extractAssignedVariables(ast)).toEqual(['x', 'y', 'z']);
 	});
 
-	test("deduplicates reassigned variables", () => {
-		const ast = parse("x = 10; x = 20");
-		expect(extractAssignedVariables(ast)).toEqual(["x"]);
+	test('deduplicates reassigned variables', () => {
+		const ast = parse('x = 10; x = 20');
+		expect(extractAssignedVariables(ast)).toEqual(['x']);
 	});
 
-	test("preserves definition order", () => {
-		const ast = parse("z = 1; a = 2; m = 3");
-		expect(extractAssignedVariables(ast)).toEqual(["z", "a", "m"]);
+	test('preserves definition order', () => {
+		const ast = parse('z = 1; a = 2; m = 3');
+		expect(extractAssignedVariables(ast)).toEqual(['z', 'a', 'm']);
 	});
 
-	test("returns empty array when no assignments exist", () => {
-		const ast = parse("2 + 3");
+	test('returns empty array when no assignments exist', () => {
+		const ast = parse('2 + 3');
 		expect(extractAssignedVariables(ast)).toEqual([]);
 	});
 
-	test("includes computed assignments", () => {
-		const ast = parse("x = 10; y = x * 2");
-		expect(extractAssignedVariables(ast)).toEqual(["x", "y"]);
+	test('includes computed assignments', () => {
+		const ast = parse('x = 10; y = x * 2');
+		expect(extractAssignedVariables(ast)).toEqual(['x', 'y']);
 	});
 
-	test("extracts from realistic BVA efficiency formula", () => {
+	test('extracts from realistic BVA efficiency formula', () => {
 		const ast = parse(`
 			totalTime = hoursPerWeek * 52
 			hoursRecovered = totalTime * efficiencyGain
 			valueRecovered = hoursRecovered * hourlyRate
 		`);
 		expect(extractAssignedVariables(ast)).toEqual([
-			"totalTime",
-			"hoursRecovered",
-			"valueRecovered",
+			'totalTime',
+			'hoursRecovered',
+			'valueRecovered',
 		]);
 	});
 
-	test("extracts from formula with function calls", () => {
-		const ast = parse("start = NOW(); duration = 24 * 7; end_date = ADD_DAYS(start, duration)");
-		expect(extractAssignedVariables(ast)).toEqual(["start", "duration", "end_date"]);
+	test('extracts from formula with function calls', () => {
+		const ast = parse('start = NOW(); duration = 24 * 7; end_date = ADD_DAYS(start, duration)');
+		expect(extractAssignedVariables(ast)).toEqual(['start', 'duration', 'end_date']);
 	});
 
-	test("extracts from formula with if expressions", () => {
-		const ast = parse("x = 10; y = if x > 5 then 100 else 50");
-		expect(extractAssignedVariables(ast)).toEqual(["x", "y"]);
+	test('extracts from formula with if expressions', () => {
+		const ast = parse('x = 10; y = if x > 5 then 100 else 50');
+		expect(extractAssignedVariables(ast)).toEqual(['x', 'y']);
 	});
 
-	test("handles single non-program node", () => {
+	test('handles single non-program node', () => {
 		// parse('x = 42') returns an Assignment node directly (not a Program)
-		const ast = parse("x = 42");
-		expect(extractAssignedVariables(ast)).toEqual(["x"]);
+		const ast = parse('x = 42');
+		expect(extractAssignedVariables(ast)).toEqual(['x']);
 	});
 });

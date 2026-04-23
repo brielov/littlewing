@@ -1,10 +1,10 @@
-import { generate, parse } from "littlewing";
-import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
-import { Editor } from "./editor.tsx";
-import { ExamplesDialog } from "./examples-dialog.tsx";
-import { HelpDialog } from "./help-dialog.tsx";
-import { Sidebar } from "./sidebar.tsx";
-import { useEvaluation } from "./use-evaluation.ts";
+import { generate, parse } from 'littlewing';
+import { useCallback, useEffect, useState, useSyncExternalStore } from 'react';
+import { Editor } from './editor.tsx';
+import { ExamplesDialog } from './examples-dialog.tsx';
+import { HelpDialog } from './help-dialog.tsx';
+import { Sidebar } from './sidebar.tsx';
+import { useEvaluation } from './use-evaluation.ts';
 
 const INITIAL_SOURCE = `// littlewing playground
 price = 100
@@ -23,22 +23,22 @@ if total > 100 then "Total: $" + label + " (expensive)" else "Total: $" + label 
 // --- URL hash encoding (gzip + base64url) ---
 
 async function compress(input: string): Promise<string> {
-	const stream = new Blob([input]).stream().pipeThrough(new CompressionStream("gzip"));
+	const stream = new Blob([input]).stream().pipeThrough(new CompressionStream('gzip'));
 	const bytes = new Uint8Array(await new Response(stream).arrayBuffer());
-	let binary = "";
+	let binary = '';
 	for (const byte of bytes) {
 		binary += String.fromCharCode(byte);
 	}
-	return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+	return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
 
 async function decompress(encoded: string): Promise<string> {
-	const binary = atob(encoded.replace(/-/g, "+").replace(/_/g, "/"));
+	const binary = atob(encoded.replace(/-/g, '+').replace(/_/g, '/'));
 	const bytes = new Uint8Array(binary.length);
 	for (let i = 0; i < binary.length; i++) {
 		bytes[i] = binary.charCodeAt(i);
 	}
-	const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream("gzip"));
+	const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'));
 	return new Response(stream).text();
 }
 
@@ -54,11 +54,11 @@ async function readSourceFromHash(): Promise<string | null> {
 
 // --- Dark mode ---
 
-const darkQuery = window.matchMedia("(prefers-color-scheme: dark)");
+const darkQuery = window.matchMedia('(prefers-color-scheme: dark)');
 
 function subscribeToDarkMode(callback: () => void): () => void {
-	darkQuery.addEventListener("change", callback);
-	return () => darkQuery.removeEventListener("change", callback);
+	darkQuery.addEventListener('change', callback);
+	return () => darkQuery.removeEventListener('change', callback);
 }
 
 function getIsDark(): boolean {
@@ -67,23 +67,23 @@ function getIsDark(): boolean {
 
 // --- Desktop breakpoint (matches Tailwind md: = 768px) ---
 
-const desktopQuery = window.matchMedia("(min-width: 768px)");
+const desktopQuery = window.matchMedia('(min-width: 768px)');
 
 function subscribeToDesktop(callback: () => void): () => void {
-	desktopQuery.addEventListener("change", callback);
-	return () => desktopQuery.removeEventListener("change", callback);
+	desktopQuery.addEventListener('change', callback);
+	return () => desktopQuery.removeEventListener('change', callback);
 }
 
 function getIsDesktop(): boolean {
 	return desktopQuery.matches;
 }
 
-type MobileView = "editor" | "results";
+type MobileView = 'editor' | 'results';
 
 export function App() {
 	const [source, setSource] = useState(INITIAL_SOURCE);
 	const [ready, setReady] = useState(false);
-	const [mobileView, setMobileView] = useState<MobileView>("editor");
+	const [mobileView, setMobileView] = useState<MobileView>('editor');
 	const isDark = useSyncExternalStore(subscribeToDarkMode, getIsDark);
 	const isDesktop = useSyncExternalStore(subscribeToDesktop, getIsDesktop);
 
@@ -101,11 +101,11 @@ export function App() {
 	useEffect(() => {
 		if (!ready) return;
 		const id = setTimeout(() => {
-			if (source.trim() === "") {
-				history.replaceState(null, "", window.location.pathname + window.location.search);
+			if (source.trim() === '') {
+				history.replaceState(null, '', window.location.pathname + window.location.search);
 			} else {
 				void compress(source).then((hash) => {
-					history.replaceState(null, "", `#${hash}`);
+					history.replaceState(null, '', `#${hash}`);
 				});
 			}
 		}, 500);
@@ -122,15 +122,15 @@ export function App() {
 		}
 	}, [source]);
 
-	const monacoTheme = isDark ? "tomorrow-night" : "tomorrow";
+	const monacoTheme = isDark ? 'tomorrow-night' : 'tomorrow';
 
 	return (
-		<div className="flex h-full flex-col" style={{ backgroundColor: "var(--color-bg)" }}>
+		<div className="flex h-full flex-col" style={{ backgroundColor: 'var(--color-bg)' }}>
 			<header
 				className="flex shrink-0 items-center justify-between px-4"
 				style={{
 					height: 44,
-					borderBottom: "1px solid var(--color-border)",
+					borderBottom: '1px solid var(--color-border)',
 				}}
 			>
 				<a
@@ -138,7 +138,7 @@ export function App() {
 					className="text-sm font-semibold tracking-tight no-underline"
 					style={{
 						fontFamily: '"Maple Mono", monospace',
-						color: "var(--color-fg)",
+						color: 'var(--color-fg)',
 					}}
 				>
 					littlewing
@@ -149,7 +149,7 @@ export function App() {
 						type="button"
 						onClick={formatSource}
 						className="cursor-pointer text-xs"
-						style={{ color: "var(--color-fg-muted)" }}
+						style={{ color: 'var(--color-fg-muted)' }}
 						title="Format code"
 					>
 						Format
@@ -160,7 +160,7 @@ export function App() {
 						target="_blank"
 						rel="noopener noreferrer"
 						className="text-xs"
-						style={{ color: "var(--color-fg-muted)" }}
+						style={{ color: 'var(--color-fg-muted)' }}
 						title="GitHub repository"
 					>
 						GitHub
@@ -182,7 +182,7 @@ export function App() {
 					</div>
 					<div
 						className="flex min-h-0 flex-[3_1_0%] border-l"
-						style={{ borderColor: "var(--color-border)" }}
+						style={{ borderColor: 'var(--color-border)' }}
 					>
 						<Sidebar evaluation={evaluation} />
 					</div>
@@ -190,7 +190,7 @@ export function App() {
 			) : (
 				<>
 					<main className="flex min-h-0 flex-1">
-						{mobileView === "editor" ? (
+						{mobileView === 'editor' ? (
 							<Editor
 								value={source}
 								onChange={setSource}
@@ -207,14 +207,14 @@ export function App() {
 						className="flex shrink-0"
 						style={{
 							height: 44,
-							borderTop: "1px solid var(--color-border)",
-							backgroundColor: "var(--color-bg)",
+							borderTop: '1px solid var(--color-border)',
+							backgroundColor: 'var(--color-bg)',
 						}}
 					>
-						<TabButton active={mobileView === "editor"} onClick={() => setMobileView("editor")}>
+						<TabButton active={mobileView === 'editor'} onClick={() => setMobileView('editor')}>
 							Editor
 						</TabButton>
-						<TabButton active={mobileView === "results"} onClick={() => setMobileView("results")}>
+						<TabButton active={mobileView === 'results'} onClick={() => setMobileView('results')}>
 							Results
 						</TabButton>
 					</nav>
@@ -239,7 +239,7 @@ function TabButton({
 			onClick={onClick}
 			className="flex flex-1 cursor-pointer items-center justify-center text-xs font-medium"
 			style={{
-				color: active ? "var(--color-accent)" : "var(--color-fg-muted)",
+				color: active ? 'var(--color-accent)' : 'var(--color-fg-muted)',
 			}}
 		>
 			{children}

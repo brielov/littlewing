@@ -1,5 +1,5 @@
-import type { RuntimeValue } from "../types";
-import { assertDate, assertDateTime, assertNumber, assertTime } from "../utils";
+import type { RuntimeValue } from '../types';
+import { assertDate, assertDateTime, assertNumber, assertTime } from '../utils';
 
 /**
  * DateTime construction and conversion functions using Temporal.PlainDateTime
@@ -20,12 +20,12 @@ export const DATETIME = (
 	minute: RuntimeValue,
 	second: RuntimeValue,
 ): RuntimeValue => {
-	assertNumber(year, "DATETIME", "year");
-	assertNumber(month, "DATETIME", "month");
-	assertNumber(day, "DATETIME", "day");
-	assertNumber(hour, "DATETIME", "hour");
-	assertNumber(minute, "DATETIME", "minute");
-	assertNumber(second, "DATETIME", "second");
+	assertNumber(year, 'DATETIME', 'year');
+	assertNumber(month, 'DATETIME', 'month');
+	assertNumber(day, 'DATETIME', 'day');
+	assertNumber(hour, 'DATETIME', 'hour');
+	assertNumber(minute, 'DATETIME', 'minute');
+	assertNumber(second, 'DATETIME', 'second');
 	return new Temporal.PlainDateTime(year, month, day, hour, minute, second);
 };
 
@@ -42,7 +42,7 @@ export const NOW = (): RuntimeValue => Temporal.Now.plainDateTimeISO();
  * Extract the PlainDate from a PlainDateTime
  */
 export const TO_DATE = (dt: RuntimeValue): RuntimeValue => {
-	assertDateTime(dt, "TO_DATE");
+	assertDateTime(dt, 'TO_DATE');
 	return dt.toPlainDate();
 };
 
@@ -50,7 +50,7 @@ export const TO_DATE = (dt: RuntimeValue): RuntimeValue => {
  * Extract the PlainTime from a PlainDateTime
  */
 export const TO_TIME = (dt: RuntimeValue): RuntimeValue => {
-	assertDateTime(dt, "TO_TIME");
+	assertDateTime(dt, 'TO_TIME');
 	return dt.toPlainTime();
 };
 
@@ -58,8 +58,8 @@ export const TO_TIME = (dt: RuntimeValue): RuntimeValue => {
  * Combine a PlainDate and PlainTime into a PlainDateTime
  */
 export const COMBINE = (date: RuntimeValue, time: RuntimeValue): RuntimeValue => {
-	assertDate(date, "COMBINE");
-	assertTime(time, "COMBINE");
+	assertDate(date, 'COMBINE');
+	assertTime(time, 'COMBINE');
 	return date.toPlainDateTime(time);
 };
 
@@ -71,7 +71,7 @@ export const COMBINE = (date: RuntimeValue, time: RuntimeValue): RuntimeValue =>
  * Get midnight (00:00:00) of a PlainDateTime's day
  */
 export const START_OF_DAY = (dt: RuntimeValue): RuntimeValue => {
-	assertDateTime(dt, "START_OF_DAY");
+	assertDateTime(dt, 'START_OF_DAY');
 	return dt.with({
 		hour: 0,
 		minute: 0,
@@ -86,7 +86,7 @@ export const START_OF_DAY = (dt: RuntimeValue): RuntimeValue => {
  * Get the last representable instant (23:59:59.999999999) of a PlainDateTime's day
  */
 export const END_OF_DAY = (dt: RuntimeValue): RuntimeValue => {
-	assertDateTime(dt, "END_OF_DAY");
+	assertDateTime(dt, 'END_OF_DAY');
 	return dt.with({
 		hour: 23,
 		minute: 59,

@@ -3,10 +3,10 @@
 A minimal, high-performance multi-type expression language for JavaScript. Seven types, zero compromise, built for the browser.
 
 ```typescript
-import { evaluate, defaultContext } from "littlewing";
+import { evaluate, defaultContext } from 'littlewing';
 
 // Arithmetic
-evaluate("2 + 3 * 4"); // → 14
+evaluate('2 + 3 * 4'); // → 14
 
 // Strings
 evaluate('"hello" + " world"'); // → "hello world"
@@ -15,16 +15,16 @@ evaluate('"hello" + " world"'); // → "hello world"
 evaluate('price = 100; if price > 50 then "expensive" else "cheap"'); // → "expensive"
 
 // Date arithmetic
-evaluate("DIFFERENCE_IN_DAYS(TODAY(), DATE(2025, 12, 31))", defaultContext);
+evaluate('DIFFERENCE_IN_DAYS(TODAY(), DATE(2025, 12, 31))', defaultContext);
 
 // Array comprehensions
-evaluate("for x in 1..=5 then x ^ 2"); // → [1, 4, 9, 16, 25]
+evaluate('for x in 1..=5 then x ^ 2'); // → [1, 4, 9, 16, 25]
 
 // Reduce with accumulator
-evaluate("for x in [1, 2, 3, 4] into sum = 0 then sum + x"); // → 10
+evaluate('for x in [1, 2, 3, 4] into sum = 0 then sum + x'); // → 10
 
 // Pipe operator — chain values through functions
-evaluate("-5 |> ABS(?) |> STR(?)", defaultContext); // → "5"
+evaluate('-5 |> ABS(?) |> STR(?)', defaultContext); // → "5"
 ```
 
 ## Features
@@ -55,93 +55,93 @@ npm install littlewing
 ### Basic Usage
 
 ```typescript
-import { evaluate } from "littlewing";
+import { evaluate } from 'littlewing';
 
 // Arithmetic
-evaluate("2 + 3 * 4"); // → 14
-evaluate("2 ^ 10"); // → 1024
+evaluate('2 + 3 * 4'); // → 14
+evaluate('2 ^ 10'); // → 1024
 
 // Strings
 evaluate('"hello" + " world"'); // → "hello world"
 
 // Booleans (comparisons return boolean, not 1/0)
-evaluate("5 > 3"); // → true
-evaluate("!(5 > 10)"); // → true
+evaluate('5 > 3'); // → true
+evaluate('!(5 > 10)'); // → true
 
 // Variables
-evaluate("x = 10; y = 20; x + y"); // → 30
+evaluate('x = 10; y = 20; x + y'); // → 30
 
 // Conditionals (condition must be boolean, else is required)
 evaluate('age = 21; if age >= 18 then "adult" else "minor"'); // → "adult"
 
 // Arrays and indexing
-evaluate("[10, 20, 30][-1]"); // → 30
-evaluate("[1, 2] + [3, 4]"); // → [1, 2, 3, 4]
+evaluate('[10, 20, 30][-1]'); // → 30
+evaluate('[1, 2] + [3, 4]'); // → [1, 2, 3, 4]
 
 // Ranges
-evaluate("1..=5"); // → [1, 2, 3, 4, 5]
+evaluate('1..=5'); // → [1, 2, 3, 4, 5]
 
 // For comprehensions (map, filter, reduce)
-evaluate("for x in 1..=5 then x * 2"); // → [2, 4, 6, 8, 10]
-evaluate("for x in 1..=10 when x % 2 == 0 then x"); // → [2, 4, 6, 8, 10]
-evaluate("for x in [1, 2, 3] into sum = 0 then sum + x"); // → 6
+evaluate('for x in 1..=5 then x * 2'); // → [2, 4, 6, 8, 10]
+evaluate('for x in 1..=10 when x % 2 == 0 then x'); // → [2, 4, 6, 8, 10]
+evaluate('for x in [1, 2, 3] into sum = 0 then sum + x'); // → 6
 
 // Pipe operator
-evaluate("-42 |> ABS(?)", defaultContext); // → 42
-evaluate("150 |> CLAMP(?, 0, 100)", defaultContext); // → 100
-evaluate("-3 |> ABS(?) |> STR(?)", defaultContext); // → "3"
+evaluate('-42 |> ABS(?)', defaultContext); // → 42
+evaluate('150 |> CLAMP(?, 0, 100)', defaultContext); // → 100
+evaluate('-3 |> ABS(?) |> STR(?)', defaultContext); // → "3"
 ```
 
 ### With Built-in Functions
 
 ```typescript
-import { evaluate, defaultContext } from "littlewing";
+import { evaluate, defaultContext } from 'littlewing';
 
 // Math
-evaluate("ABS(-42)", defaultContext); // → 42
-evaluate("ROUND(3.7)", defaultContext); // → 4
+evaluate('ABS(-42)', defaultContext); // → 42
+evaluate('ROUND(3.7)', defaultContext); // → 4
 
 // Type conversion
 evaluate('NUM("42")', defaultContext); // → 42
-evaluate("STR(42)", defaultContext); // → "42"
+evaluate('STR(42)', defaultContext); // → "42"
 
 // String functions
 evaluate('STR_UPPER("hello")', defaultContext); // → "HELLO"
 evaluate('STR_SPLIT("a,b,c", ",")', defaultContext); // → ["a", "b", "c"]
 
 // Array functions
-evaluate("ARR_SORT([3, 1, 2])", defaultContext); // → [1, 2, 3]
-evaluate("ARR_SUM([10, 20, 30])", defaultContext); // → 60
+evaluate('ARR_SORT([3, 1, 2])', defaultContext); // → [1, 2, 3]
+evaluate('ARR_SUM([10, 20, 30])', defaultContext); // → 60
 evaluate('ARR_JOIN(["a", "b", "c"], "-")', defaultContext); // → "a-b-c"
 
 // Date functions
-evaluate("TODAY()", defaultContext); // → Temporal.PlainDate
-evaluate("ADD_DAYS(TODAY(), 7)", defaultContext); // → 7 days from now
-evaluate("IS_WEEKEND(TODAY())", defaultContext); // → true or false
+evaluate('TODAY()', defaultContext); // → Temporal.PlainDate
+evaluate('ADD_DAYS(TODAY(), 7)', defaultContext); // → 7 days from now
+evaluate('IS_WEEKEND(TODAY())', defaultContext); // → true or false
 
 // Time functions
-evaluate("TIME(14, 30, 0)", defaultContext); // → Temporal.PlainTime
-evaluate("ADD_HOURS(TIME(10, 0, 0), 3)", defaultContext); // → 13:00:00
+evaluate('TIME(14, 30, 0)', defaultContext); // → Temporal.PlainTime
+evaluate('ADD_HOURS(TIME(10, 0, 0), 3)', defaultContext); // → 13:00:00
 
 // DateTime functions
-evaluate("NOW()", defaultContext); // → Temporal.PlainDateTime
-evaluate("TO_DATE(NOW())", defaultContext); // → today's date
+evaluate('NOW()', defaultContext); // → Temporal.PlainDateTime
+evaluate('TO_DATE(NOW())', defaultContext); // → today's date
 ```
 
 ### Custom Functions and Variables
 
 ```typescript
-import { evaluate, assertNumber, assertString } from "littlewing";
+import { evaluate, assertNumber, assertString } from 'littlewing';
 
 const context = {
 	functions: {
 		FAHRENHEIT: (celsius) => {
-			assertNumber(celsius, "FAHRENHEIT");
+			assertNumber(celsius, 'FAHRENHEIT');
 			return (celsius * 9) / 5 + 32;
 		},
 		DISCOUNT: (price, percent) => {
-			assertNumber(price, "DISCOUNT", "price");
-			assertNumber(percent, "DISCOUNT", "percent");
+			assertNumber(price, 'DISCOUNT', 'price');
+			assertNumber(percent, 'DISCOUNT', 'percent');
 			return price * (1 - percent / 100);
 		},
 	},
@@ -151,9 +151,9 @@ const context = {
 	},
 };
 
-evaluate("FAHRENHEIT(20)", context); // → 68
-evaluate("DISCOUNT(100, 15)", context); // → 85
-evaluate("100 * (1 + taxRate)", context); // → 108
+evaluate('FAHRENHEIT(20)', context); // → 68
+evaluate('DISCOUNT(100, 15)', context); // → 85
+evaluate('100 * (1 + taxRate)', context); // → 108
 ```
 
 The assertion helpers (`assertNumber`, `assertString`, `assertBoolean`, `assertArray`, `assertDate`, `assertTime`, `assertDateTime`, `assertDateOrDateTime`, `assertTimeOrDateTime`) are the same ones used by the built-in standard library. They throw `TypeError` with consistent messages on type mismatch.
@@ -161,7 +161,7 @@ The assertion helpers (`assertNumber`, `assertString`, `assertBoolean`, `assertA
 ### External Variables Override Script Defaults
 
 ```typescript
-const formula = "multiplier = 2; value = 100; value * multiplier";
+const formula = 'multiplier = 2; value = 100; value * multiplier';
 
 evaluate(formula); // → 200
 evaluate(formula, { variables: { multiplier: 3 } }); // → 300
@@ -181,10 +181,10 @@ For complete language documentation including all operators, control flow, and b
 Evaluate an expression or AST and return the result.
 
 ```typescript
-evaluate("2 + 2"); // → 4
+evaluate('2 + 2'); // → 4
 
 // Evaluate pre-parsed AST (parse once, evaluate many)
-const ast = parse("price * quantity");
+const ast = parse('price * quantity');
 evaluate(ast, { variables: { price: 10, quantity: 5 } }); // → 50
 evaluate(ast, { variables: { price: 20, quantity: 3 } }); // → 60
 ```
@@ -194,7 +194,7 @@ evaluate(ast, { variables: { price: 20, quantity: 3 } }); // → 60
 Evaluate and return all assigned variables as a record.
 
 ```typescript
-evaluateScope("x = 10; y = x * 2"); // → { x: 10, y: 20 }
+evaluateScope('x = 10; y = x * 2'); // → { x: 10, y: 20 }
 ```
 
 #### `evaluateWithScope(input: string | ASTNode, context?: ExecutionContext): ExecutionResult`
@@ -202,7 +202,7 @@ evaluateScope("x = 10; y = x * 2"); // → { x: 10, y: 20 }
 Evaluate once and return both the final value and the full variable scope.
 
 ```typescript
-evaluateWithScope("x = 10; y = x * 2; y + 1");
+evaluateWithScope('x = 10; y = x * 2; y + 1');
 // → { value: 21, scope: { x: 10, y: 20 } }
 ```
 
@@ -211,7 +211,7 @@ evaluateWithScope("x = 10; y = x * 2; y + 1");
 Parse source into an Abstract Syntax Tree without evaluating.
 
 ```typescript
-const ast = parse("2 + 3 * 4");
+const ast = parse('2 + 3 * 4');
 evaluate(ast); // → 14
 ```
 
@@ -220,7 +220,7 @@ evaluate(ast); // → 14
 Convert AST back to source code (preserves comments).
 
 ```typescript
-generate(parse("2 + 3 * 4")); // → "2 + 3 * 4"
+generate(parse('2 + 3 * 4')); // → "2 + 3 * 4"
 ```
 
 #### `optimize(node: ASTNode, externalVariables?: ReadonlySet<string>): ASTNode`
@@ -228,12 +228,12 @@ generate(parse("2 + 3 * 4")); // → "2 + 3 * 4"
 Optimize an AST with constant folding, constant propagation, and dead code elimination.
 
 ```typescript
-const ast = parse("2 + 3 * 4");
+const ast = parse('2 + 3 * 4');
 optimize(ast); // → NumberLiteral(14)
 
 // With external variables: propagates internal constants while preserving external ones
-const ast2 = parse("x = 5; y = 10; x + y");
-optimize(ast2, new Set(["x"])); // Propagates y=10, keeps x as external
+const ast2 = parse('x = 5; y = 10; x + y');
+optimize(ast2, new Set(['x'])); // Propagates y=10, keeps x as external
 ```
 
 #### `extractInputVariables(ast: ASTNode): string[]`
@@ -241,7 +241,7 @@ optimize(ast2, new Set(["x"])); // Propagates y=10, keeps x as external
 Extract variable names assigned to constant values (useful for building UIs with input controls).
 
 ```typescript
-const ast = parse("price = 100; tax = price * 0.08");
+const ast = parse('price = 100; tax = price * 0.08');
 extractInputVariables(ast); // → ["price"]
 ```
 
@@ -252,9 +252,9 @@ extractInputVariables(ast); // → ["price"]
 Exhaustively visit every node in an AST. All 16 node types must be handled.
 
 ```typescript
-import { visit, parse } from "littlewing";
+import { visit, parse } from 'littlewing';
 
-const count = visit(parse("2 + 3"), {
+const count = visit(parse('2 + 3'), {
 	Program: (n, recurse) => n.statements.reduce((s, stmt) => s + recurse(stmt), 0),
 	NumberLiteral: () => 1,
 	StringLiteral: () => 1,
@@ -286,17 +286,17 @@ Visit only specific node types with a fallback for unhandled types.
 The `ast` namespace provides builder functions for constructing AST nodes:
 
 ```typescript
-import { ast, generate } from "littlewing";
+import { ast, generate } from 'littlewing';
 
 generate(ast.add(ast.number(2), ast.number(3))); // → "2 + 3"
 generate(ast.ifExpr(ast.boolean(true), ast.number(1), ast.number(0))); // → "if true then 1 else 0"
 generate(
 	ast.forExpr(
-		"x",
-		ast.identifier("arr"),
+		'x',
+		ast.identifier('arr'),
 		null,
 		null,
-		ast.multiply(ast.identifier("x"), ast.number(2)),
+		ast.multiply(ast.identifier('x'), ast.number(2)),
 	),
 );
 // → "for x in arr then x * 2"
@@ -354,9 +354,9 @@ The `defaultContext` includes **82 built-in functions**:
 For expressions executed multiple times, parse once and reuse the AST:
 
 ```typescript
-import { evaluate, parse } from "littlewing";
+import { evaluate, parse } from 'littlewing';
 
-const formula = parse("price * quantity * (1 - discount)");
+const formula = parse('price * quantity * (1 - discount)');
 
 evaluate(formula, { variables: { price: 10, quantity: 5, discount: 0.1 } }); // → 45
 evaluate(formula, { variables: { price: 20, quantity: 3, discount: 0.15 } }); // → 51

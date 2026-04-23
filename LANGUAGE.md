@@ -759,14 +759,14 @@ appt = COMBINE(DATE(2024, 12, 25), TIME(10, 0, 0))
 You can inject variables when executing expressions:
 
 ```typescript
-evaluate("radius * 2 * 3.14159", {
+evaluate('radius * 2 * 3.14159', {
 	variables: { radius: 10 },
 }); // → 62.8318
 
 // Variables can be any type
-evaluate("STR_UPPER(name)", {
+evaluate('STR_UPPER(name)', {
 	functions: { ...defaultContext.functions },
-	variables: { name: "alice" },
+	variables: { name: 'alice' },
 }); // → "ALICE"
 ```
 
@@ -783,15 +783,15 @@ evaluate(script, { variables: { x: 10 } }); // → 20 (external x overrides)
 Extend littlewing with your own functions:
 
 ```typescript
-import { evaluate, assertNumber } from "littlewing";
+import { evaluate, assertNumber } from 'littlewing';
 
-evaluate("CLAMP(x, 0, 100)", {
+evaluate('CLAMP(x, 0, 100)', {
 	variables: { x: 150 },
 	functions: {
 		CLAMP: (value, min, max) => {
-			assertNumber(value, "CLAMP", "value");
-			assertNumber(min, "CLAMP", "min");
-			assertNumber(max, "CLAMP", "max");
+			assertNumber(value, 'CLAMP', 'value');
+			assertNumber(min, 'CLAMP', 'min');
+			assertNumber(max, 'CLAMP', 'max');
 			return Math.min(Math.max(value, min), max);
 		},
 	},
@@ -908,10 +908,10 @@ label = "Score: " + STR(95) // → "Score: 95"
 4. **Predictable evaluation time** - O(n) based on expression size
 
 ```typescript
-import { evaluate, parse } from "littlewing";
+import { evaluate, parse } from 'littlewing';
 
 // Parse once, evaluate many times
-const formula = parse("price * quantity * (1 - discount)");
+const formula = parse('price * quantity * (1 - discount)');
 evaluate(formula, { variables: { price: 10, quantity: 5, discount: 0.1 } }); // → 45
 evaluate(formula, { variables: { price: 20, quantity: 3, discount: 0.15 } }); // → 51
 ```

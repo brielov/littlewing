@@ -1,7 +1,7 @@
-import type { ASTNode } from "./ast";
-import { NodeKind } from "./ast";
-import { parse } from "./parser";
-import type { ExecutionContext, ExecutionResult, RuntimeValue } from "./types";
+import type { ASTNode } from './ast';
+import { NodeKind } from './ast';
+import { parse } from './parser';
+import type { ExecutionContext, ExecutionResult, RuntimeValue } from './types';
 import {
 	assertBoolean,
 	assertNumber,
@@ -10,7 +10,7 @@ import {
 	resolveIndex,
 	typeOf,
 	validateHomogeneousArray,
-} from "./utils";
+} from './utils';
 
 /**
  * Shared setup for evaluate and evaluateScope.
@@ -23,7 +23,7 @@ function run(
 	input: string | ASTNode,
 	context: ExecutionContext = {},
 ): { value: RuntimeValue; variables: Map<string, RuntimeValue> } {
-	const node = typeof input === "string" ? parse(input) : input;
+	const node = typeof input === 'string' ? parse(input) : input;
 	const variables = new Map<string, RuntimeValue>();
 	const externalVariables = new Set<string>();
 	const vars = context.variables;
@@ -76,21 +76,21 @@ function run(
 
 			case NodeKind.BinaryOp: {
 				// Short-circuit && and ||
-				if (node.operator === "&&") {
+				if (node.operator === '&&') {
 					const left = evalNode(node.left);
-					assertBoolean(left, "Operator '&&'", "left");
+					assertBoolean(left, "Operator '&&'", 'left');
 					if (!left) return false;
 					const right = evalNode(node.right);
-					assertBoolean(right, "Operator '&&'", "right");
+					assertBoolean(right, "Operator '&&'", 'right');
 					return right;
 				}
 
-				if (node.operator === "||") {
+				if (node.operator === '||') {
 					const left = evalNode(node.left);
-					assertBoolean(left, "Operator '||'", "left");
+					assertBoolean(left, "Operator '||'", 'left');
 					if (left) return true;
 					const right = evalNode(node.right);
-					assertBoolean(right, "Operator '||'", "right");
+					assertBoolean(right, "Operator '||'", 'right');
 					return right;
 				}
 
@@ -100,12 +100,12 @@ function run(
 			case NodeKind.UnaryOp: {
 				const arg = evalNode(node.argument);
 
-				if (node.operator === "-") {
+				if (node.operator === '-') {
 					assertNumber(arg, "Operator '-' (unary)");
 					return -arg;
 				}
 
-				if (node.operator === "!") {
+				if (node.operator === '!') {
 					assertBoolean(arg, "Operator '!'");
 					return !arg;
 				}
@@ -118,7 +118,7 @@ function run(
 				if (fn === undefined) {
 					throw new Error(`Undefined function: ${node.name}`);
 				}
-				if (typeof fn !== "function") {
+				if (typeof fn !== 'function') {
 					throw new Error(`${node.name} is not a function`);
 				}
 
@@ -146,7 +146,7 @@ function run(
 
 			case NodeKind.IfExpression: {
 				const condition = evalNode(node.condition);
-				assertBoolean(condition, "If condition");
+				assertBoolean(condition, 'If condition');
 				return condition ? evalNode(node.consequent) : evalNode(node.alternate);
 			}
 
@@ -157,7 +157,7 @@ function run(
 				if (Array.isArray(object)) {
 					return resolveIndex(object, index);
 				}
-				if (typeof object === "string") {
+				if (typeof object === 'string') {
 					return resolveIndex(object, index);
 				}
 				throw new TypeError(`Index access expected array or string, got ${typeOf(object)}`);
@@ -166,8 +166,8 @@ function run(
 			case NodeKind.RangeExpression: {
 				const start = evalNode(node.start);
 				const end = evalNode(node.end);
-				assertNumber(start, "Range start");
-				assertNumber(end, "Range end");
+				assertNumber(start, 'Range start');
+				assertNumber(end, 'Range end');
 				return buildRange(start, end, node.inclusive);
 			}
 
@@ -177,7 +177,7 @@ function run(
 				if (fn === undefined) {
 					throw new Error(`Undefined function: ${node.name}`);
 				}
-				if (typeof fn !== "function") {
+				if (typeof fn !== 'function') {
 					throw new Error(`${node.name} is not a function`);
 				}
 				const pipeArgs = node.args;
@@ -190,7 +190,7 @@ function run(
 			}
 
 			case NodeKind.Placeholder:
-				throw new Error("Placeholder outside pipe expression");
+				throw new Error('Placeholder outside pipe expression');
 
 			case NodeKind.ForExpression: {
 				const iterable = evalNode(node.iterable);
@@ -198,7 +198,7 @@ function run(
 				let iterTarget: Iterable<RuntimeValue>;
 				if (Array.isArray(iterable)) {
 					iterTarget = iterable;
-				} else if (typeof iterable === "string") {
+				} else if (typeof iterable === 'string') {
 					// Iterate code points directly — avoids Array.from() allocation
 					iterTarget = iterable;
 				} else {
@@ -219,7 +219,7 @@ function run(
 
 						if (node.guard) {
 							const guardValue = evalNode(node.guard);
-							assertBoolean(guardValue, "For guard");
+							assertBoolean(guardValue, 'For guard');
 							if (!guardValue) continue;
 						}
 
@@ -250,7 +250,7 @@ function run(
 
 					if (node.guard) {
 						const guardValue = evalNode(node.guard);
-						assertBoolean(guardValue, "For guard");
+						assertBoolean(guardValue, 'For guard');
 						if (!guardValue) continue;
 					}
 

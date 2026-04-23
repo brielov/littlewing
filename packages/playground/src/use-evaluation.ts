@@ -13,8 +13,8 @@ import {
 	parse,
 	toLineColumn,
 	typeOf,
-} from "littlewing";
-import { useCallback, useDeferredValue, useMemo, useState } from "react";
+} from 'littlewing';
+import { useCallback, useDeferredValue, useMemo, useState } from 'react';
 
 interface InputVariable {
 	name: string;
@@ -70,7 +70,11 @@ function resolveInputVariables(ast: ASTNode): InputVariable[] {
 	const inputVariables: InputVariable[] = [];
 
 	for (const statement of statements) {
-		if (!isAssignment(statement) || !inputVarNames.has(statement.name) || seen.has(statement.name)) {
+		if (
+			!isAssignment(statement) ||
+			!inputVarNames.has(statement.name) ||
+			seen.has(statement.name)
+		) {
 			continue;
 		}
 
@@ -87,7 +91,7 @@ function resolveInputVariables(ast: ASTNode): InputVariable[] {
 }
 
 function compile(src: string): CompilationResult | null {
-	if (src.trim() === "") return null;
+	if (src.trim() === '') return null;
 
 	const parseStart = performance.now();
 	const ast = parse(src);
@@ -143,7 +147,7 @@ function parseErrorToDiagnostic(source: string, err: ParseError): Diagnostic {
 }
 
 function escapeRegex(value: string): string {
-	return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+	return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
 function createIdentifierDiagnostic(
@@ -152,7 +156,7 @@ function createIdentifierDiagnostic(
 	message: string,
 ): Diagnostic | null {
 	if (name.length === 0) return null;
-	const pattern = new RegExp(`\\b${escapeRegex(name)}\\b`, "g");
+	const pattern = new RegExp(`\\b${escapeRegex(name)}\\b`, 'g');
 	let match: RegExpExecArray | null;
 	let lastMatch: RegExpExecArray | null = null;
 	while (true) {
@@ -176,13 +180,13 @@ function createIdentifierDiagnostic(
 }
 
 function runtimeErrorToDiagnostic(source: string, message: string): Diagnostic | null {
-	const undefinedVariablePrefix = "Undefined variable: ";
+	const undefinedVariablePrefix = 'Undefined variable: ';
 	if (message.startsWith(undefinedVariablePrefix)) {
 		const name = message.slice(undefinedVariablePrefix.length).trim();
 		return createIdentifierDiagnostic(source, name, message);
 	}
 
-	const undefinedFunctionPrefix = "Undefined function: ";
+	const undefinedFunctionPrefix = 'Undefined function: ';
 	if (message.startsWith(undefinedFunctionPrefix)) {
 		const name = message.slice(undefinedFunctionPrefix.length).trim();
 		return createIdentifierDiagnostic(source, name, message);

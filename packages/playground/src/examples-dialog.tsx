@@ -1,4 +1,4 @@
-import { Dialog } from "./dialog";
+import { Dialog } from './dialog';
 
 const mono = { fontFamily: '"Maple Mono", monospace' };
 
@@ -10,8 +10,8 @@ interface Example {
 
 const examples: Example[] = [
 	{
-		title: "Loan Amortization",
-		description: "Monthly payment and total interest on a fixed-rate loan",
+		title: 'Loan Amortization',
+		description: 'Monthly payment and total interest on a fixed-rate loan',
 		source: `// Fixed-rate loan amortization
 principal = 250000
 annual_rate = 0.065
@@ -30,8 +30,8 @@ total_interest = total_paid - principal
 if total_interest > principal then "interest exceeds principal" else "reasonable loan"`,
 	},
 	{
-		title: "Invoice Line Items",
-		description: "Compute totals across multiple line items with tax tiers",
+		title: 'Invoice Line Items',
+		description: 'Compute totals across multiple line items with tax tiers',
 		source: `// Invoice with quantity-based pricing
 quantities = [5, 12, 3, 20, 8]
 unit_prices = [29.99, 9.50, 149.00, 4.75, 32.00]
@@ -52,8 +52,8 @@ ARR_JOIN([
 ], " | ")`,
 	},
 	{
-		title: "Employee Bonus Calculator",
-		description: "Tiered bonus based on performance score with team adjustment",
+		title: 'Employee Bonus Calculator',
+		description: 'Tiered bonus based on performance score with team adjustment',
 		source: `// Tiered bonus calculation
 base_salary = 85000
 performance_score = 87
@@ -74,8 +74,8 @@ effective_rate = ROUND(bonus / base_salary * 100)
 STR(effective_rate) + "% bonus = $" + STR(bonus)`,
 	},
 	{
-		title: "Date Arithmetic",
-		description: "Business days, deadlines, and quarter boundaries",
+		title: 'Date Arithmetic',
+		description: 'Business days, deadlines, and quarter boundaries',
 		source: `// Project timeline calculations
 start = DATE(2026, 3, 10)
 deadline = DATE(2026, 6, 30)
@@ -96,8 +96,8 @@ if same_quarter
   else "Deadline spans quarters (" + STR(total_weeks) + " weeks)"`,
 	},
 	{
-		title: "Array Statistics",
-		description: "Mean, variance, standard deviation, and outlier detection",
+		title: 'Array Statistics',
+		description: 'Mean, variance, standard deviation, and outlier detection',
 		source: `// Statistical analysis
 data = [23, 45, 12, 67, 34, 89, 15, 56, 42, 71]
 
@@ -117,8 +117,8 @@ sorted = ARR_SORT(data)
 "mean=" + STR(ROUND(mean)) + " std=" + STR(std_dev) + " outliers=" + STR(LEN(outliers))`,
 	},
 	{
-		title: "FizzBuzz",
-		description: "Classic FizzBuzz from 1 to 20 using ranges",
+		title: 'FizzBuzz',
+		description: 'Classic FizzBuzz from 1 to 20 using ranges',
 		source: `// FizzBuzz with ranges and conditionals
 for n in 1..=20 then
   if n % 15 == 0 then "FizzBuzz"
@@ -127,8 +127,8 @@ for n in 1..=20 then
   else STR(n)`,
 	},
 	{
-		title: "Compound Interest",
-		description: "Yearly growth of an investment with monthly compounding",
+		title: 'Compound Interest',
+		description: 'Yearly growth of an investment with monthly compounding',
 		source: `// Compound interest over time
 initial = 10000
 annual_rate = 0.07
@@ -149,8 +149,8 @@ balances = for y in 1..=years then
 STR(growth_pct) + "% growth over " + STR(years) + " years"`,
 	},
 	{
-		title: "Text Processing",
-		description: "Parse and transform CSV-like data using string functions",
+		title: 'Text Processing',
+		description: 'Parse and transform CSV-like data using string functions',
 		source: `// Parse and process CSV-like data
 header = "Name,Department,Salary"
 rows = [
@@ -175,8 +175,8 @@ ARR_JOIN([
 ], "\n")`,
 	},
 	{
-		title: "Time Tracking",
-		description: "Calculate billable hours and daily totals",
+		title: 'Time Tracking',
+		description: 'Calculate billable hours and daily totals',
 		source: `// Daily time tracking
 clock_in = TIME(9, 15, 0)
 lunch_start = TIME(12, 0, 0)
@@ -197,8 +197,8 @@ billable = ROUND(total_minutes / 60 * hourly_rate)
 STR(hours) + "h " + STR(mins) + "m worked = $" + STR(billable)`,
 	},
 	{
-		title: "Data Pipeline",
-		description: "Chain transformations with the pipe operator",
+		title: 'Data Pipeline',
+		description: 'Chain transformations with the pipe operator',
 		source: `// Pipe operator: value |> FUNC(?) chains through functions
 // ? marks where the piped value is inserted
 
@@ -224,8 +224,8 @@ rating = if grade >= 90 then "A"
 "Score: " + label + " → Grade: " + rating`,
 	},
 	{
-		title: "Matrix Flatten & Search",
-		description: "Work with nested arrays using flat, sort, and filter",
+		title: 'Matrix Flatten & Search',
+		description: 'Work with nested arrays using flat, sort, and filter',
 		source: `// Nested data processing
 matrix = [[8, 3, 14], [1, 9, 6], [11, 2, 7]]
 
@@ -256,7 +256,7 @@ export function ExamplesDialog({ onSelect }: ExamplesDialogProps) {
 					type="button"
 					onClick={open}
 					className="cursor-pointer text-xs"
-					style={{ color: "var(--color-fg-muted)" }}
+					style={{ color: 'var(--color-fg-muted)' }}
 					title="Load an example"
 				>
 					Examples
@@ -279,20 +279,20 @@ export function ExamplesDialog({ onSelect }: ExamplesDialogProps) {
 								onClick={() => select(example.source)}
 								className="cursor-pointer rounded-md px-4 py-3 text-left transition-colors"
 								style={{
-									backgroundColor: "var(--color-bg-secondary)",
-									border: "1px solid var(--color-border)",
+									backgroundColor: 'var(--color-bg-secondary)',
+									border: '1px solid var(--color-border)',
 								}}
 								onMouseEnter={(e) => {
-									e.currentTarget.style.borderColor = "var(--color-accent)";
+									e.currentTarget.style.borderColor = 'var(--color-accent)';
 								}}
 								onMouseLeave={(e) => {
-									e.currentTarget.style.borderColor = "var(--color-border)";
+									e.currentTarget.style.borderColor = 'var(--color-border)';
 								}}
 							>
-								<div className="text-xs font-medium" style={{ color: "var(--color-fg)", ...mono }}>
+								<div className="text-xs font-medium" style={{ color: 'var(--color-fg)', ...mono }}>
 									{example.title}
 								</div>
-								<div className="mt-0.5 text-[11px]" style={{ color: "var(--color-fg-muted)" }}>
+								<div className="mt-0.5 text-[11px]" style={{ color: 'var(--color-fg-muted)' }}>
 									{example.description}
 								</div>
 							</button>

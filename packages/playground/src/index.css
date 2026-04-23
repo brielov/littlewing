@@ -1,6 +1,6 @@
-@import "tailwindcss";
-@import "@fontsource/maple-mono/400.css";
-@import "@fontsource/maple-mono/400-italic.css";
+@import 'tailwindcss';
+@import '@fontsource/maple-mono/400.css';
+@import '@fontsource/maple-mono/400-italic.css';
 
 :root {
 	--color-bg: #ffffff;
@@ -36,24 +36,24 @@ body,
 }
 
 body {
-	font-family: "Maple Mono", monospace;
+	font-family: 'Maple Mono', monospace;
 	background-color: var(--color-bg);
 	color: var(--color-fg);
 }
 
-input[type="number"]::-webkit-inner-spin-button,
-input[type="number"]::-webkit-outer-spin-button {
+input[type='number']::-webkit-inner-spin-button,
+input[type='number']::-webkit-outer-spin-button {
 	-webkit-appearance: none;
 	margin: 0;
 }
 
-input[type="number"] {
+input[type='number'] {
 	-moz-appearance: textfield;
 }
 
-input[type="date"]::-webkit-calendar-picker-indicator,
-input[type="time"]::-webkit-calendar-picker-indicator,
-input[type="datetime-local"]::-webkit-calendar-picker-indicator {
+input[type='date']::-webkit-calendar-picker-indicator,
+input[type='time']::-webkit-calendar-picker-indicator,
+input[type='datetime-local']::-webkit-calendar-picker-indicator {
 	display: none;
 	-webkit-appearance: none;
 }

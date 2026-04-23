@@ -1,15 +1,11 @@
-import type { Monaco } from "@monaco-editor/react";
-import {
-	type RuntimeValue,
-	defaultContext,
-	typeOf,
-} from "littlewing";
-import type { CancellationToken, IDisposable, Position, editor, languages } from "monaco-editor";
-import { FUNCTION_SIGNATURES, formatSignature } from "./function-metadata.ts";
-import tomorrowNightTheme from "./themes/tomorrow-night.json";
-import tomorrowTheme from "./themes/tomorrow.json";
+import type { Monaco } from '@monaco-editor/react';
+import { type RuntimeValue, defaultContext, typeOf } from 'littlewing';
+import type { CancellationToken, IDisposable, Position, editor, languages } from 'monaco-editor';
+import { FUNCTION_SIGNATURES, formatSignature } from './function-metadata.ts';
+import tomorrowNightTheme from './themes/tomorrow-night.json';
+import tomorrowTheme from './themes/tomorrow.json';
 
-const KEYWORDS = ["if", "then", "else", "for", "in", "when", "into"];
+const KEYWORDS = ['if', 'then', 'else', 'for', 'in', 'when', 'into'];
 const BUILTINS = Object.keys(defaultContext.functions ?? {});
 
 /**
@@ -48,14 +44,14 @@ function levenshteinDistance(a: string, b: string): number {
  * Format a RuntimeValue for display in hover tooltips.
  */
 function formatValue(value: RuntimeValue): string {
-	if (typeof value === "string") return `"${value}"`;
-	if (typeof value === "number" || typeof value === "boolean") return String(value);
+	if (typeof value === 'string') return `"${value}"`;
+	if (typeof value === 'number' || typeof value === 'boolean') return String(value);
 	if (Array.isArray(value)) {
 		if (value.length > 5) {
-			const head = value.slice(0, 5).map(formatValue).join(", ");
+			const head = value.slice(0, 5).map(formatValue).join(', ');
 			return `[${head}, ... (${value.length} items)]`;
 		}
-		return `[${value.map(formatValue).join(", ")}]`;
+		return `[${value.map(formatValue).join(', ')}]`;
 	}
 	return String(value);
 }
@@ -105,102 +101,102 @@ export function registerLittlewingLanguage(monaco: Monaco): void {
 	for (const d of languageState.providerDisposables) d.dispose();
 	languageState.providerDisposables.length = 0;
 
-	monaco.languages.register({ id: "littlewing" });
+	monaco.languages.register({ id: 'littlewing' });
 
-	monaco.languages.setMonarchTokensProvider("littlewing", {
+	monaco.languages.setMonarchTokensProvider('littlewing', {
 		keywords: KEYWORDS,
 		builtins: BUILTINS,
 
 		operators: [
-			"=",
-			"==",
-			"!=",
-			"<",
-			">",
-			"<=",
-			">=",
-			"&&",
-			"||",
-			"|>",
-			"+",
-			"-",
-			"*",
-			"/",
-			"%",
-			"^",
-			"!",
-			"..",
-			"..=",
+			'=',
+			'==',
+			'!=',
+			'<',
+			'>',
+			'<=',
+			'>=',
+			'&&',
+			'||',
+			'|>',
+			'+',
+			'-',
+			'*',
+			'/',
+			'%',
+			'^',
+			'!',
+			'..',
+			'..=',
 		],
 
 		tokenizer: {
 			root: [
 				// Comments
-				[/\/\/.*$/, "comment"],
+				[/\/\/.*$/, 'comment'],
 
 				// Strings
-				[/"/, "string", "@string"],
+				[/"/, 'string', '@string'],
 
 				// Numbers
-				[/\d+\.\d+/, "number.float"],
-				[/\d+/, "number"],
+				[/\d+\.\d+/, 'number.float'],
+				[/\d+/, 'number'],
 
 				// Identifiers, keywords, booleans, builtins
 				[
 					/[a-zA-Z_]\w*/,
 					{
 						cases: {
-							"@keywords": "keyword",
-							true: "constant.language.boolean",
-							false: "constant.language.boolean",
-							"@builtins": "support.function",
-							"@default": "identifier",
+							'@keywords': 'keyword',
+							true: 'constant.language.boolean',
+							false: 'constant.language.boolean',
+							'@builtins': 'support.function',
+							'@default': 'identifier',
 						},
 					},
 				],
 
 				// Operators (order matters: longest match first)
-				[/\.\.=/, "operator"],
-				[/\.\./, "operator"],
-				[/[=!<>]=/, "operator"],
-				[/&&/, "operator"],
-				[/\|\|/, "operator"],
-				[/\|>/, "operator"],
-				[/\?/, "operator"],
-				[/[+\-*/%^=!<>]/, "operator"],
+				[/\.\.=/, 'operator'],
+				[/\.\./, 'operator'],
+				[/[=!<>]=/, 'operator'],
+				[/&&/, 'operator'],
+				[/\|\|/, 'operator'],
+				[/\|>/, 'operator'],
+				[/\?/, 'operator'],
+				[/[+\-*/%^=!<>]/, 'operator'],
 
 				// Brackets
-				[/[[\]()]/, "@brackets"],
+				[/[[\]()]/, '@brackets'],
 
 				// Comma
-				[/,/, "delimiter"],
+				[/,/, 'delimiter'],
 
 				// Whitespace
-				[/\s+/, "white"],
+				[/\s+/, 'white'],
 			],
 
 			string: [
-				[/[^"\\]+/, "string"],
-				[/\\./, "string.escape"],
-				[/"/, "string", "@pop"],
+				[/[^"\\]+/, 'string'],
+				[/\\./, 'string.escape'],
+				[/"/, 'string', '@pop'],
 			],
 		},
 	});
 
-	monaco.languages.setLanguageConfiguration("littlewing", {
-		comments: { lineComment: "//" },
+	monaco.languages.setLanguageConfiguration('littlewing', {
+		comments: { lineComment: '//' },
 		brackets: [
-			["[", "]"],
-			["(", ")"],
+			['[', ']'],
+			['(', ')'],
 		],
 		autoClosingPairs: [
-			{ open: "[", close: "]" },
-			{ open: "(", close: ")" },
-			{ open: '"', close: '"', notIn: ["string"] },
+			{ open: '[', close: ']' },
+			{ open: '(', close: ')' },
+			{ open: '"', close: '"', notIn: ['string'] },
 		],
 		surroundingPairs: [
-			{ open: "[", close: "]" },
-			{ open: "(", close: ")" },
+			{ open: '[', close: ']' },
+			{ open: '(', close: ')' },
 			{ open: '"', close: '"' },
 		],
 	});
@@ -213,7 +209,7 @@ export function registerLittlewingLanguage(monaco: Monaco): void {
 			kind: monaco.languages.CompletionItemKind.Keyword,
 			insertText: k,
 		})),
-		...["true", "false"].map((b) => ({
+		...['true', 'false'].map((b) => ({
 			label: b,
 			kind: monaco.languages.CompletionItemKind.Constant,
 			insertText: b,
@@ -231,7 +227,7 @@ export function registerLittlewingLanguage(monaco: Monaco): void {
 	];
 
 	languageState.providerDisposables.push(
-		monaco.languages.registerCompletionItemProvider("littlewing", {
+		monaco.languages.registerCompletionItemProvider('littlewing', {
 			provideCompletionItems: (model: editor.ITextModel, position: Position) => {
 				const word = model.getWordUntilPosition(position);
 				const range = {
@@ -253,8 +249,8 @@ export function registerLittlewingLanguage(monaco: Monaco): void {
 	// --- Signature help provider ---
 
 	languageState.providerDisposables.push(
-		monaco.languages.registerSignatureHelpProvider("littlewing", {
-			signatureHelpTriggerCharacters: ["(", ","],
+		monaco.languages.registerSignatureHelpProvider('littlewing', {
+			signatureHelpTriggerCharacters: ['(', ','],
 			provideSignatureHelp: (
 				model: editor.ITextModel,
 				position: Position,
@@ -275,15 +271,15 @@ export function registerLittlewingLanguage(monaco: Monaco): void {
 
 				for (let i = text.length - 1; i >= 0; i--) {
 					const ch = text[i];
-					if (ch === ")") {
+					if (ch === ')') {
 						depth++;
-					} else if (ch === "(") {
+					} else if (ch === '(') {
 						if (depth === 0) {
 							funcEnd = i;
 							break;
 						}
 						depth--;
-					} else if (ch === "," && depth === 0) {
+					} else if (ch === ',' && depth === 0) {
 						commas++;
 					}
 				}
@@ -300,7 +296,7 @@ export function registerLittlewingLanguage(monaco: Monaco): void {
 				if (!sig) return null;
 
 				const paramLabels = sig.parameters.map((p) => `${p.label}: ${p.type}`);
-				const label = `${funcName}(${paramLabels.join(", ")})`;
+				const label = `${funcName}(${paramLabels.join(', ')})`;
 
 				return {
 					value: {
@@ -326,7 +322,7 @@ export function registerLittlewingLanguage(monaco: Monaco): void {
 	// --- Hover provider ---
 
 	languageState.providerDisposables.push(
-		monaco.languages.registerHoverProvider("littlewing", {
+		monaco.languages.registerHoverProvider('littlewing', {
 			provideHover: (
 				model: editor.ITextModel,
 				position: Position,
@@ -371,7 +367,7 @@ export function registerLittlewingLanguage(monaco: Monaco): void {
 	// --- Code action provider (quick fix suggestions for typos) ---
 
 	languageState.providerDisposables.push(
-		monaco.languages.registerCodeActionProvider("littlewing", {
+		monaco.languages.registerCodeActionProvider('littlewing', {
 			provideCodeActions: (
 				model: editor.ITextModel,
 				_range: unknown,
@@ -385,8 +381,8 @@ export function registerLittlewingLanguage(monaco: Monaco): void {
 					let prefix: string;
 					let candidates: string[];
 
-					if (msg.startsWith("Undefined variable: ")) {
-						prefix = "Undefined variable: ";
+					if (msg.startsWith('Undefined variable: ')) {
+						prefix = 'Undefined variable: ';
 						const names = new Set<string>();
 						const { runtimeScope, assignedVariables } = languageState.hoverState;
 						if (runtimeScope) {
@@ -396,15 +392,15 @@ export function registerLittlewingLanguage(monaco: Monaco): void {
 							names.add(name);
 						}
 						candidates = [...names];
-					} else if (msg.startsWith("Undefined function: ")) {
-						prefix = "Undefined function: ";
+					} else if (msg.startsWith('Undefined function: ')) {
+						prefix = 'Undefined function: ';
 						candidates = BUILTINS;
 					} else {
 						continue;
 					}
 
 					// Extract the undefined name: text between prefix and " (line ..." suffix
-					const suffixIndex = msg.indexOf(" (line ", prefix.length);
+					const suffixIndex = msg.indexOf(' (line ', prefix.length);
 					if (suffixIndex < 0) continue;
 					const name = msg.slice(prefix.length, suffixIndex);
 					if (name.length === 0) continue;
@@ -425,7 +421,7 @@ export function registerLittlewingLanguage(monaco: Monaco): void {
 						const { candidate } = top[i]!;
 						actions.push({
 							title: `Replace with '${candidate}'`,
-							kind: "quickfix",
+							kind: 'quickfix',
 							diagnostics: [marker],
 							isPreferred: i === 0,
 							edit: {
@@ -456,6 +452,6 @@ export function registerLittlewingLanguage(monaco: Monaco): void {
 }
 
 export function registerLittlewingThemes(monaco: Monaco): void {
-	monaco.editor.defineTheme("tomorrow", tomorrowTheme);
-	monaco.editor.defineTheme("tomorrow-night", tomorrowNightTheme);
+	monaco.editor.defineTheme('tomorrow', tomorrowTheme);
+	monaco.editor.defineTheme('tomorrow-night', tomorrowNightTheme);
 }

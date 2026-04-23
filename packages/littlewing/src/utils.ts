@@ -1,7 +1,7 @@
-import type { ASTNode, Operator } from "./ast";
-import { NodeKind } from "./ast";
-import { TokenKind } from "./lexer";
-import type { RuntimeValue } from "./types";
+import type { ASTNode, Operator } from './ast';
+import { NodeKind } from './ast';
+import { TokenKind } from './lexer';
+import type { RuntimeValue } from './types';
 
 /**
  * Return the type name of a runtime value
@@ -9,13 +9,13 @@ import type { RuntimeValue } from "./types";
  * instance of PlainDate in the Temporal API, but ordering is kept explicit for clarity.
  */
 export function typeOf(value: RuntimeValue): string {
-	if (typeof value === "number") return "number";
-	if (typeof value === "string") return "string";
-	if (typeof value === "boolean") return "boolean";
-	if (value instanceof Temporal.PlainDateTime) return "datetime";
-	if (value instanceof Temporal.PlainDate) return "date";
-	if (value instanceof Temporal.PlainTime) return "time";
-	if (Array.isArray(value)) return "array";
+	if (typeof value === 'number') return 'number';
+	if (typeof value === 'string') return 'string';
+	if (typeof value === 'boolean') return 'boolean';
+	if (value instanceof Temporal.PlainDateTime) return 'datetime';
+	if (value instanceof Temporal.PlainDate) return 'date';
+	if (value instanceof Temporal.PlainTime) return 'time';
+	if (Array.isArray(value)) return 'array';
 	throw new Error(`Unknown runtime value type`);
 }
 
@@ -26,9 +26,9 @@ export function typeOf(value: RuntimeValue): string {
  * Dates use .equals().
  */
 export function deepEquals(a: RuntimeValue, b: RuntimeValue): boolean {
-	if (typeof a === "number" && typeof b === "number") return a === b;
-	if (typeof a === "string" && typeof b === "string") return a === b;
-	if (typeof a === "boolean" && typeof b === "boolean") return a === b;
+	if (typeof a === 'number' && typeof b === 'number') return a === b;
+	if (typeof a === 'string' && typeof b === 'string') return a === b;
+	if (typeof a === 'boolean' && typeof b === 'boolean') return a === b;
 	if (a instanceof Temporal.PlainDate && b instanceof Temporal.PlainDate) {
 		return a.equals(b);
 	}
@@ -54,8 +54,8 @@ export function deepEquals(a: RuntimeValue, b: RuntimeValue): boolean {
  * Assert a value is a number, throwing a TypeError if not
  */
 export function assertNumber(v: RuntimeValue, context: string, side?: string): asserts v is number {
-	if (typeof v !== "number") {
-		const where = side ? ` (${side})` : "";
+	if (typeof v !== 'number') {
+		const where = side ? ` (${side})` : '';
 		throw new TypeError(`${context}${where} expected number, got ${typeOf(v)}`);
 	}
 }
@@ -68,8 +68,8 @@ export function assertBoolean(
 	context: string,
 	side?: string,
 ): asserts v is boolean {
-	if (typeof v !== "boolean") {
-		const where = side ? ` (${side})` : "";
+	if (typeof v !== 'boolean') {
+		const where = side ? ` (${side})` : '';
 		throw new TypeError(`${context}${where} expected boolean, got ${typeOf(v)}`);
 	}
 }
@@ -78,7 +78,7 @@ export function assertBoolean(
  * Assert a value is a string, throwing a TypeError if not
  */
 export function assertString(v: RuntimeValue, context: string): asserts v is string {
-	if (typeof v !== "string") {
+	if (typeof v !== 'string') {
 		throw new TypeError(`${context} expected string, got ${typeOf(v)}`);
 	}
 }
@@ -181,7 +181,7 @@ export function validateHomogeneousArray(elements: readonly RuntimeValue[]): voi
 	const first = elements[0] as RuntimeValue;
 	const firstPrimitive = typeof first;
 	// Fast path: primitives can use typeof directly, avoiding typeOf() instanceof checks
-	if (firstPrimitive === "number" || firstPrimitive === "string" || firstPrimitive === "boolean") {
+	if (firstPrimitive === 'number' || firstPrimitive === 'string' || firstPrimitive === 'boolean') {
 		for (let i = 1; i < elements.length; i++) {
 			if (typeof elements[i] !== firstPrimitive) {
 				throw new TypeError(
@@ -216,54 +216,54 @@ export function evaluateBinaryOperation(
 	right: RuntimeValue,
 ): RuntimeValue {
 	switch (operator) {
-		case "==":
+		case '==':
 			return deepEquals(left, right);
-		case "!=":
+		case '!=':
 			return !deepEquals(left, right);
 
-		case "+": {
-			if (typeof left === "number" && typeof right === "number") return left + right;
-			if (typeof left === "string" && typeof right === "string") return left + right;
+		case '+': {
+			if (typeof left === 'number' && typeof right === 'number') return left + right;
+			if (typeof left === 'string' && typeof right === 'string') return left + right;
 			if (Array.isArray(left) && Array.isArray(right)) return concatenateArrays(left, right);
 			throw new TypeError(`Operator '+' not supported for ${typeOf(left)} and ${typeOf(right)}`);
 		}
 
-		case "-":
-			assertNumber(left, "Operator '-'", "left");
-			assertNumber(right, "Operator '-'", "right");
+		case '-':
+			assertNumber(left, "Operator '-'", 'left');
+			assertNumber(right, "Operator '-'", 'right');
 			return left - right;
-		case "*":
-			assertNumber(left, "Operator '*'", "left");
-			assertNumber(right, "Operator '*'", "right");
+		case '*':
+			assertNumber(left, "Operator '*'", 'left');
+			assertNumber(right, "Operator '*'", 'right');
 			return left * right;
-		case "/":
-			assertNumber(left, "Operator '/'", "left");
-			assertNumber(right, "Operator '/'", "right");
-			if (right === 0) throw new Error("Division by zero");
+		case '/':
+			assertNumber(left, "Operator '/'", 'left');
+			assertNumber(right, "Operator '/'", 'right');
+			if (right === 0) throw new Error('Division by zero');
 			return left / right;
-		case "%":
-			assertNumber(left, "Operator '%'", "left");
-			assertNumber(right, "Operator '%'", "right");
-			if (right === 0) throw new Error("Modulo by zero");
+		case '%':
+			assertNumber(left, "Operator '%'", 'left');
+			assertNumber(right, "Operator '%'", 'right');
+			if (right === 0) throw new Error('Modulo by zero');
 			return left % right;
-		case "^":
-			assertNumber(left, "Operator '^'", "left");
-			assertNumber(right, "Operator '^'", "right");
+		case '^':
+			assertNumber(left, "Operator '^'", 'left');
+			assertNumber(right, "Operator '^'", 'right');
 			return left ** right;
 
-		case "<":
-		case ">":
-		case "<=":
-		case ">=":
+		case '<':
+		case '>':
+		case '<=':
+		case '>=':
 			return compareOrdered(operator, left, right);
 
-		case "&&":
-		case "||":
+		case '&&':
+		case '||':
 			// Short-circuit logic is handled in the interpreter
 			// This path is only reached during optimizer constant folding
-			assertBoolean(left, `Operator '${operator}'`, "left");
-			assertBoolean(right, `Operator '${operator}'`, "right");
-			if (operator === "&&") return left && right;
+			assertBoolean(left, `Operator '${operator}'`, 'left');
+			assertBoolean(right, `Operator '${operator}'`, 'right');
+			if (operator === '&&') return left && right;
 			return left || right;
 
 		default:
@@ -276,14 +276,14 @@ export function evaluateBinaryOperation(
  * Supports numbers, strings, and dates.
  */
 function compareOrdered(
-	operator: "<" | ">" | "<=" | ">=",
+	operator: '<' | '>' | '<=' | '>=',
 	left: RuntimeValue,
 	right: RuntimeValue,
 ): boolean {
-	if (typeof left === "number" && typeof right === "number") {
+	if (typeof left === 'number' && typeof right === 'number') {
 		return numericComparison(operator, left, right);
 	}
-	if (typeof left === "string" && typeof right === "string") {
+	if (typeof left === 'string' && typeof right === 'string') {
 		return numericComparison(operator, left < right ? -1 : left > right ? 1 : 0, 0);
 	}
 	if (left instanceof Temporal.PlainDate && right instanceof Temporal.PlainDate) {
@@ -304,18 +304,18 @@ function compareOrdered(
 }
 
 function numericComparison(
-	operator: "<" | ">" | "<=" | ">=",
+	operator: '<' | '>' | '<=' | '>=',
 	left: number,
 	right: number,
 ): boolean {
 	switch (operator) {
-		case "<":
+		case '<':
 			return left < right;
-		case ">":
+		case '>':
 			return left > right;
-		case "<=":
+		case '<=':
 			return left <= right;
-		case ">=":
+		case '>=':
 			return left >= right;
 	}
 }
@@ -328,14 +328,14 @@ export function resolveIndex(
 	target: readonly RuntimeValue[] | string,
 	index: RuntimeValue,
 ): RuntimeValue {
-	if (typeof index !== "number") {
+	if (typeof index !== 'number') {
 		throw new TypeError(`Index expected number, got ${typeOf(index)}`);
 	}
 	if (!Number.isInteger(index)) {
 		throw new TypeError(`Index must be an integer, got ${index}`);
 	}
 
-	if (typeof target === "string") {
+	if (typeof target === 'string') {
 		if (index >= 0) {
 			// Positive index: single-pass iteration to the target code point (O(1) memory)
 			let i = 0;
@@ -404,25 +404,25 @@ export function buildRange(start: number, end: number, inclusive: boolean): read
  */
 export function getOperatorPrecedence(operator: Operator): number {
 	switch (operator) {
-		case "^":
+		case '^':
 			return 9;
-		case "*":
-		case "/":
-		case "%":
+		case '*':
+		case '/':
+		case '%':
 			return 8;
-		case "+":
-		case "-":
+		case '+':
+		case '-':
 			return 7;
-		case "==":
-		case "!=":
-		case "<":
-		case ">":
-		case "<=":
-		case ">=":
+		case '==':
+		case '!=':
+		case '<':
+		case '>':
+		case '<=':
+		case '>=':
 			return 5;
-		case "&&":
+		case '&&':
 			return 4;
-		case "||":
+		case '||':
 			return 3;
 		default:
 			return 0;
@@ -441,11 +441,7 @@ export function collectAllIdentifiers(node: ASTNode): Set<string> {
 	return identifiers;
 }
 
-function collectIdentifiers(
-	node: ASTNode,
-	ids: Set<string>,
-	boundVars: ReadonlySet<string>,
-): void {
+function collectIdentifiers(node: ASTNode, ids: Set<string>, boundVars: ReadonlySet<string>): void {
 	switch (node.kind) {
 		case NodeKind.Program:
 			for (const s of node.statements) collectIdentifiers(s, ids, boundVars);

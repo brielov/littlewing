@@ -1,18 +1,18 @@
-import { describe, expect, test } from "bun:test";
-import { evaluate } from "../src/interpreter";
+import { describe, expect, test } from 'bun:test';
+import { evaluate } from '../src/interpreter';
 
-describe("External Variables", () => {
-	test("external variables override internal assignments", () => {
-		expect(evaluate("price = 100", { variables: { price: 50 } })).toBe(50);
-		expect(evaluate("price = 100; price", { variables: { price: 50 } })).toBe(50);
+describe('External Variables', () => {
+	test('external variables override internal assignments', () => {
+		expect(evaluate('price = 100', { variables: { price: 50 } })).toBe(50);
+		expect(evaluate('price = 100; price', { variables: { price: 50 } })).toBe(50);
 	});
 
-	test("assignments without external variables work normally", () => {
-		expect(evaluate("price = 100")).toBe(100);
-		expect(evaluate("price = 100; price")).toBe(100);
+	test('assignments without external variables work normally', () => {
+		expect(evaluate('price = 100')).toBe(100);
+		expect(evaluate('price = 100; price')).toBe(100);
 	});
 
-	test("external variables allow script defaults", () => {
+	test('external variables allow script defaults', () => {
 		const formula = `
 			price = 100
 			tax = 0.1
@@ -27,14 +27,14 @@ describe("External Variables", () => {
 		expect(evaluate(formula, { variables: { price: 200, discount: 0.1 } })).toBeCloseTo(198);
 	});
 
-	test("external variables preserve zero and falsy values", () => {
-		expect(evaluate("discount = 0.2", { variables: { discount: 0 } })).toBe(0);
-		expect(evaluate("discount = 0.2; discount", { variables: { discount: 0 } })).toBe(0);
+	test('external variables preserve zero and falsy values', () => {
+		expect(evaluate('discount = 0.2', { variables: { discount: 0 } })).toBe(0);
+		expect(evaluate('discount = 0.2; discount', { variables: { discount: 0 } })).toBe(0);
 	});
 
-	test("external variable evaluates assignment expression for side effects", () => {
+	test('external variable evaluates assignment expression for side effects', () => {
 		let callCount = 0;
-		const formula = "price = COUNTER(); price";
+		const formula = 'price = COUNTER(); price';
 		const context = {
 			functions: {
 				COUNTER: () => {
@@ -49,7 +49,7 @@ describe("External Variables", () => {
 		expect(callCount).toBe(1);
 	});
 
-	test("mix of external and internal assignments", () => {
+	test('mix of external and internal assignments', () => {
 		const formula = `
 			base = 100
 			multiplier = 2
@@ -59,7 +59,7 @@ describe("External Variables", () => {
 		expect(evaluate(formula, { variables: { base: 50 } })).toBe(100);
 	});
 
-	test("realistic pricing with external overrides", () => {
+	test('realistic pricing with external overrides', () => {
 		const pricingScript = `
 			basePrice = 100
 			quantity = 1
@@ -80,9 +80,9 @@ describe("External Variables", () => {
 		);
 	});
 
-	test("external variables can be any RuntimeValue type", () => {
-		expect(evaluate("name", { variables: { name: "Alice" } })).toBe("Alice");
-		expect(evaluate("flag", { variables: { flag: true } })).toBe(true);
-		expect(evaluate("items", { variables: { items: [1, 2, 3] } })).toEqual([1, 2, 3]);
+	test('external variables can be any RuntimeValue type', () => {
+		expect(evaluate('name', { variables: { name: 'Alice' } })).toBe('Alice');
+		expect(evaluate('flag', { variables: { flag: true } })).toBe(true);
+		expect(evaluate('items', { variables: { items: [1, 2, 3] } })).toEqual([1, 2, 3]);
 	});
 });

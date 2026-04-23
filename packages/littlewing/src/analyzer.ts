@@ -1,5 +1,5 @@
-import type { ASTNode } from "./ast";
-import { isAssignment, isProgram, NodeKind } from "./ast";
+import type { ASTNode } from './ast';
+import { isAssignment, isProgram, NodeKind } from './ast';
 
 /**
  * Extracts input variables from an AST.

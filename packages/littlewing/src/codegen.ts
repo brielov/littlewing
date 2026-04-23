@@ -1,4 +1,4 @@
-import type { ASTNode, Operator, Program } from "./ast";
+import type { ASTNode, Operator, Program } from './ast';
 import {
 	isAssignment,
 	isBinaryOp,
@@ -8,9 +8,9 @@ import {
 	isProgram,
 	isRangeExpression,
 	isUnaryOp,
-} from "./ast";
-import { NodeKind } from "./ast";
-import { getOperatorPrecedence } from "./utils";
+} from './ast';
+import { NodeKind } from './ast';
+import { getOperatorPrecedence } from './utils';
 
 /**
  * Check if operand needs parentheses based on operator precedence and position
@@ -20,7 +20,7 @@ function needsParens(node: ASTNode, operator: Operator, isLeft: boolean): boolea
 
 	const nodePrecedence = getOperatorPrecedence(node.operator);
 	const operatorPrecedence = getOperatorPrecedence(operator);
-	const isRightAssociative = operator === "^";
+	const isRightAssociative = operator === '^';
 
 	if (isRightAssociative) {
 		return isLeft ? nodePrecedence <= operatorPrecedence : nodePrecedence < operatorPrecedence;
@@ -34,10 +34,10 @@ function needsParens(node: ASTNode, operator: Operator, isLeft: boolean): boolea
  */
 function escapeString(value: string): string {
 	return value
-		.replace(/\\/g, "\\\\")
+		.replace(/\\/g, '\\\\')
 		.replace(/"/g, '\\"')
-		.replace(/\n/g, "\\n")
-		.replace(/\t/g, "\\t");
+		.replace(/\n/g, '\\n')
+		.replace(/\t/g, '\\t');
 }
 
 /**
@@ -52,7 +52,7 @@ function emitStatement(code: string, node: ASTNode, lines: string[]): void {
 		}
 	}
 	if (node.trailingComments && node.trailingComments.length > 0) {
-		lines.push(`${code} ${node.trailingComments.join(" ")}`);
+		lines.push(`${code} ${node.trailingComments.join(' ')}`);
 	} else {
 		lines.push(code);
 	}
@@ -71,7 +71,7 @@ function generateProgram(n: Program, recurse: (node: ASTNode) => string): string
 			lines.push(comment);
 		}
 	}
-	return lines.join("\n");
+	return lines.join('\n');
 }
 
 /**
@@ -88,12 +88,12 @@ export function generate(node: ASTNode): string {
 			}
 		}
 		if (node.trailingComments && node.trailingComments.length > 0) {
-			parts.push(`${code} ${node.trailingComments.join(" ")}`);
+			parts.push(`${code} ${node.trailingComments.join(' ')}`);
 		} else {
 			parts.push(code);
 		}
 		if (parts.length > 1 || (node.leadingComments && node.leadingComments.length > 0)) {
-			return parts.join("\n");
+			return parts.join('\n');
 		}
 		return parts[0] ?? code;
 	}
@@ -115,10 +115,10 @@ function generateNode(node: ASTNode): string {
 			return `"${escapeString(node.value)}"`;
 
 		case NodeKind.BooleanLiteral:
-			return node.value ? "true" : "false";
+			return node.value ? 'true' : 'false';
 
 		case NodeKind.ArrayLiteral:
-			return `[${node.elements.map(recurse).join(", ")}]`;
+			return `[${node.elements.map(recurse).join(', ')}]`;
 
 		case NodeKind.Identifier:
 			return node.name;
@@ -135,7 +135,7 @@ function generateNode(node: ASTNode): string {
 			// - Range whose right side would absorb the parent operator (when parent prec >= 7)
 			const leftNeedsParens =
 				needsParens(node.left, node.operator, true) ||
-				(node.operator === "^" && isUnaryOp(node.left)) ||
+				(node.operator === '^' && isUnaryOp(node.left)) ||
 				isIfExpression(node.left) ||
 				isForExpression(node.left) ||
 				isAssignment(node.left) ||
@@ -173,7 +173,7 @@ function generateNode(node: ASTNode): string {
 		}
 
 		case NodeKind.FunctionCall: {
-			const argsCode = node.args.map(recurse).join(", ");
+			const argsCode = node.args.map(recurse).join(', ');
 			return `${node.name}(${argsCode})`;
 		}
 
@@ -198,7 +198,7 @@ function generateNode(node: ASTNode): string {
 				parts.push(`into ${node.accumulator.name} = ${recurse(node.accumulator.initial)}`);
 			}
 			parts.push(`then ${recurse(node.body)}`);
-			return parts.join(" ");
+			return parts.join(' ');
 		}
 
 		case NodeKind.IndexAccess: {
@@ -218,7 +218,7 @@ function generateNode(node: ASTNode): string {
 		case NodeKind.RangeExpression: {
 			const start = recurse(node.start);
 			const end = recurse(node.end);
-			const op = node.inclusive ? "..=" : "..";
+			const op = node.inclusive ? '..=' : '..';
 			// Start needs parens for: binary ops, nested ranges, and greedy-tail
 			// nodes (if/for/assignment) whose trailing syntax would absorb the `..`
 			const startNeedsParens =
@@ -242,7 +242,7 @@ function generateNode(node: ASTNode): string {
 
 		case NodeKind.PipeExpression: {
 			const value = recurse(node.value);
-			const argsCode = node.args.map(recurse).join(", ");
+			const argsCode = node.args.map(recurse).join(', ');
 			// Wrap value in parens if it has greedy-tail syntax (assignment,
 			// if/for) that would absorb the `|>` into the trailing branch
 			const valueNeedsParens =
@@ -252,6 +252,6 @@ function generateNode(node: ASTNode): string {
 		}
 
 		case NodeKind.Placeholder:
-			return "?";
+			return '?';
 	}
 }

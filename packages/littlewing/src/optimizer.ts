@@ -1,4 +1,4 @@
-import * as ast from "./ast";
+import * as ast from './ast';
 import {
 	type ASTNode,
 	isArrayLiteral,
@@ -9,8 +9,8 @@ import {
 	isStringLiteral,
 	NodeKind,
 	type Program,
-} from "./ast";
-import { buildRange, collectAllIdentifiers, evaluateBinaryOperation, resolveIndex } from "./utils";
+} from './ast';
+import { buildRange, collectAllIdentifiers, evaluateBinaryOperation, resolveIndex } from './utils';
 
 /**
  * Copy leadingComments and trailingComments from original node to replacement node when present.
@@ -528,38 +528,38 @@ function fold(node: ASTNode): ASTNode {
 			// Both sides are number literals: fold arithmetic and comparison
 			if (isNumberLiteral(left) && isNumberLiteral(right)) {
 				const result = evaluateBinaryOperation(node.operator, left.value, right.value);
-				if (typeof result === "number") return preserveComments(node, ast.number(result));
-				if (typeof result === "boolean") return preserveComments(node, ast.boolean(result));
+				if (typeof result === 'number') return preserveComments(node, ast.number(result));
+				if (typeof result === 'boolean') return preserveComments(node, ast.boolean(result));
 			}
 
 			// Both sides are string literals
 			if (isStringLiteral(left) && isStringLiteral(right)) {
-				if (node.operator === "+")
+				if (node.operator === '+')
 					return preserveComments(node, ast.string(left.value + right.value));
 				if (
-					node.operator === "<" ||
-					node.operator === ">" ||
-					node.operator === "<=" ||
-					node.operator === ">="
+					node.operator === '<' ||
+					node.operator === '>' ||
+					node.operator === '<=' ||
+					node.operator === '>='
 				) {
 					const result = evaluateBinaryOperation(node.operator, left.value, right.value);
 					return preserveComments(node, ast.boolean(result as boolean));
 				}
-				if (node.operator === "==")
+				if (node.operator === '==')
 					return preserveComments(node, ast.boolean(left.value === right.value));
-				if (node.operator === "!=")
+				if (node.operator === '!=')
 					return preserveComments(node, ast.boolean(left.value !== right.value));
 			}
 
 			// Both sides are boolean literals
 			if (isBooleanLiteral(left) && isBooleanLiteral(right)) {
-				if (node.operator === "&&")
+				if (node.operator === '&&')
 					return preserveComments(node, ast.boolean(left.value && right.value));
-				if (node.operator === "||")
+				if (node.operator === '||')
 					return preserveComments(node, ast.boolean(left.value || right.value));
-				if (node.operator === "==")
+				if (node.operator === '==')
 					return preserveComments(node, ast.boolean(left.value === right.value));
-				if (node.operator === "!=")
+				if (node.operator === '!=')
 					return preserveComments(node, ast.boolean(left.value !== right.value));
 			}
 
@@ -567,8 +567,8 @@ function fold(node: ASTNode): ASTNode {
 			if (isLiteral(left) && isLiteral(right)) {
 				// Different types (we've already handled same-type above)
 				if (left.kind !== right.kind) {
-					if (node.operator === "==") return preserveComments(node, ast.boolean(false));
-					if (node.operator === "!=") return preserveComments(node, ast.boolean(true));
+					if (node.operator === '==') return preserveComments(node, ast.boolean(false));
+					if (node.operator === '!=') return preserveComments(node, ast.boolean(true));
 				}
 			}
 
@@ -579,11 +579,11 @@ function fold(node: ASTNode): ASTNode {
 		case NodeKind.UnaryOp: {
 			const argument = recurse(node.argument);
 
-			if (node.operator === "-" && isNumberLiteral(argument)) {
+			if (node.operator === '-' && isNumberLiteral(argument)) {
 				return preserveComments(node, ast.number(-argument.value));
 			}
 
-			if (node.operator === "!" && isBooleanLiteral(argument)) {
+			if (node.operator === '!' && isBooleanLiteral(argument)) {
 				return preserveComments(node, ast.boolean(!argument.value));
 			}
 

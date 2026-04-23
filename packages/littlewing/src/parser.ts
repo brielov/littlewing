@@ -1,6 +1,6 @@
-import * as ast from "./ast";
-import { type ASTNode, NodeKind, type Operator } from "./ast";
-import { ParseError } from "./errors";
+import * as ast from './ast';
+import { type ASTNode, NodeKind, type Operator } from './ast';
+import { ParseError } from './errors';
 import {
 	type Comment,
 	type Cursor,
@@ -10,8 +10,8 @@ import {
 	readText,
 	type Token,
 	TokenKind,
-} from "./lexer";
-import { getTokenPrecedence } from "./utils";
+} from './lexer';
+import { getTokenPrecedence } from './utils';
 
 /**
  * Set of binary operator token kinds for O(1) lookup
@@ -59,7 +59,7 @@ export function parse(source: string): ASTNode {
 	}
 
 	if (statements.length === 0) {
-		throw new ParseError("Empty program", 0, 0);
+		throw new ParseError('Empty program', 0, 0);
 	}
 
 	const annotated = attachComments(source, statements, statementOffsets, cursor.comments);
@@ -69,7 +69,7 @@ export function parse(source: string): ASTNode {
 	if (annotated.statements.length === 1 && !annotated.programTrailing) {
 		const stmt = annotated.statements[0];
 		if (stmt === undefined) {
-			throw new ParseError("Unexpected empty statements array", 0, 0);
+			throw new ParseError('Unexpected empty statements array', 0, 0);
 		}
 		return stmt;
 	}
@@ -229,7 +229,7 @@ function parseExpression(state: ParserState, minPrecedence: number): ASTNode {
 			const index = parseExpression(state, 0);
 			if (peekKind(state) !== TokenKind.RBracket) {
 				throw new ParseError(
-					"Expected closing bracket",
+					'Expected closing bracket',
 					state.currentToken[1],
 					state.currentToken[2],
 				);
@@ -260,14 +260,14 @@ function parsePrefix(state: ParserState): ASTNode {
 	if (tokenKind === TokenKind.Minus) {
 		advance(state);
 		const argument = parseExpression(state, UNARY_PRECEDENCE);
-		return ast.unaryOp("-", argument);
+		return ast.unaryOp('-', argument);
 	}
 
 	// Logical NOT
 	if (tokenKind === TokenKind.Bang) {
 		advance(state);
 		const argument = parseExpression(state, UNARY_PRECEDENCE);
-		return ast.unaryOp("!", argument);
+		return ast.unaryOp('!', argument);
 	}
 
 	// Parenthesized expression
@@ -276,7 +276,7 @@ function parsePrefix(state: ParserState): ASTNode {
 		const expr = parseExpression(state, 0);
 		if (peekKind(state) !== TokenKind.RParen) {
 			throw new ParseError(
-				"Expected closing parenthesis",
+				'Expected closing parenthesis',
 				state.currentToken[1],
 				state.currentToken[2],
 			);
@@ -298,7 +298,7 @@ function parsePrefix(state: ParserState): ASTNode {
 		}
 		if (peekKind(state) !== TokenKind.RBracket) {
 			throw new ParseError(
-				"Expected closing bracket",
+				'Expected closing bracket',
 				state.currentToken[1],
 				state.currentToken[2],
 			);
@@ -416,10 +416,10 @@ function parsePrefix(state: ParserState): ASTNode {
 		advance(state);
 
 		// Boolean literals
-		if (name === "true") {
+		if (name === 'true') {
 			return ast.boolean(true);
 		}
-		if (name === "false") {
+		if (name === 'false') {
 			return ast.boolean(false);
 		}
 
@@ -429,7 +429,7 @@ function parsePrefix(state: ParserState): ASTNode {
 			const args = parseFunctionArguments(state);
 			if (peekKind(state) !== TokenKind.RParen) {
 				throw new ParseError(
-					"Expected closing parenthesis",
+					'Expected closing parenthesis',
 					state.currentToken[1],
 					state.currentToken[2],
 				);
@@ -454,7 +454,7 @@ function parseInfix(state: ParserState, left: ASTNode, precedence: number): ASTN
 	if (tokenKind === TokenKind.Eq) {
 		if (left.kind !== NodeKind.Identifier) {
 			throw new ParseError(
-				"Invalid assignment target",
+				'Invalid assignment target',
 				state.currentToken[1],
 				state.currentToken[2],
 			);
@@ -478,7 +478,7 @@ function parseInfix(state: ParserState, left: ASTNode, precedence: number): ASTN
 		advance(state); // consume |>
 		if (peekKind(state) !== TokenKind.Identifier) {
 			throw new ParseError(
-				"Expected function name after |>",
+				'Expected function name after |>',
 				state.currentToken[1],
 				state.currentToken[2],
 			);
@@ -487,7 +487,7 @@ function parseInfix(state: ParserState, left: ASTNode, precedence: number): ASTN
 		advance(state); // consume function name
 		if (peekKind(state) !== TokenKind.LParen) {
 			throw new ParseError(
-				"Expected ( after function name in pipe expression",
+				'Expected ( after function name in pipe expression',
 				state.currentToken[1],
 				state.currentToken[2],
 			);
@@ -496,7 +496,7 @@ function parseInfix(state: ParserState, left: ASTNode, precedence: number): ASTN
 		const args = parsePipeArguments(state);
 		if (peekKind(state) !== TokenKind.RParen) {
 			throw new ParseError(
-				"Expected closing parenthesis",
+				'Expected closing parenthesis',
 				state.currentToken[1],
 				state.currentToken[2],
 			);
@@ -511,7 +511,7 @@ function parseInfix(state: ParserState, left: ASTNode, precedence: number): ASTN
 		}
 		if (!hasPlaceholder) {
 			throw new ParseError(
-				"Pipe expression requires at least one ? placeholder",
+				'Pipe expression requires at least one ? placeholder',
 				state.currentToken[1],
 				state.currentToken[2],
 			);
@@ -523,13 +523,13 @@ function parseInfix(state: ParserState, left: ASTNode, precedence: number): ASTN
 	if (isBinaryOperator(tokenKind)) {
 		const operator = readText(state.cursor, state.currentToken) as Operator;
 		advance(state);
-		const isRightAssociative = operator === "^";
+		const isRightAssociative = operator === '^';
 		const right = parseExpression(state, isRightAssociative ? precedence : precedence + 1);
 		return ast.binaryOp(left, operator, right);
 	}
 
 	throw new ParseError(
-		"Unexpected token in infix position",
+		'Unexpected token in infix position',
 		state.currentToken[1],
 		state.currentToken[2],
 	);

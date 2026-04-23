@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test";
+import { describe, expect, test } from 'bun:test';
 import {
 	createCursor,
 	nextToken,
@@ -6,7 +6,7 @@ import {
 	readText,
 	type Token,
 	TokenKind,
-} from "../src/lexer";
+} from '../src/lexer';
 
 /**
  * Helper function to tokenize source and return all tokens
@@ -71,9 +71,9 @@ function expectTokenNumber(
 	expect(getNumberValue(cursor, token!)).toBe(value);
 }
 
-describe("Lexer", () => {
-	test("tokenize numbers", () => {
-		const source = "42 3.14";
+describe('Lexer', () => {
+	test('tokenize numbers', () => {
+		const source = '42 3.14';
 		const cursor = createCursor(source);
 		const tokens = tokenize(source);
 
@@ -82,18 +82,18 @@ describe("Lexer", () => {
 		expectToken(tokens[2], TokenKind.Eof);
 	});
 
-	test("tokenize identifiers", () => {
-		const source = "x my_var now";
+	test('tokenize identifiers', () => {
+		const source = 'x my_var now';
 		const cursor = createCursor(source);
 		const tokens = tokenize(source);
 
-		expectTokenText(cursor, tokens[0], TokenKind.Identifier, "x");
-		expectTokenText(cursor, tokens[1], TokenKind.Identifier, "my_var");
-		expectTokenText(cursor, tokens[2], TokenKind.Identifier, "now");
+		expectTokenText(cursor, tokens[0], TokenKind.Identifier, 'x');
+		expectTokenText(cursor, tokens[1], TokenKind.Identifier, 'my_var');
+		expectTokenText(cursor, tokens[2], TokenKind.Identifier, 'now');
 	});
 
-	test("tokenize operators", () => {
-		const tokens = tokenize("+ - * / % ^");
+	test('tokenize operators', () => {
+		const tokens = tokenize('+ - * / % ^');
 		expectToken(tokens[0], TokenKind.Plus);
 		expectToken(tokens[1], TokenKind.Minus);
 		expectToken(tokens[2], TokenKind.Star);
@@ -102,8 +102,8 @@ describe("Lexer", () => {
 		expectToken(tokens[5], TokenKind.Caret);
 	});
 
-	test("skip comments", () => {
-		const source = "42 // this is a comment\n 3.14";
+	test('skip comments', () => {
+		const source = '42 // this is a comment\n 3.14';
 		const cursor = createCursor(source);
 		const tokens = tokenize(source);
 
@@ -111,26 +111,26 @@ describe("Lexer", () => {
 		expectTokenNumber(cursor, tokens[1], TokenKind.Number, 3.14);
 	});
 
-	test("skip whitespace and semicolons", () => {
-		const tokens = tokenize("x = 1 ; y = 2");
+	test('skip whitespace and semicolons', () => {
+		const tokens = tokenize('x = 1 ; y = 2');
 		const filtered = tokens.filter((t) => t[0] !== TokenKind.Eof);
 		expect(filtered.length).toBe(6); // x, =, 1, y, =, 2
 	});
 
-	test("tokenize full expression", () => {
-		const source = "x = 1 + 2";
+	test('tokenize full expression', () => {
+		const source = 'x = 1 + 2';
 		const cursor = createCursor(source);
 		const tokens = tokenize(source);
 
-		expectTokenText(cursor, tokens[0], TokenKind.Identifier, "x");
-		expectTokenText(cursor, tokens[1], TokenKind.Eq, "=");
+		expectTokenText(cursor, tokens[0], TokenKind.Identifier, 'x');
+		expectTokenText(cursor, tokens[1], TokenKind.Eq, '=');
 		expectTokenNumber(cursor, tokens[2], TokenKind.Number, 1);
-		expectTokenText(cursor, tokens[3], TokenKind.Plus, "+");
+		expectTokenText(cursor, tokens[3], TokenKind.Plus, '+');
 		expectTokenNumber(cursor, tokens[4], TokenKind.Number, 2);
 	});
 
-	test("tokenize decimal numbers", () => {
-		const source = "3.14159 0.5 100.0";
+	test('tokenize decimal numbers', () => {
+		const source = '3.14159 0.5 100.0';
 		const cursor = createCursor(source);
 		const tokens = tokenize(source);
 
@@ -140,36 +140,36 @@ describe("Lexer", () => {
 		expectTokenNumber(cursor, tokens[2], TokenKind.Number, 100.0);
 	});
 
-	test("tokenize large numbers", () => {
-		const source = "1704067200000";
+	test('tokenize large numbers', () => {
+		const source = '1704067200000';
 		const cursor = createCursor(source);
 		const tokens = tokenize(source);
 
 		expectTokenNumber(cursor, tokens[0], TokenKind.Number, 1704067200000);
 	});
 
-	test("error on leading-dot shorthand", () => {
-		expect(() => tokenize(".5")).toThrow("Unexpected character");
-		expect(() => tokenize(".2 + .3")).toThrow("Unexpected character");
+	test('error on leading-dot shorthand', () => {
+		expect(() => tokenize('.5')).toThrow('Unexpected character');
+		expect(() => tokenize('.2 + .3')).toThrow('Unexpected character');
 	});
 
-	test("error on scientific notation", () => {
+	test('error on scientific notation', () => {
 		// 1e6 is now lexed as number(1) then identifier(e6)
-		const source = "1e6";
+		const source = '1e6';
 		const cursor = createCursor(source);
 		const tokens = tokenize(source);
 		expectTokenNumber(cursor, tokens[0], TokenKind.Number, 1);
-		expectTokenText(cursor, tokens[1], TokenKind.Identifier, "e6");
+		expectTokenText(cursor, tokens[1], TokenKind.Identifier, 'e6');
 	});
 
-	test("error on lone decimal point", () => {
-		expect(() => tokenize(".")).toThrow("Unexpected character");
-		expect(() => tokenize("1 + .")).toThrow("Unexpected character");
-		expect(() => tokenize(". + 1")).toThrow("Unexpected character");
+	test('error on lone decimal point', () => {
+		expect(() => tokenize('.')).toThrow('Unexpected character');
+		expect(() => tokenize('1 + .')).toThrow('Unexpected character');
+		expect(() => tokenize('. + 1')).toThrow('Unexpected character');
 	});
 
-	test("tokenize .. operator", () => {
-		const source = "1..5";
+	test('tokenize .. operator', () => {
+		const source = '1..5';
 		const cursor = createCursor(source);
 		const tokens = tokenize(source);
 
@@ -178,8 +178,8 @@ describe("Lexer", () => {
 		expectTokenNumber(cursor, tokens[2], TokenKind.Number, 5);
 	});
 
-	test("tokenize ..= operator", () => {
-		const source = "1..=5";
+	test('tokenize ..= operator', () => {
+		const source = '1..=5';
 		const cursor = createCursor(source);
 		const tokens = tokenize(source);
 
@@ -188,9 +188,9 @@ describe("Lexer", () => {
 		expectTokenNumber(cursor, tokens[2], TokenKind.Number, 5);
 	});
 
-	test("disambiguate decimal from range", () => {
+	test('disambiguate decimal from range', () => {
 		// 5.3..10 should be: number(5.3) DotDot number(10)
-		const source = "5.3..10";
+		const source = '5.3..10';
 		const cursor = createCursor(source);
 		const tokens = tokenize(source);
 
@@ -199,9 +199,9 @@ describe("Lexer", () => {
 		expectTokenNumber(cursor, tokens[2], TokenKind.Number, 10);
 	});
 
-	test("integer followed by range", () => {
+	test('integer followed by range', () => {
 		// 5..10 should be: number(5) DotDot number(10)
-		const source = "5..10";
+		const source = '5..10';
 		const cursor = createCursor(source);
 		const tokens = tokenize(source);
 
@@ -210,44 +210,44 @@ describe("Lexer", () => {
 		expectTokenNumber(cursor, tokens[2], TokenKind.Number, 10);
 	});
 
-	test("tokenize comparison operators", () => {
-		const source = "== != < > <= >=";
+	test('tokenize comparison operators', () => {
+		const source = '== != < > <= >=';
 		const cursor = createCursor(source);
 		const tokens = tokenize(source);
 
-		expectTokenText(cursor, tokens[0], TokenKind.EqEq, "==");
-		expectTokenText(cursor, tokens[1], TokenKind.NotEq, "!=");
-		expectTokenText(cursor, tokens[2], TokenKind.Lt, "<");
-		expectTokenText(cursor, tokens[3], TokenKind.Gt, ">");
-		expectTokenText(cursor, tokens[4], TokenKind.Le, "<=");
-		expectTokenText(cursor, tokens[5], TokenKind.Ge, ">=");
+		expectTokenText(cursor, tokens[0], TokenKind.EqEq, '==');
+		expectTokenText(cursor, tokens[1], TokenKind.NotEq, '!=');
+		expectTokenText(cursor, tokens[2], TokenKind.Lt, '<');
+		expectTokenText(cursor, tokens[3], TokenKind.Gt, '>');
+		expectTokenText(cursor, tokens[4], TokenKind.Le, '<=');
+		expectTokenText(cursor, tokens[5], TokenKind.Ge, '>=');
 	});
 
-	test("distinguish = from ==", () => {
-		const tokens = tokenize("x = 5 == 5");
+	test('distinguish = from ==', () => {
+		const tokens = tokenize('x = 5 == 5');
 		expectToken(tokens[1], TokenKind.Eq);
 		expectToken(tokens[3], TokenKind.EqEq);
 	});
 
-	test("tokenize ! operator", () => {
-		const source = "!";
+	test('tokenize ! operator', () => {
+		const source = '!';
 		const cursor = createCursor(source);
 		const tokens = tokenize(source);
 
-		expectTokenText(cursor, tokens[0], TokenKind.Bang, "!");
+		expectTokenText(cursor, tokens[0], TokenKind.Bang, '!');
 	});
 
-	test("distinguish ! from !=", () => {
-		const source = "! !=";
+	test('distinguish ! from !=', () => {
+		const source = '! !=';
 		const cursor = createCursor(source);
 		const tokens = tokenize(source);
 
-		expectTokenText(cursor, tokens[0], TokenKind.Bang, "!");
-		expectTokenText(cursor, tokens[1], TokenKind.NotEq, "!=");
+		expectTokenText(cursor, tokens[0], TokenKind.Bang, '!');
+		expectTokenText(cursor, tokens[1], TokenKind.NotEq, '!=');
 	});
 
-	test("tokenize keywords", () => {
-		const tokens = tokenize("if then else for in when");
+	test('tokenize keywords', () => {
+		const tokens = tokenize('if then else for in when');
 		expectToken(tokens[0], TokenKind.If);
 		expectToken(tokens[1], TokenKind.Then);
 		expectToken(tokens[2], TokenKind.Else);
@@ -256,8 +256,8 @@ describe("Lexer", () => {
 		expectToken(tokens[5], TokenKind.When);
 	});
 
-	test("keywords are case-sensitive", () => {
-		const source = "IF THEN ELSE FOR IN WHEN";
+	test('keywords are case-sensitive', () => {
+		const source = 'IF THEN ELSE FOR IN WHEN';
 		const tokens = tokenize(source);
 		// Uppercase versions are identifiers, not keywords
 		for (let i = 0; i < 6; i++) {
@@ -265,43 +265,43 @@ describe("Lexer", () => {
 		}
 	});
 
-	test("keywords as part of identifiers remain identifiers", () => {
-		const source = "iffy thenx elsewhere format infix whenever";
+	test('keywords as part of identifiers remain identifiers', () => {
+		const source = 'iffy thenx elsewhere format infix whenever';
 		const tokens = tokenize(source);
 		for (let i = 0; i < 6; i++) {
 			expectToken(tokens[i], TokenKind.Identifier);
 		}
 	});
 
-	test("tokenize && operator", () => {
-		const source = "1 && 2";
+	test('tokenize && operator', () => {
+		const source = '1 && 2';
 		const cursor = createCursor(source);
 		const tokens = tokenize(source);
 
 		expectToken(tokens[0], TokenKind.Number);
-		expectTokenText(cursor, tokens[1], TokenKind.And, "&&");
+		expectTokenText(cursor, tokens[1], TokenKind.And, '&&');
 		expectToken(tokens[2], TokenKind.Number);
 	});
 
-	test("tokenize || operator", () => {
-		const source = "1 || 0";
+	test('tokenize || operator', () => {
+		const source = '1 || 0';
 		const cursor = createCursor(source);
 		const tokens = tokenize(source);
 
 		expectToken(tokens[0], TokenKind.Number);
-		expectTokenText(cursor, tokens[1], TokenKind.Or, "||");
+		expectTokenText(cursor, tokens[1], TokenKind.Or, '||');
 		expectToken(tokens[2], TokenKind.Number);
 	});
 
-	test("single & throws error", () => {
-		expect(() => tokenize("5 & 3")).toThrow("Unexpected character '&'");
+	test('single & throws error', () => {
+		expect(() => tokenize('5 & 3')).toThrow("Unexpected character '&'");
 	});
 
-	test("single | throws error", () => {
-		expect(() => tokenize("5 | 3")).toThrow("Unexpected character '|'");
+	test('single | throws error', () => {
+		expect(() => tokenize('5 | 3')).toThrow("Unexpected character '|'");
 	});
 
-	test("tokenize string literal", () => {
+	test('tokenize string literal', () => {
 		const source = '"hello"';
 		const cursor = createCursor(source);
 		const tokens = tokenize(source);
@@ -310,7 +310,7 @@ describe("Lexer", () => {
 		expect(readText(cursor, tokens[0]!)).toBe('"hello"');
 	});
 
-	test("tokenize string with escapes", () => {
+	test('tokenize string with escapes', () => {
 		const source = '"hello\\nworld"';
 		const cursor = createCursor(source);
 		const tokens = tokenize(source);
@@ -319,7 +319,7 @@ describe("Lexer", () => {
 		expect(readText(cursor, tokens[0]!)).toBe('"hello\\nworld"');
 	});
 
-	test("tokenize empty string", () => {
+	test('tokenize empty string', () => {
 		const source = '""';
 		const cursor = createCursor(source);
 		const tokens = tokenize(source);
@@ -328,25 +328,25 @@ describe("Lexer", () => {
 		expect(readText(cursor, tokens[0]!)).toBe('""');
 	});
 
-	test("error on unterminated string", () => {
-		expect(() => tokenize('"hello')).toThrow("Unterminated string");
+	test('error on unterminated string', () => {
+		expect(() => tokenize('"hello')).toThrow('Unterminated string');
 	});
 
-	test("tokenize string with escaped quote", () => {
+	test('tokenize string with escaped quote', () => {
 		const source = '"say \\"hi\\""';
 		const tokens = tokenize(source);
 
 		expectToken(tokens[0], TokenKind.String);
 	});
 
-	test("tokenize bracket tokens", () => {
-		const tokens = tokenize("[ ]");
+	test('tokenize bracket tokens', () => {
+		const tokens = tokenize('[ ]');
 		expectToken(tokens[0], TokenKind.LBracket);
 		expectToken(tokens[1], TokenKind.RBracket);
 	});
 
-	test("tokenize array literal", () => {
-		const source = "[1, 2, 3]";
+	test('tokenize array literal', () => {
+		const source = '[1, 2, 3]';
 		const cursor = createCursor(source);
 		const tokens = tokenize(source);
 
@@ -359,23 +359,23 @@ describe("Lexer", () => {
 		expectToken(tokens[6], TokenKind.RBracket);
 	});
 
-	test("readStringValue extracts unescaped content", () => {
+	test('readStringValue extracts unescaped content', () => {
 		const source = '"hello world"';
 		const cursor = createCursor(source);
 		const tokens = tokenize(source);
 		const value = readStringValue(cursor, tokens[0]!);
-		expect(value).toBe("hello world");
+		expect(value).toBe('hello world');
 	});
 
-	test("readStringValue resolves escape sequences", () => {
+	test('readStringValue resolves escape sequences', () => {
 		const source = '"line1\\nline2\\ttab"';
 		const cursor = createCursor(source);
 		const tokens = tokenize(source);
 		const value = readStringValue(cursor, tokens[0]!);
-		expect(value).toBe("line1\nline2\ttab");
+		expect(value).toBe('line1\nline2\ttab');
 	});
 
-	test("readStringValue resolves escaped quotes", () => {
+	test('readStringValue resolves escaped quotes', () => {
 		const source = '"say \\"hi\\""';
 		const cursor = createCursor(source);
 		const tokens = tokenize(source);
@@ -383,11 +383,11 @@ describe("Lexer", () => {
 		expect(value).toBe('say "hi"');
 	});
 
-	test("readStringValue resolves escaped backslash", () => {
+	test('readStringValue resolves escaped backslash', () => {
 		const source = '"path\\\\to\\\\file"';
 		const cursor = createCursor(source);
 		const tokens = tokenize(source);
 		const value = readStringValue(cursor, tokens[0]!);
-		expect(value).toBe("path\\to\\file");
+		expect(value).toBe('path\\to\\file');
 	});
 });

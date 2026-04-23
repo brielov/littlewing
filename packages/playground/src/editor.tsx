@@ -1,15 +1,19 @@
-import MonacoEditor, { type BeforeMount, type OnMount } from "@monaco-editor/react";
-import type { RuntimeValue } from "littlewing";
-import type monaco from "monaco-editor";
-import type { editor as MonacoEditorNs } from "monaco-editor";
-import { useEffect, useRef } from "react";
-import type { Diagnostic } from "./use-evaluation.ts";
-import { registerLittlewingLanguage, registerLittlewingThemes, setLanguageAnalysis } from "./language.ts";
+import MonacoEditor, { type BeforeMount, type OnMount } from '@monaco-editor/react';
+import type { RuntimeValue } from 'littlewing';
+import type monaco from 'monaco-editor';
+import type { editor as MonacoEditorNs } from 'monaco-editor';
+import { useEffect, useRef } from 'react';
+import type { Diagnostic } from './use-evaluation.ts';
+import {
+	registerLittlewingLanguage,
+	registerLittlewingThemes,
+	setLanguageAnalysis,
+} from './language.ts';
 
 interface EditorProps {
 	value: string;
 	onChange: (value: string) => void;
-	theme: "tomorrow" | "tomorrow-night";
+	theme: 'tomorrow' | 'tomorrow-night';
 	diagnostics?: readonly Diagnostic[];
 	scope?: Record<string, RuntimeValue> | null;
 	assignedVariables?: readonly string[];
@@ -78,7 +82,7 @@ export function Editor({
 			endColumn: d.endLine === d.startLine ? Math.max(d.endCol, d.startCol + 1) : d.endCol,
 		}));
 
-		m.editor.setModelMarkers(model, "littlewing", markers);
+		m.editor.setModelMarkers(model, 'littlewing', markers);
 	};
 
 	const handleBeforeMount: BeforeMount = (m) => {
@@ -115,7 +119,7 @@ export function Editor({
 			language="littlewing"
 			theme={theme}
 			value={value}
-			onChange={(v) => onChange(v ?? "")}
+			onChange={(v) => onChange(v ?? '')}
 			beforeMount={handleBeforeMount}
 			onMount={handleMount}
 			options={{
@@ -127,7 +131,7 @@ export function Editor({
 				padding: { top: 16, bottom: 16 },
 				scrollBeyondLastLine: false,
 				automaticLayout: true,
-				renderLineHighlight: "line",
+				renderLineHighlight: 'line',
 				overviewRulerLanes: 0,
 				hideCursorInOverviewRuler: true,
 				scrollbar: {

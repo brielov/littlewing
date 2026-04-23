@@ -2,20 +2,20 @@
  * Binary operator types
  */
 export type Operator =
-	| "+"
-	| "-"
-	| "*"
-	| "/"
-	| "%"
-	| "^"
-	| "=="
-	| "!="
-	| "<"
-	| ">"
-	| "<="
-	| ">="
-	| "&&"
-	| "||";
+	| '+'
+	| '-'
+	| '*'
+	| '/'
+	| '%'
+	| '^'
+	| '=='
+	| '!='
+	| '<'
+	| '>'
+	| '<='
+	| '>='
+	| '&&'
+	| '||';
 
 /**
  * Base interface for all AST nodes.
@@ -111,7 +111,7 @@ export interface BinaryOp extends ASTNodeBase {
  */
 export interface UnaryOp extends ASTNodeBase {
 	readonly kind: NodeKind.UnaryOp;
-	readonly operator: "-" | "!";
+	readonly operator: '-' | '!';
 	readonly argument: ASTNode;
 }
 
@@ -400,7 +400,7 @@ export function binaryOp(left: ASTNode, operator: Operator, right: ASTNode): Bin
 /**
  * Create a unary operation node (unary minus or logical NOT)
  */
-export function unaryOp(operator: "-" | "!", argument: ASTNode): UnaryOp {
+export function unaryOp(operator: '-' | '!', argument: ASTNode): UnaryOp {
 	return { kind: NodeKind.UnaryOp, operator, argument };
 }
 
@@ -485,103 +485,103 @@ export function placeholder(): Placeholder {
  */
 
 export function add(left: ASTNode, right: ASTNode): BinaryOp {
-	return binaryOp(left, "+", right);
+	return binaryOp(left, '+', right);
 }
 
 export function subtract(left: ASTNode, right: ASTNode): BinaryOp {
-	return binaryOp(left, "-", right);
+	return binaryOp(left, '-', right);
 }
 
 export function multiply(left: ASTNode, right: ASTNode): BinaryOp {
-	return binaryOp(left, "*", right);
+	return binaryOp(left, '*', right);
 }
 
 export function divide(left: ASTNode, right: ASTNode): BinaryOp {
-	return binaryOp(left, "/", right);
+	return binaryOp(left, '/', right);
 }
 
 export function modulo(left: ASTNode, right: ASTNode): BinaryOp {
-	return binaryOp(left, "%", right);
+	return binaryOp(left, '%', right);
 }
 
 export function exponentiate(left: ASTNode, right: ASTNode): BinaryOp {
-	return binaryOp(left, "^", right);
+	return binaryOp(left, '^', right);
 }
 
 export function negate(argument: ASTNode): UnaryOp {
-	return unaryOp("-", argument);
+	return unaryOp('-', argument);
 }
 
 export function logicalNot(argument: ASTNode): UnaryOp {
-	return unaryOp("!", argument);
+	return unaryOp('!', argument);
 }
 
 export function equals(left: ASTNode, right: ASTNode): BinaryOp {
-	return binaryOp(left, "==", right);
+	return binaryOp(left, '==', right);
 }
 
 export function notEquals(left: ASTNode, right: ASTNode): BinaryOp {
-	return binaryOp(left, "!=", right);
+	return binaryOp(left, '!=', right);
 }
 
 export function lessThan(left: ASTNode, right: ASTNode): BinaryOp {
-	return binaryOp(left, "<", right);
+	return binaryOp(left, '<', right);
 }
 
 export function greaterThan(left: ASTNode, right: ASTNode): BinaryOp {
-	return binaryOp(left, ">", right);
+	return binaryOp(left, '>', right);
 }
 
 export function lessEqual(left: ASTNode, right: ASTNode): BinaryOp {
-	return binaryOp(left, "<=", right);
+	return binaryOp(left, '<=', right);
 }
 
 export function greaterEqual(left: ASTNode, right: ASTNode): BinaryOp {
-	return binaryOp(left, ">=", right);
+	return binaryOp(left, '>=', right);
 }
 
 export function logicalAnd(left: ASTNode, right: ASTNode): BinaryOp {
-	return binaryOp(left, "&&", right);
+	return binaryOp(left, '&&', right);
 }
 
 export function logicalOr(left: ASTNode, right: ASTNode): BinaryOp {
-	return binaryOp(left, "||", right);
+	return binaryOp(left, '||', right);
 }
 
 export function getNodeName(node: ASTNode): string {
 	switch (node.kind) {
 		case NodeKind.Assignment:
-			return "Assignment";
+			return 'Assignment';
 		case NodeKind.BinaryOp:
-			return "BinaryOp";
+			return 'BinaryOp';
 		case NodeKind.IfExpression:
-			return "IfExpression";
+			return 'IfExpression';
 		case NodeKind.ForExpression:
-			return "ForExpression";
+			return 'ForExpression';
 		case NodeKind.FunctionCall:
-			return "FunctionCall";
+			return 'FunctionCall';
 		case NodeKind.Identifier:
-			return "Identifier";
+			return 'Identifier';
 		case NodeKind.NumberLiteral:
-			return "NumberLiteral";
+			return 'NumberLiteral';
 		case NodeKind.StringLiteral:
-			return "StringLiteral";
+			return 'StringLiteral';
 		case NodeKind.BooleanLiteral:
-			return "BooleanLiteral";
+			return 'BooleanLiteral';
 		case NodeKind.ArrayLiteral:
-			return "ArrayLiteral";
+			return 'ArrayLiteral';
 		case NodeKind.Program:
-			return "Program";
+			return 'Program';
 		case NodeKind.UnaryOp:
-			return "UnaryOp";
+			return 'UnaryOp';
 		case NodeKind.IndexAccess:
-			return "IndexAccess";
+			return 'IndexAccess';
 		case NodeKind.RangeExpression:
-			return "RangeExpression";
+			return 'RangeExpression';
 		case NodeKind.PipeExpression:
-			return "PipeExpression";
+			return 'PipeExpression';
 		case NodeKind.Placeholder:
-			return "Placeholder";
+			return 'Placeholder';
 		default:
 			throw new Error(`Unknown node kind: ${(node as ASTNode).kind}`);
 	}

@@ -1,11 +1,11 @@
-import type { RuntimeValue } from "../types";
-import { assertNumber, assertString } from "../utils";
+import type { RuntimeValue } from '../types';
+import { assertNumber, assertString } from '../utils';
 
 /**
  * Convert string to uppercase
  */
 export const STR_UPPER = (s: RuntimeValue): RuntimeValue => {
-	assertString(s, "STR_UPPER");
+	assertString(s, 'STR_UPPER');
 	return s.toUpperCase();
 };
 
@@ -13,7 +13,7 @@ export const STR_UPPER = (s: RuntimeValue): RuntimeValue => {
  * Convert string to lowercase
  */
 export const STR_LOWER = (s: RuntimeValue): RuntimeValue => {
-	assertString(s, "STR_LOWER");
+	assertString(s, 'STR_LOWER');
 	return s.toLowerCase();
 };
 
@@ -21,7 +21,7 @@ export const STR_LOWER = (s: RuntimeValue): RuntimeValue => {
  * Trim whitespace from both ends of a string
  */
 export const STR_TRIM = (s: RuntimeValue): RuntimeValue => {
-	assertString(s, "STR_TRIM");
+	assertString(s, 'STR_TRIM');
 	return s.trim();
 };
 
@@ -29,8 +29,8 @@ export const STR_TRIM = (s: RuntimeValue): RuntimeValue => {
  * Split a string by a separator into a string array
  */
 export const STR_SPLIT = (s: RuntimeValue, sep: RuntimeValue): RuntimeValue => {
-	assertString(s, "STR_SPLIT");
-	assertString(sep, "STR_SPLIT (separator)");
+	assertString(s, 'STR_SPLIT');
+	assertString(sep, 'STR_SPLIT (separator)');
 	return s.split(sep);
 };
 
@@ -42,9 +42,9 @@ export const STR_REPLACE = (
 	search: RuntimeValue,
 	replacement: RuntimeValue,
 ): RuntimeValue => {
-	assertString(s, "STR_REPLACE");
-	assertString(search, "STR_REPLACE (search)");
-	assertString(replacement, "STR_REPLACE (replacement)");
+	assertString(s, 'STR_REPLACE');
+	assertString(search, 'STR_REPLACE (search)');
+	assertString(replacement, 'STR_REPLACE (replacement)');
 	return s.replace(search, replacement);
 };
 
@@ -52,8 +52,8 @@ export const STR_REPLACE = (
  * Check if a string starts with a given prefix
  */
 export const STR_STARTS_WITH = (s: RuntimeValue, prefix: RuntimeValue): RuntimeValue => {
-	assertString(s, "STR_STARTS_WITH");
-	assertString(prefix, "STR_STARTS_WITH (prefix)");
+	assertString(s, 'STR_STARTS_WITH');
+	assertString(prefix, 'STR_STARTS_WITH (prefix)');
 	return s.startsWith(prefix);
 };
 
@@ -61,8 +61,8 @@ export const STR_STARTS_WITH = (s: RuntimeValue, prefix: RuntimeValue): RuntimeV
  * Check if a string ends with a given suffix
  */
 export const STR_ENDS_WITH = (s: RuntimeValue, suffix: RuntimeValue): RuntimeValue => {
-	assertString(s, "STR_ENDS_WITH");
-	assertString(suffix, "STR_ENDS_WITH (suffix)");
+	assertString(s, 'STR_ENDS_WITH');
+	assertString(suffix, 'STR_ENDS_WITH (suffix)');
 	return s.endsWith(suffix);
 };
 
@@ -70,8 +70,8 @@ export const STR_ENDS_WITH = (s: RuntimeValue, suffix: RuntimeValue): RuntimeVal
  * Repeat a string n times. Count must be a non-negative integer.
  */
 export const STR_REPEAT = (s: RuntimeValue, count: RuntimeValue): RuntimeValue => {
-	assertString(s, "STR_REPEAT");
-	assertNumber(count, "STR_REPEAT", "count");
+	assertString(s, 'STR_REPEAT');
+	assertNumber(count, 'STR_REPEAT', 'count');
 	if (!Number.isInteger(count) || count < 0) {
 		throw new RangeError(`STR_REPEAT: count must be a non-negative integer, got ${count}`);
 	}

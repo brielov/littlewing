@@ -1,5 +1,5 @@
-import type { RuntimeValue } from "../types";
-import { assertArray, assertString, deepEquals, typeOf } from "../utils";
+import type { RuntimeValue } from '../types';
+import { assertArray, assertString, deepEquals, typeOf } from '../utils';
 
 /**
  * Sort an array in ascending order, returning a new array.
@@ -8,15 +8,15 @@ import { assertArray, assertString, deepEquals, typeOf } from "../utils";
  * All elements must be the same type.
  */
 export const ARR_SORT = (a: RuntimeValue): RuntimeValue => {
-	assertArray(a, "ARR_SORT");
+	assertArray(a, 'ARR_SORT');
 	if (a.length <= 1) return a;
 
 	const sorted = [...a];
 	const elemType = typeOf(sorted[0] as RuntimeValue);
 
 	sorted.sort((x, y) => {
-		if (typeof x === "number" && typeof y === "number") return x - y;
-		if (typeof x === "string" && typeof y === "string") return x < y ? -1 : x > y ? 1 : 0;
+		if (typeof x === 'number' && typeof y === 'number') return x - y;
+		if (typeof x === 'string' && typeof y === 'string') return x < y ? -1 : x > y ? 1 : 0;
 		if (x instanceof Temporal.PlainDate && y instanceof Temporal.PlainDate) {
 			return Temporal.PlainDate.compare(x, y);
 		}
@@ -36,7 +36,7 @@ export const ARR_SORT = (a: RuntimeValue): RuntimeValue => {
  * Remove duplicate elements using deep equality, preserving first occurrence order.
  */
 export const ARR_UNIQUE = (a: RuntimeValue): RuntimeValue => {
-	assertArray(a, "ARR_UNIQUE");
+	assertArray(a, 'ARR_UNIQUE');
 	const result: RuntimeValue[] = [];
 	for (const elem of a) {
 		let found = false;
@@ -56,7 +56,7 @@ export const ARR_UNIQUE = (a: RuntimeValue): RuntimeValue => {
  * Each element must be an array. Result is validated for homogeneity.
  */
 export const ARR_FLAT = (a: RuntimeValue): RuntimeValue => {
-	assertArray(a, "ARR_FLAT");
+	assertArray(a, 'ARR_FLAT');
 	const result: RuntimeValue[] = [];
 	for (const elem of a) {
 		if (!Array.isArray(elem)) {
@@ -86,11 +86,11 @@ export const ARR_FLAT = (a: RuntimeValue): RuntimeValue => {
  * All elements must be strings.
  */
 export const ARR_JOIN = (a: RuntimeValue, sep: RuntimeValue): RuntimeValue => {
-	assertArray(a, "ARR_JOIN");
-	assertString(sep, "ARR_JOIN (separator)");
+	assertArray(a, 'ARR_JOIN');
+	assertString(sep, 'ARR_JOIN (separator)');
 	for (let i = 0; i < a.length; i++) {
 		const elem = a[i];
-		if (typeof elem !== "string") {
+		if (typeof elem !== 'string') {
 			throw new TypeError(
 				`ARR_JOIN: expected string element, got ${typeOf(elem as RuntimeValue)} at index ${i}`,
 			);
@@ -103,10 +103,10 @@ export const ARR_JOIN = (a: RuntimeValue, sep: RuntimeValue): RuntimeValue => {
  * Sum all elements of a numeric array. Empty array returns 0.
  */
 export const ARR_SUM = (a: RuntimeValue): RuntimeValue => {
-	assertArray(a, "ARR_SUM");
+	assertArray(a, 'ARR_SUM');
 	let sum = 0;
 	for (const elem of a) {
-		if (typeof elem !== "number") {
+		if (typeof elem !== 'number') {
 			throw new TypeError(`ARR_SUM: expected number element, got ${typeOf(elem)}`);
 		}
 		sum += elem;
@@ -120,11 +120,11 @@ export const ARR_SUM = (a: RuntimeValue): RuntimeValue => {
  * Throws on empty arrays.
  */
 export const ARR_MIN = (a: RuntimeValue): RuntimeValue => {
-	assertArray(a, "ARR_MIN");
+	assertArray(a, 'ARR_MIN');
 	if (a.length === 0) {
-		throw new RangeError("ARR_MIN: array is empty");
+		throw new RangeError('ARR_MIN: array is empty');
 	}
-	return findExtreme(a, "ARR_MIN", -1);
+	return findExtreme(a, 'ARR_MIN', -1);
 };
 
 /**
@@ -133,11 +133,11 @@ export const ARR_MIN = (a: RuntimeValue): RuntimeValue => {
  * Throws on empty arrays.
  */
 export const ARR_MAX = (a: RuntimeValue): RuntimeValue => {
-	assertArray(a, "ARR_MAX");
+	assertArray(a, 'ARR_MAX');
 	if (a.length === 0) {
-		throw new RangeError("ARR_MAX: array is empty");
+		throw new RangeError('ARR_MAX: array is empty');
 	}
-	return findExtreme(a, "ARR_MAX", 1);
+	return findExtreme(a, 'ARR_MAX', 1);
 };
 
 /**
@@ -162,8 +162,8 @@ function findExtreme(a: readonly RuntimeValue[], context: string, direction: 1 |
  * Compare two same-type values. Returns negative if a < b, 0 if equal, positive if a > b.
  */
 function compareValues(a: RuntimeValue, b: RuntimeValue, context: string): number {
-	if (typeof a === "number" && typeof b === "number") return a - b;
-	if (typeof a === "string" && typeof b === "string") return a < b ? -1 : a > b ? 1 : 0;
+	if (typeof a === 'number' && typeof b === 'number') return a - b;
+	if (typeof a === 'string' && typeof b === 'string') return a < b ? -1 : a > b ? 1 : 0;
 	if (a instanceof Temporal.PlainDate && b instanceof Temporal.PlainDate) {
 		return Temporal.PlainDate.compare(a, b);
 	}
