@@ -523,6 +523,33 @@ function fold(node: ASTNode): ASTNode {
 
 		case NodeKind.BinaryOp: {
 			const left = recurse(node.left);
+
+			if (node.operator === '&&') {
+				if (isBooleanLiteral(left) && !left.value) {
+					return preserveComments(node, ast.boolean(false));
+				}
+
+				const right = recurse(node.right);
+				if (isBooleanLiteral(left) && isBooleanLiteral(right)) {
+					return preserveComments(node, ast.boolean(right.value));
+				}
+				if (left === node.left && right === node.right) return node;
+				return preserveComments(node, ast.binaryOp(left, node.operator, right));
+			}
+
+			if (node.operator === '||') {
+				if (isBooleanLiteral(left) && left.value) {
+					return preserveComments(node, ast.boolean(true));
+				}
+
+				const right = recurse(node.right);
+				if (isBooleanLiteral(left) && isBooleanLiteral(right)) {
+					return preserveComments(node, ast.boolean(right.value));
+				}
+				if (left === node.left && right === node.right) return node;
+				return preserveComments(node, ast.binaryOp(left, node.operator, right));
+			}
+
 			const right = recurse(node.right);
 
 			// Both sides are number literals: fold arithmetic and comparison
@@ -553,10 +580,6 @@ function fold(node: ASTNode): ASTNode {
 
 			// Both sides are boolean literals
 			if (isBooleanLiteral(left) && isBooleanLiteral(right)) {
-				if (node.operator === '&&')
-					return preserveComments(node, ast.boolean(left.value && right.value));
-				if (node.operator === '||')
-					return preserveComments(node, ast.boolean(left.value || right.value));
 				if (node.operator === '==')
 					return preserveComments(node, ast.boolean(left.value === right.value));
 				if (node.operator === '!=')

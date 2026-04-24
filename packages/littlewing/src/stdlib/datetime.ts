@@ -1,5 +1,5 @@
 import type { RuntimeValue } from '../types';
-import { assertDateOrDateTime, assertNumber, typeOf } from '../utils';
+import { assertDateOrDateTime, assertInteger, assertNumber, typeOf } from '../utils';
 
 /**
  * Date utility functions using Temporal.PlainDate and Temporal.PlainDateTime
@@ -20,9 +20,9 @@ export const TODAY = (): RuntimeValue => Temporal.Now.plainDateISO();
  * Create a date from year, month (1-based), and day
  */
 export const DATE = (year: RuntimeValue, month: RuntimeValue, day: RuntimeValue): RuntimeValue => {
-	assertNumber(year, 'DATE', 'year');
-	assertNumber(month, 'DATE', 'month');
-	assertNumber(day, 'DATE', 'day');
+	assertInteger(year, 'DATE', 'year');
+	assertInteger(month, 'DATE', 'month');
+	assertInteger(day, 'DATE', 'day');
 	return new Temporal.PlainDate(year, month, day);
 };
 

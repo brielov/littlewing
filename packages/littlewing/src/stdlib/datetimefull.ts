@@ -1,5 +1,5 @@
 import type { RuntimeValue } from '../types';
-import { assertDate, assertDateTime, assertNumber, assertTime } from '../utils';
+import { assertDate, assertDateTime, assertInteger, assertTime } from '../utils';
 
 /**
  * DateTime construction and conversion functions using Temporal.PlainDateTime
@@ -20,12 +20,12 @@ export const DATETIME = (
 	minute: RuntimeValue,
 	second: RuntimeValue,
 ): RuntimeValue => {
-	assertNumber(year, 'DATETIME', 'year');
-	assertNumber(month, 'DATETIME', 'month');
-	assertNumber(day, 'DATETIME', 'day');
-	assertNumber(hour, 'DATETIME', 'hour');
-	assertNumber(minute, 'DATETIME', 'minute');
-	assertNumber(second, 'DATETIME', 'second');
+	assertInteger(year, 'DATETIME', 'year');
+	assertInteger(month, 'DATETIME', 'month');
+	assertInteger(day, 'DATETIME', 'day');
+	assertInteger(hour, 'DATETIME', 'hour');
+	assertInteger(minute, 'DATETIME', 'minute');
+	assertInteger(second, 'DATETIME', 'second');
 	return new Temporal.PlainDateTime(year, month, day, hour, minute, second);
 };
 

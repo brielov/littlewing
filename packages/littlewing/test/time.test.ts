@@ -46,6 +46,12 @@ describe('Time Functions', () => {
 			expect(() => evaluate('TIME(14, "30", 0)', defaultContext)).toThrow(TypeError);
 			expect(() => evaluate('TIME(14, 30, "0")', defaultContext)).toThrow(TypeError);
 		});
+
+		test('TIME() rejects fractional fields', () => {
+			expect(() => evaluate('TIME(14.5, 30, 0)', defaultContext)).toThrow(TypeError);
+			expect(() => evaluate('TIME(14, 30.5, 0)', defaultContext)).toThrow(TypeError);
+			expect(() => evaluate('TIME(14, 30, 0.5)', defaultContext)).toThrow(TypeError);
+		});
 	});
 
 	describe('EXTRACTORS', () => {

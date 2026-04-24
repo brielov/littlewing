@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'bun:test';
 import { Temporal } from 'temporal-polyfill';
 import { evaluate } from '../src/interpreter';
-import { defaultContext } from '../src/stdlib';
+import { array, defaultContext } from '../src/stdlib';
 
 describe('Default Context Functions', () => {
 	describe('Math', () => {
@@ -34,6 +34,11 @@ describe('Default Context Functions', () => {
 		test('MIN and MAX', () => {
 			expect(evaluate('MIN(1, 2, 3)', defaultContext)).toBe(1);
 			expect(evaluate('MAX(1, 2, 3)', defaultContext)).toBe(3);
+		});
+
+		test('MIN and MAX reject empty argument lists', () => {
+			expect(() => evaluate('MIN()', defaultContext)).toThrow(RangeError);
+			expect(() => evaluate('MAX()', defaultContext)).toThrow(RangeError);
 		});
 
 		test('CLAMP returns value when within bounds', () => {
@@ -73,6 +78,10 @@ describe('Default Context Functions', () => {
 			expect(result).toBe(100);
 		});
 
+		test('CLAMP rejects inverted bounds', () => {
+			expect(() => evaluate('CLAMP(5, 10, 0)', defaultContext)).toThrow(RangeError);
+		});
+
 		test('SIN, COS, TAN', () => {
 			expect(evaluate('SIN(0)', defaultContext)).toBe(0);
 			expect(evaluate('COS(0)', defaultContext)).toBe(1);
@@ -88,6 +97,10 @@ describe('Default Context Functions', () => {
 		test('math functions throw TypeError on non-number', () => {
 			expect(() => evaluate('ABS("hello")', defaultContext)).toThrow(TypeError);
 			expect(() => evaluate('SQRT(true)', defaultContext)).toThrow(TypeError);
+		});
+
+		test('math functions throw TypeError on missing arguments', () => {
+			expect(() => evaluate('ABS()', defaultContext)).toThrow(TypeError);
 		});
 	});
 
@@ -125,6 +138,11 @@ describe('Default Context Functions', () => {
 			expect(evaluate('LEN("")', defaultContext)).toBe(0);
 		});
 
+		test('LEN with strings counts code points', () => {
+			expect(evaluate('LEN("😀")', defaultContext)).toBe(1);
+			expect(evaluate('LEN("a😀b")', defaultContext)).toBe(3);
+		});
+
 		test('LEN with arrays', () => {
 			expect(evaluate('LEN([1, 2, 3])', defaultContext)).toBe(3);
 			expect(evaluate('LEN([])', defaultContext)).toBe(0);
@@ -138,6 +156,11 @@ describe('Default Context Functions', () => {
 		test('SLICE with strings', () => {
 			expect(evaluate('SLICE("hello", 1, 3)', defaultContext)).toBe('el');
 			expect(evaluate('SLICE("hello", 1)', defaultContext)).toBe('ello');
+		});
+
+		test('SLICE with strings uses code point indexes', () => {
+			expect(evaluate('SLICE("a😀b", 1, 2)', defaultContext)).toBe('😀');
+			expect(evaluate('SLICE("a😀b", -2)', defaultContext)).toBe('😀b');
 		});
 
 		test('SLICE with arrays', () => {
@@ -189,6 +212,11 @@ describe('Default Context Functions', () => {
 		test('INDEX_OF with strings', () => {
 			expect(evaluate('INDEX_OF("hello world", "world")', defaultContext)).toBe(6);
 			expect(evaluate('INDEX_OF("hello", "xyz")', defaultContext)).toBe(-1);
+		});
+
+		test('INDEX_OF with strings returns code point indexes', () => {
+			expect(evaluate('INDEX_OF("a😀b", "😀")', defaultContext)).toBe(1);
+			expect(evaluate('INDEX_OF("a😀b", "b")', defaultContext)).toBe(2);
 		});
 
 		test('INDEX_OF with arrays', () => {
@@ -258,6 +286,15 @@ describe('Default Context Functions', () => {
 	describe('Array Functions', () => {
 		test('ARR_SORT with numbers', () => {
 			expect(evaluate('ARR_SORT([3, 1, 2])', defaultContext)).toEqual([1, 2, 3]);
+		});
+
+		test('ARR_SORT returns a new array for short inputs', () => {
+			const empty: readonly [] = [];
+			const singleton = [1] as const;
+
+			expect(array.ARR_SORT(empty)).not.toBe(empty);
+			expect(array.ARR_SORT(singleton)).not.toBe(singleton);
+			expect(array.ARR_SORT(singleton)).toEqual([1]);
 		});
 
 		test('ARR_SORT with strings', () => {
@@ -336,6 +373,12 @@ describe('Default Context Functions', () => {
 			expect(date.year).toBe(2024);
 			expect(date.month).toBe(6);
 			expect(date.day).toBe(15);
+		});
+
+		test('DATE rejects fractional fields', () => {
+			expect(() => evaluate('DATE(2024.5, 6, 15)', defaultContext)).toThrow(TypeError);
+			expect(() => evaluate('DATE(2024, 6.5, 15)', defaultContext)).toThrow(TypeError);
+			expect(() => evaluate('DATE(2024, 6, 15.5)', defaultContext)).toThrow(TypeError);
 		});
 
 		test('YEAR, MONTH, DAY', () => {

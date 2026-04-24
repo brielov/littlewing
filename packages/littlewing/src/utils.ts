@@ -8,15 +8,17 @@ import type { RuntimeValue } from './types';
  * Note: PlainDateTime check must precede PlainDate because PlainDateTime is not an
  * instance of PlainDate in the Temporal API, but ordering is kept explicit for clarity.
  */
-export function typeOf(value: RuntimeValue): string {
+export function typeOf(value: unknown): string {
+	if (value === undefined) return 'undefined';
+	if (value === null) return 'null';
 	if (typeof value === 'number') return 'number';
 	if (typeof value === 'string') return 'string';
 	if (typeof value === 'boolean') return 'boolean';
+	if (Array.isArray(value)) return 'array';
 	if (value instanceof Temporal.PlainDateTime) return 'datetime';
 	if (value instanceof Temporal.PlainDate) return 'date';
 	if (value instanceof Temporal.PlainTime) return 'time';
-	if (Array.isArray(value)) return 'array';
-	throw new Error(`Unknown runtime value type`);
+	return typeof value;
 }
 
 /**
@@ -57,6 +59,21 @@ export function assertNumber(v: RuntimeValue, context: string, side?: string): a
 	if (typeof v !== 'number') {
 		const where = side ? ` (${side})` : '';
 		throw new TypeError(`${context}${where} expected number, got ${typeOf(v)}`);
+	}
+}
+
+/**
+ * Assert a value is an integer number, throwing a TypeError if not.
+ */
+export function assertInteger(
+	v: RuntimeValue,
+	context: string,
+	side?: string,
+): asserts v is number {
+	assertNumber(v, context, side);
+	if (!Number.isInteger(v)) {
+		const where = side ? ` (${side})` : '';
+		throw new TypeError(`${context}${where} expected integer, got ${v}`);
 	}
 }
 

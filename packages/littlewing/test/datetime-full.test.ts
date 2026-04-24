@@ -31,6 +31,27 @@ describe('DateTime Full Functions', () => {
 			);
 		});
 
+		test('DATETIME() rejects fractional fields', () => {
+			expect(() => evaluate('DATETIME(2024.5, 6, 15, 14, 30, 0)', defaultContext)).toThrow(
+				TypeError,
+			);
+			expect(() => evaluate('DATETIME(2024, 6.5, 15, 14, 30, 0)', defaultContext)).toThrow(
+				TypeError,
+			);
+			expect(() => evaluate('DATETIME(2024, 6, 15.5, 14, 30, 0)', defaultContext)).toThrow(
+				TypeError,
+			);
+			expect(() => evaluate('DATETIME(2024, 6, 15, 14.5, 30, 0)', defaultContext)).toThrow(
+				TypeError,
+			);
+			expect(() => evaluate('DATETIME(2024, 6, 15, 14, 30.5, 0)', defaultContext)).toThrow(
+				TypeError,
+			);
+			expect(() => evaluate('DATETIME(2024, 6, 15, 14, 30, 0.5)', defaultContext)).toThrow(
+				TypeError,
+			);
+		});
+
 		test('NOW() returns PlainDateTime', () => {
 			const result = evaluate('NOW()', defaultContext);
 			expect(result).toBeInstanceOf(Temporal.PlainDateTime);

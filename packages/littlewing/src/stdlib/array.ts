@@ -9,7 +9,7 @@ import { assertArray, assertString, deepEquals, typeOf } from '../utils';
  */
 export const ARR_SORT = (a: RuntimeValue): RuntimeValue => {
 	assertArray(a, 'ARR_SORT');
-	if (a.length <= 1) return a;
+	if (a.length <= 1) return [...a];
 
 	const sorted = [...a];
 	const elemType = typeOf(sorted[0] as RuntimeValue);

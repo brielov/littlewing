@@ -1,5 +1,5 @@
 import type { RuntimeValue } from '../types';
-import { assertNumber, assertTimeOrDateTime, typeOf } from '../utils';
+import { assertInteger, assertNumber, assertTimeOrDateTime, typeOf } from '../utils';
 
 /**
  * Time utility functions using Temporal.PlainTime and Temporal.PlainDateTime
@@ -19,9 +19,9 @@ export const TIME = (
 	minute: RuntimeValue,
 	second: RuntimeValue,
 ): RuntimeValue => {
-	assertNumber(hour, 'TIME', 'hour');
-	assertNumber(minute, 'TIME', 'minute');
-	assertNumber(second, 'TIME', 'second');
+	assertInteger(hour, 'TIME', 'hour');
+	assertInteger(minute, 'TIME', 'minute');
+	assertInteger(second, 'TIME', 'second');
 	return new Temporal.PlainTime(hour, minute, second);
 };
 

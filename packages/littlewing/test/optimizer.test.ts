@@ -370,6 +370,21 @@ describe('Optimizer', () => {
 		expect(optimize(parse('5 < 3 && 10 < 8'))).toEqual(ast.boolean(false));
 	});
 
+	test('logical folding preserves short-circuit semantics', () => {
+		expect(optimize(parse('false && (1 / 0)'))).toEqual(ast.boolean(false));
+		expect(optimize(parse('true || (1 / 0)'))).toEqual(ast.boolean(true));
+		expect(optimize(parse('false && SIDE()'))).toEqual(ast.boolean(false));
+		expect(optimize(parse('true || SIDE()'))).toEqual(ast.boolean(true));
+	});
+
+	test('logical folding keeps right-side type checks when not short-circuited', () => {
+		const andNode = optimize(parse('true && 1'));
+		const orNode = optimize(parse('false || 1'));
+
+		expect(() => evaluate(andNode)).toThrow(TypeError);
+		expect(() => evaluate(orNode)).toThrow(TypeError);
+	});
+
 	test('unary operation with variable (cannot fold)', () => {
 		const optimized = optimize(parse('-x'));
 		expect(isUnaryOp(optimized)).toBe(true);

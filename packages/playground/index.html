@@ -39,11 +39,50 @@
 		<link rel="canonical" href="https://littlewing-playground.vercel.app/" />
 
 		<!-- Favicon -->
-		<link rel="icon" type="image/png" href="/favicon-96x96.png" sizes="96x96" />
-		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-		<link rel="shortcut icon" href="/favicon.ico" />
+		<link
+			id="favicon"
+			rel="icon"
+			type="image/png"
+			sizes="96x96"
+			href="/favicon-light-96x96.png?v=20260424"
+		/>
+		<link
+			id="shortcut-icon"
+			rel="shortcut icon"
+			type="image/png"
+			href="/favicon-light-96x96.png?v=20260424"
+		/>
 		<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
 		<link rel="manifest" href="/site.webmanifest" />
+
+		<script>
+			const darkModeQuery = window.matchMedia('(prefers-color-scheme: dark)');
+			const faviconHref = (isDark) =>
+				isDark ? '/favicon-dark-96x96.png?v=20260424' : '/favicon-light-96x96.png?v=20260424';
+
+			const updateFavicon = (isDark) => {
+				const href = faviconHref(isDark);
+				const dynamicLinks = [
+					document.getElementById('favicon'),
+					document.getElementById('shortcut-icon'),
+				];
+
+				for (const link of dynamicLinks) {
+					if (link instanceof HTMLLinkElement) {
+						link.href = href;
+					}
+				}
+			};
+
+			const handleSchemeChange = (event) => updateFavicon(event.matches);
+
+			updateFavicon(darkModeQuery.matches);
+			if (typeof darkModeQuery.addEventListener === 'function') {
+				darkModeQuery.addEventListener('change', handleSchemeChange);
+			} else if (typeof darkModeQuery.addListener === 'function') {
+				darkModeQuery.addListener(handleSchemeChange);
+			}
+		</script>
 
 		<!-- Theme Color -->
 		<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />

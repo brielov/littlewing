@@ -32,6 +32,9 @@ export const SQRT = (x: RuntimeValue): RuntimeValue => {
 };
 
 export const MIN = (...values: RuntimeValue[]): RuntimeValue => {
+	if (values.length === 0) {
+		throw new RangeError('MIN requires at least one argument');
+	}
 	for (const value of values) {
 		assertNumber(value, 'MIN');
 	}
@@ -39,6 +42,9 @@ export const MIN = (...values: RuntimeValue[]): RuntimeValue => {
 };
 
 export const MAX = (...values: RuntimeValue[]): RuntimeValue => {
+	if (values.length === 0) {
+		throw new RangeError('MAX requires at least one argument');
+	}
 	for (const value of values) {
 		assertNumber(value, 'MAX');
 	}
@@ -82,5 +88,8 @@ export const CLAMP = (value: RuntimeValue, min: RuntimeValue, max: RuntimeValue)
 	assertNumber(value, 'CLAMP', 'value');
 	assertNumber(min, 'CLAMP', 'min');
 	assertNumber(max, 'CLAMP', 'max');
+	if (min > max) {
+		throw new RangeError(`CLAMP: min (${min}) must not exceed max (${max})`);
+	}
 	return value < min ? min : value > max ? max : value;
 };
