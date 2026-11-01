@@ -8,6 +8,8 @@ export class ParseError extends Error {
 		message: string,
 		readonly start: number,
 		readonly end: number,
+		/** A stable code, from Appendix B of the language spec. */
+		readonly code: string = 'unexpected-token',
 	) {
 		super(message);
 	}

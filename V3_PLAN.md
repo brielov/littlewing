@@ -12,7 +12,7 @@ Work remaining before v3 ships. The engine overhaul is done, on the `v3` branch.
 3. [ ] Implement, one milestone at a time, each reviewed by an independent agent before the next starts:
    - [x] M0: Dependencies
    - [x] M1: `Decimal`, the number type, including `ln` and `exp` for `^`
-   - [ ] M2: Lexer, parser, diagnostics with recovery, and `generate`
+   - [x] M2: Lexer, parser, diagnostics with recovery, and `generate`
    - [ ] M3: `t`, `define` and `defineType`
    - [ ] M4: The checker: inference, classes, records, input schema
    - [ ] M5: Desugaring, the optimizer, and the interpreter on typed programs
@@ -403,5 +403,7 @@ From the overhaul, still untested:
 - [ ] Node 18 to 24
 - [ ] TypeScript 5.0 to 5.8
 - [ ] The playground in a real browser, including Firefox
+- [ ] A program at the limits needs about 700 KB of stack to parse, which default stacks have. On less, parsing reports `limit-exceeded`.
+- [ ] NFC on names of up to 1024 code points is linear in the source but slow, at up to 3 s per MB on Bun, so `compile` has to charge for it.
 - [ ] `optimize` on a 1024-term chain needs more than 600 KB of stack. Default stacks are fine, and running out has to become a diagnostic, as `compile` must not throw on a program.
 - [ ] `evaluate(parse(src))` is less than half the speed of `evaluate(src)` for one-off use. `compile()` removes this.

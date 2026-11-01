@@ -371,6 +371,10 @@ function fromParts(
 	if (significant > PRECISION) return undefined;
 	const e = exponent - fraction.length + (digits.length - end);
 	if (e < MIN_EXPONENT || significant + e - 1 > MAX_ADJUSTED) return undefined;
+	if (significant <= 15) {
+		const c = Number(digits.slice(start, end));
+		return normal(negative ? -c : c, e);
+	}
 	return canonical(negative, BigInt(digits.slice(start, end)), e);
 }
 
