@@ -11,7 +11,7 @@ function shape(value: unknown): unknown {
 	if (typeof value !== 'object' || value === null) return value;
 	const copy: Record<string, unknown> = {};
 	for (const [key, field] of Object.entries(value)) {
-		if (key !== 'start' && key !== 'end') copy[key] = shape(field);
+		if (key !== 'start' && key !== 'end' && key !== 'stepStart') copy[key] = shape(field);
 	}
 	return copy;
 }

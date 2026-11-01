@@ -14,7 +14,7 @@ Work remaining before v3 ships. The engine overhaul is done, on the `v3` branch.
    - [x] M1: `Decimal`, the number type, including `ln` and `exp` for `^`
    - [x] M2: Lexer, parser, diagnostics with recovery, and `generate`
    - [x] M3: `t`, `define` and `defineType`
-   - [ ] M4: Desugaring and the checker: inference, classes, records, input schema
+   - [x] M4: Desugaring and the checker: inference, classes, records, input schema
    - [ ] M5: The optimizer, and the interpreter on typed programs
    - [ ] M6: `compile`, `evaluate`, `run`, and crossing the boundary
    - [ ] M7: Core functions, `littlewing/std`, `littlewing/temporal`, `littlewing/clock`
@@ -404,6 +404,7 @@ From the overhaul, still untested:
 - [ ] TypeScript 5.0 to 5.8
 - [ ] The playground in a real browser, including Firefox
 - [ ] The types in `define.d.ts` need TypeScript 5.4 with `skipLibCheck: false`. Inference works from 5.0 with `skipLibCheck: true`.
+- [ ] Undecided overloaded calls are all retried after each rule of section 6.5, which is quadratic, and charged. About 60 KB of nothing but such calls passes the default compile budget.
 - [ ] A program at the limits needs about 700 KB of stack to parse, which default stacks have. On less, parsing reports `limit-exceeded`.
 - [ ] NFC on names of up to 1024 code points is linear in the source but slow, at up to 3 s per MB on Bun, so `compile` has to charge for it.
 - [ ] `optimize` on a 1024-term chain needs more than 600 KB of stack. Default stacks are fine, and running out has to become a diagnostic, as `compile` must not throw on a program.

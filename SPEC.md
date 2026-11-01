@@ -450,7 +450,7 @@ An operand still not closed is open:
 
 - It MUST be the first member of its literal, and a literal has at most one (`type-mismatch`).
 - The result is open and shares the operand's row. It has the fields the literal sets, with the types of their values, and every other field of it is a field of the operand, with the same type. So a field read from the result that the literal does not set is read from the operand.
-- The fields the literal sets place no constraint on the operand, which can have them with any type.
+- The fields the literal sets place no constraint on the operand, which can have them with any type. If the result then unifies with the result of a spread over another row, the two are one row, so those operands agree on every field, including what the literals hide. So `{ ...a, x: 1 }` and `{ ...b, x: 2 }` can only meet if `a` and `b` have the same fields.
 - From then on neither the operand nor the result can be closed: unifying either with a closed type is a `type-mismatch` error.
 - The result is uniform with `V` exactly when the operand is uniform with `V` and every field the literal sets is of type `V`. Making the result uniform makes the operand uniform with the same `V`.
 

@@ -614,11 +614,12 @@ function parsePipe(
 	start: number,
 ): Expression {
 	advance(state);
+	const stepStart = state.token[1];
 	const name = expectName(state, 'a function name');
 
 	if (state.token[0] !== TokenKind.LParen || startsLine(state)) {
 		setHeight(state, height + 1);
-		return { kind: 'pipe', value, name, args: null, start, end: state.previousEnd };
+		return { kind: 'pipe', value, name, stepStart, args: null, start, end: state.previousEnd };
 	}
 
 	const open = state.token[1];
@@ -636,7 +637,7 @@ function parsePipe(
 		const message = 'A pipe step with parentheses needs a ?';
 		report(state, 'invalid-placeholder', message, open, state.previousEnd);
 	}
-	return { kind: 'pipe', value, name, args, start, end: state.previousEnd };
+	return { kind: 'pipe', value, name, stepStart, args, start, end: state.previousEnd };
 }
 
 function checkPath(state: ParserState, expression: Expression, start: number): void {

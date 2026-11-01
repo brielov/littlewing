@@ -127,13 +127,13 @@ export function randomExpression(next: (limit: number) => number, depth: number)
 			};
 		case 9: {
 			if (next(2) === 0)
-				return { kind: 'pipe', value: sub(), name: pick(NAMES), args: null, ...SPAN };
+				return { kind: 'pipe', value: sub(), name: pick(NAMES), stepStart: 0, args: null, ...SPAN };
 			const args: Expression[] = [{ kind: 'placeholder', ...SPAN }];
 			for (let i = next(3); i > 0; i--) {
 				const arg: Expression = next(2) === 0 ? { kind: 'placeholder', ...SPAN } : sub();
 				args.splice(next(args.length + 1), 0, arg);
 			}
-			return { kind: 'pipe', value: sub(), name: pick(NAMES), args, ...SPAN };
+			return { kind: 'pipe', value: sub(), name: pick(NAMES), stepStart: 0, args, ...SPAN };
 		}
 		case 10:
 			return { kind: 'if', condition: sub(), consequent: sub(), alternate: sub(), ...SPAN };

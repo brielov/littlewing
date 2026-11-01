@@ -141,6 +141,12 @@ export interface Call extends Node {
 	readonly kind: 'call';
 	readonly name: string;
 	readonly args: readonly Expression[];
+	/** After desugaring a pipe: evaluated first, and what placeholders in `args` read. */
+	readonly piped?: Expression;
+	/** After desugaring a pipe: the offset of the step, which is its source order. */
+	readonly stepStart?: number;
+	/** After desugaring interpolation: the core `STR`, whatever the host defines. */
+	readonly core?: boolean;
 }
 
 /** `value |> name`, or `value |> name(args)`, where `args` holds placeholders. */
@@ -148,6 +154,8 @@ export interface Pipe extends Node {
 	readonly kind: 'pipe';
 	readonly value: Expression;
 	readonly name: string;
+	/** The offset of the name of the step. */
+	readonly stepStart: number;
 	readonly args: readonly Expression[] | null;
 }
 
