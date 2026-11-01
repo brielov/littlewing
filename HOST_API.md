@@ -59,6 +59,7 @@ It throws a `TypeError` only for a mistake in the host:
 - a value of `functions` not made with `define`, an entry of `types` not made with `defineType`, or a value of `inputs` that is not a type
 - `t.optional` or `t.oneOf` directly in `inputs`
 - two different types with one name
+- a declared type past the depth limit of language section 11
 - a `maxSteps` that is not a number, is `NaN`, or is negative
 
 ### Diagnostics
@@ -246,7 +247,7 @@ compile(source, { functions: { DISCOUNT } });
 | `cost`      | No                       | Extra steps to charge, computed from the arguments                                                |
 | `doc`       | No                       | A description for tooling                                                                         |
 
-`define` throws a `TypeError` for an invalid definition: both `overloads` and `args`, a required parameter after a `t.optional` one, `t.optional` anywhere but a field or trailing argument, one variable name used by both `t.var` and `t.class`, or by `t.class` with two different classes, or a class that is not one of language section 6.2.
+`define` throws a `TypeError` for an invalid definition: both `overloads` and `args`, a required parameter after a `t.optional` one, `t.optional` anywhere but a field or trailing argument, one variable name used by both `t.var` and `t.class`, or by `t.class` with two different classes, a class that is not one of language section 6.2, or a type past the depth limit of language section 11.
 
 `run` is synchronous. Data a formula needs is fetched before it runs, and passed as variables.
 
@@ -272,7 +273,7 @@ const SIZE = define({
 		{ args: [t.string()], returns: t.number() },
 		{ args: [t.array(t.var('T'))], returns: t.number() },
 	],
-	run: (value) => [...value].length,
+	run: (value) => Array.from(value).length,
 });
 ```
 

@@ -18,6 +18,23 @@ export class LimitExceededError extends Error {
 let remaining = Number.POSITIVE_INFINITY;
 
 /**
+ * Identifies the running evaluation, for what must be kept for its length. Each
+ * evaluation has its own, including one nested inside another.
+ */
+let evaluation: object | undefined;
+
+export function currentEvaluation(): object | undefined {
+	return evaluation;
+}
+
+/** Enter an evaluation, returning the one to go back to. */
+export function setEvaluation(next: object | undefined): object | undefined {
+	const previous = evaluation;
+	evaluation = next;
+	return previous;
+}
+
+/**
  * Install a step budget, returning the one it replaces.
  */
 export function setBudget(steps: number): number {
