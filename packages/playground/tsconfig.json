@@ -5,7 +5,7 @@
 		"moduleDetection": "force",
 		"lib": ["ES2023", "DOM", "DOM.Iterable"],
 		"moduleResolution": "bundler",
-		"types": ["vite/client"],
+		"types": ["vite/client", "temporal-spec/global"],
 		"allowImportingTsExtensions": true,
 		"resolveJsonModule": true,
 		"verbatimModuleSyntax": true,
