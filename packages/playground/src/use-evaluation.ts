@@ -1,5 +1,8 @@
 import {
 	type ASTNode,
+	EvaluationError,
+	type ExecutionLimits,
+	LimitExceededError,
 	ParseError,
 	type RuntimeValue,
 	defaultContext,
@@ -15,6 +18,14 @@ import {
 	typeOf,
 } from 'littlewing';
 import { useCallback, useDeferredValue, useMemo, useState } from 'react';
+
+/**
+ * Evaluation runs on the main thread, on every keystroke and from shared links, so
+ * it gets a budget small enough to keep the page responsive whatever is typed.
+ * The library default is ten times this.
+ */
+const maxSteps = 2_000_000;
+export const LIMITS: ExecutionLimits = { maxSteps };
 
 interface InputVariable {
 	name: string;
@@ -68,6 +79,8 @@ function resolveInputVariables(ast: ASTNode): InputVariable[] {
 	const statements = isProgram(ast) ? ast.statements : [ast];
 	const seen = new Set<string>();
 	const inputVariables: InputVariable[] = [];
+	// The defaults share one budget, or a long program could multiply it
+	const limits = { maxSteps: Math.floor(maxSteps / inputVarNames.size) };
 
 	for (const statement of statements) {
 		if (
@@ -78,13 +91,22 @@ function resolveInputVariables(ast: ASTNode): InputVariable[] {
 			continue;
 		}
 
-		const defaultValue = evaluate(statement.value, defaultContext);
+		seen.add(statement.name);
+
+		let defaultValue: RuntimeValue;
+		try {
+			defaultValue = evaluate(statement.value, { ...defaultContext, limits });
+		} catch (err) {
+			// Too heavy for its share to become an input, though the program may still run
+			if (err instanceof EvaluationError && err.cause instanceof LimitExceededError) continue;
+			throw err;
+		}
+
 		inputVariables.push({
 			name: statement.name,
 			type: typeOf(defaultValue),
 			defaultValue,
 		});
-		seen.add(statement.name);
 	}
 
 	return inputVariables;
@@ -101,7 +123,10 @@ function compile(src: string): CompilationResult | null {
 	const assignedVariables = extractAssignedVariables(ast);
 
 	const optimizeStart = performance.now();
-	const optimizedAst = optimize(ast, new Set(inputVariables.map((variable) => variable.name)));
+	const optimizedAst = optimize(ast, {
+		externalVariables: new Set(inputVariables.map((variable) => variable.name)),
+		preserveScope: true,
+	});
 	const optimizeMs = performance.now() - optimizeStart;
 
 	return { optimizedAst, ast, inputVariables, assignedVariables, parseMs, optimizeMs };
@@ -113,15 +138,18 @@ interface EvaluationResult {
 	evaluateMs: number;
 }
 
-function formatParseErrorMessage(message: string, line: number, column: number): string {
+function formatErrorMessage(message: string, line: number, column: number): string {
 	return `${message} (line ${line}, col ${column})`;
 }
 
-function parseErrorToDiagnostic(source: string, err: ParseError): Diagnostic {
-	const rawStartOffset = Math.max(0, Math.min(err.start, source.length));
+/**
+ * Turn an error's source span into a diagnostic.
+ */
+function spanToDiagnostic(source: string, message: string, start: number, end: number): Diagnostic {
+	const rawStartOffset = Math.max(0, Math.min(start, source.length));
 	const rawStart = toLineColumn(source, rawStartOffset);
 	let markerStartOffset = rawStartOffset;
-	let markerEndOffset = Math.max(markerStartOffset, Math.min(err.end, source.length));
+	let markerEndOffset = Math.max(markerStartOffset, Math.min(end, source.length));
 
 	// Monaco markers render best with a non-empty span.
 	if (markerEndOffset === markerStartOffset && source.length > 0) {
@@ -135,10 +163,9 @@ function parseErrorToDiagnostic(source: string, err: ParseError): Diagnostic {
 
 	const markerStart = toLineColumn(source, markerStartOffset);
 	const markerEnd = toLineColumn(source, markerEndOffset);
-	const message = formatParseErrorMessage(err.message, rawStart.line, rawStart.column);
 
 	return {
-		message,
+		message: formatErrorMessage(message, rawStart.line, rawStart.column),
 		startLine: markerStart.line,
 		startCol: markerStart.column,
 		endLine: markerEnd.line,
@@ -146,52 +173,38 @@ function parseErrorToDiagnostic(source: string, err: ParseError): Diagnostic {
 	};
 }
 
-function escapeRegex(value: string): string {
-	return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-}
-
-function createIdentifierDiagnostic(
+/**
+ * Find a function's name within the call or pipe an error spans, as that is what a
+ * quick fix replaces.
+ */
+function findFunctionName(
 	source: string,
 	name: string,
-	message: string,
-): Diagnostic | null {
-	if (name.length === 0) return null;
-	const pattern = new RegExp(`\\b${escapeRegex(name)}\\b`, 'g');
-	let match: RegExpExecArray | null;
-	let lastMatch: RegExpExecArray | null = null;
-	while (true) {
-		match = pattern.exec(source);
-		if (!match) break;
-		lastMatch = match;
-	}
-	if (!lastMatch) return null;
-
-	const startOffset = lastMatch.index;
-	const endOffset = startOffset + name.length;
-	const start = toLineColumn(source, startOffset);
-	const end = toLineColumn(source, endOffset);
-	return {
-		message: formatParseErrorMessage(message, start.line, start.column),
-		startLine: start.line,
-		startCol: start.column,
-		endLine: end.line,
-		endCol: end.column,
-	};
+	start: number,
+	end: number,
+): [number, number] {
+	const text = source.slice(start, end);
+	// A call fails before its arguments run, so a span starting with the name is it
+	if (new RegExp(`^${name}\\s*\\(`).test(text)) return [start, start + name.length];
+	const offset = text.indexOf(name, Math.max(text.lastIndexOf('|>'), 0));
+	return offset === -1 ? [start, end] : [start + offset, start + offset + name.length];
 }
 
-function runtimeErrorToDiagnostic(source: string, message: string): Diagnostic | null {
-	const undefinedVariablePrefix = 'Undefined variable: ';
-	if (message.startsWith(undefinedVariablePrefix)) {
-		const name = message.slice(undefinedVariablePrefix.length).trim();
-		return createIdentifierDiagnostic(source, name, message);
-	}
+/**
+ * Get a diagnostic for an error that knows where in the source it happened.
+ */
+function errorToDiagnostic(source: string, err: unknown): Diagnostic | null {
+	if (err instanceof ParseError || err instanceof EvaluationError) {
+		const { end, message, start } = err;
+		if (start === undefined || end === undefined) return null;
 
-	const undefinedFunctionPrefix = 'Undefined function: ';
-	if (message.startsWith(undefinedFunctionPrefix)) {
-		const name = message.slice(undefinedFunctionPrefix.length).trim();
-		return createIdentifierDiagnostic(source, name, message);
+		const undefinedFunction = 'Undefined function: ';
+		if (message.startsWith(undefinedFunction)) {
+			const name = message.slice(undefinedFunction.length);
+			return spanToDiagnostic(source, message, ...findFunctionName(source, name, start, end));
+		}
+		return spanToDiagnostic(source, message, start, end);
 	}
-
 	return null;
 }
 
@@ -204,6 +217,7 @@ function run(optimizedAst: ASTNode, overrides: Map<string, RuntimeValue>): Evalu
 	const mergedContext = {
 		...defaultContext,
 		variables: overrideVariables,
+		limits: LIMITS,
 	};
 
 	const evaluateStart = performance.now();
@@ -238,20 +252,13 @@ export function useEvaluation(source: string): UseEvaluationReturn {
 		try {
 			return { ok: true as const, value: compile(deferredSource), diagnostics: [] as Diagnostic[] };
 		} catch (err) {
-			let message = err instanceof Error ? err.message : String(err);
-			const diagnostics: Diagnostic[] = [];
-			if (err instanceof ParseError) {
-				const diagnostic = parseErrorToDiagnostic(deferredSource, err);
-				diagnostics.push(diagnostic);
-				message = diagnostic.message;
-			} else {
-				const diagnostic = runtimeErrorToDiagnostic(deferredSource, message);
-				if (diagnostic) {
-					diagnostics.push(diagnostic);
-					message = diagnostic.message;
-				}
-			}
-			return { ok: false as const, error: message, diagnostics };
+			const message = err instanceof Error ? err.message : String(err);
+			const diagnostic = errorToDiagnostic(deferredSource, err);
+			return {
+				ok: false as const,
+				error: diagnostic ? diagnostic.message : message,
+				diagnostics: diagnostic ? [diagnostic] : [],
+			};
 		}
 	}, [deferredSource]);
 
@@ -298,7 +305,7 @@ export function useEvaluation(source: string): UseEvaluationReturn {
 			};
 		} catch (err) {
 			const message = err instanceof Error ? err.message : String(err);
-			const diagnostic = runtimeErrorToDiagnostic(deferredSource, message);
+			const diagnostic = errorToDiagnostic(deferredSource, err);
 			return {
 				result: {
 					ok: false as const,

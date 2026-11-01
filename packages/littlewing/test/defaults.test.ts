@@ -2,6 +2,7 @@ import { describe, expect, test } from 'bun:test';
 import { Temporal } from 'temporal-polyfill';
 import { evaluate } from '../src/interpreter';
 import { array, defaultContext } from '../src/stdlib';
+import { EvaluationError } from '../src/errors';
 
 describe('Default Context Functions', () => {
 	describe('Math', () => {
@@ -37,8 +38,8 @@ describe('Default Context Functions', () => {
 		});
 
 		test('MIN and MAX reject empty argument lists', () => {
-			expect(() => evaluate('MIN()', defaultContext)).toThrow(RangeError);
-			expect(() => evaluate('MAX()', defaultContext)).toThrow(RangeError);
+			expect(() => evaluate('MIN()', defaultContext)).toThrow(EvaluationError);
+			expect(() => evaluate('MAX()', defaultContext)).toThrow(EvaluationError);
 		});
 
 		test('CLAMP returns value when within bounds', () => {
@@ -79,7 +80,7 @@ describe('Default Context Functions', () => {
 		});
 
 		test('CLAMP rejects inverted bounds', () => {
-			expect(() => evaluate('CLAMP(5, 10, 0)', defaultContext)).toThrow(RangeError);
+			expect(() => evaluate('CLAMP(5, 10, 0)', defaultContext)).toThrow(EvaluationError);
 		});
 
 		test('SIN, COS, TAN', () => {
@@ -95,12 +96,12 @@ describe('Default Context Functions', () => {
 		});
 
 		test('math functions throw TypeError on non-number', () => {
-			expect(() => evaluate('ABS("hello")', defaultContext)).toThrow(TypeError);
-			expect(() => evaluate('SQRT(true)', defaultContext)).toThrow(TypeError);
+			expect(() => evaluate('ABS("hello")', defaultContext)).toThrow(EvaluationError);
+			expect(() => evaluate('SQRT(true)', defaultContext)).toThrow(EvaluationError);
 		});
 
 		test('math functions throw TypeError on missing arguments', () => {
-			expect(() => evaluate('ABS()', defaultContext)).toThrow(TypeError);
+			expect(() => evaluate('ABS()', defaultContext)).toThrow(EvaluationError);
 		});
 	});
 
@@ -149,8 +150,8 @@ describe('Default Context Functions', () => {
 		});
 
 		test('LEN throws on non-string/array', () => {
-			expect(() => evaluate('LEN(42)', defaultContext)).toThrow(TypeError);
-			expect(() => evaluate('LEN(true)', defaultContext)).toThrow(TypeError);
+			expect(() => evaluate('LEN(42)', defaultContext)).toThrow(EvaluationError);
+			expect(() => evaluate('LEN(true)', defaultContext)).toThrow(EvaluationError);
 		});
 
 		test('SLICE with strings', () => {
@@ -169,7 +170,7 @@ describe('Default Context Functions', () => {
 		});
 
 		test('SLICE throws on non-string/array', () => {
-			expect(() => evaluate('SLICE(42, 0)', defaultContext)).toThrow(TypeError);
+			expect(() => evaluate('SLICE(42, 0)', defaultContext)).toThrow(EvaluationError);
 		});
 
 		test('CONTAINS with strings', () => {
@@ -188,11 +189,11 @@ describe('Default Context Functions', () => {
 		});
 
 		test('CONTAINS string search requires string', () => {
-			expect(() => evaluate('CONTAINS("hello", 42)', defaultContext)).toThrow(TypeError);
+			expect(() => evaluate('CONTAINS("hello", 42)', defaultContext)).toThrow(EvaluationError);
 		});
 
 		test('CONTAINS throws on non-string/array', () => {
-			expect(() => evaluate('CONTAINS(42, 1)', defaultContext)).toThrow(TypeError);
+			expect(() => evaluate('CONTAINS(42, 1)', defaultContext)).toThrow(EvaluationError);
 		});
 
 		test('REVERSE with strings', () => {
@@ -206,7 +207,7 @@ describe('Default Context Functions', () => {
 		});
 
 		test('REVERSE throws on non-string/array', () => {
-			expect(() => evaluate('REVERSE(42)', defaultContext)).toThrow(TypeError);
+			expect(() => evaluate('REVERSE(42)', defaultContext)).toThrow(EvaluationError);
 		});
 
 		test('INDEX_OF with strings', () => {
@@ -229,11 +230,11 @@ describe('Default Context Functions', () => {
 		});
 
 		test('INDEX_OF string search requires string', () => {
-			expect(() => evaluate('INDEX_OF("hello", 42)', defaultContext)).toThrow(TypeError);
+			expect(() => evaluate('INDEX_OF("hello", 42)', defaultContext)).toThrow(EvaluationError);
 		});
 
 		test('INDEX_OF throws on non-string/array', () => {
-			expect(() => evaluate('INDEX_OF(42, 1)', defaultContext)).toThrow(TypeError);
+			expect(() => evaluate('INDEX_OF(42, 1)', defaultContext)).toThrow(EvaluationError);
 		});
 	});
 
@@ -275,11 +276,11 @@ describe('Default Context Functions', () => {
 		});
 
 		test('STR_REPEAT throws on negative count', () => {
-			expect(() => evaluate('STR_REPEAT("x", -1)', defaultContext)).toThrow(RangeError);
+			expect(() => evaluate('STR_REPEAT("x", -1)', defaultContext)).toThrow(EvaluationError);
 		});
 
 		test('string functions throw TypeError on non-string', () => {
-			expect(() => evaluate('STR_UPPER(true)', defaultContext)).toThrow(TypeError);
+			expect(() => evaluate('STR_UPPER(true)', defaultContext)).toThrow(EvaluationError);
 		});
 	});
 
@@ -318,7 +319,7 @@ describe('Default Context Functions', () => {
 		});
 
 		test('ARR_FLAT throws on non-array elements', () => {
-			expect(() => evaluate('ARR_FLAT([1, 2])', defaultContext)).toThrow(TypeError);
+			expect(() => evaluate('ARR_FLAT([1, 2])', defaultContext)).toThrow(EvaluationError);
 		});
 
 		test('ARR_JOIN', () => {
@@ -328,7 +329,7 @@ describe('Default Context Functions', () => {
 		});
 
 		test('ARR_JOIN throws on non-string elements', () => {
-			expect(() => evaluate('ARR_JOIN([1, 2], ",")', defaultContext)).toThrow(TypeError);
+			expect(() => evaluate('ARR_JOIN([1, 2], ",")', defaultContext)).toThrow(EvaluationError);
 		});
 
 		test('ARR_SUM', () => {
@@ -337,7 +338,7 @@ describe('Default Context Functions', () => {
 		});
 
 		test('ARR_SUM throws on non-number elements', () => {
-			expect(() => evaluate('ARR_SUM(["a"])', defaultContext)).toThrow(TypeError);
+			expect(() => evaluate('ARR_SUM(["a"])', defaultContext)).toThrow(EvaluationError);
 		});
 
 		test('ARR_MIN and ARR_MAX', () => {
@@ -351,12 +352,12 @@ describe('Default Context Functions', () => {
 		});
 
 		test('ARR_MIN and ARR_MAX throw on empty array', () => {
-			expect(() => evaluate('ARR_MIN([])', defaultContext)).toThrow(RangeError);
-			expect(() => evaluate('ARR_MAX([])', defaultContext)).toThrow(RangeError);
+			expect(() => evaluate('ARR_MIN([])', defaultContext)).toThrow(EvaluationError);
+			expect(() => evaluate('ARR_MAX([])', defaultContext)).toThrow(EvaluationError);
 		});
 
 		test('array functions throw TypeError on non-array', () => {
-			expect(() => evaluate('ARR_SORT(42)', defaultContext)).toThrow(TypeError);
+			expect(() => evaluate('ARR_SORT(42)', defaultContext)).toThrow(EvaluationError);
 		});
 	});
 
@@ -376,9 +377,9 @@ describe('Default Context Functions', () => {
 		});
 
 		test('DATE rejects fractional fields', () => {
-			expect(() => evaluate('DATE(2024.5, 6, 15)', defaultContext)).toThrow(TypeError);
-			expect(() => evaluate('DATE(2024, 6.5, 15)', defaultContext)).toThrow(TypeError);
-			expect(() => evaluate('DATE(2024, 6, 15.5)', defaultContext)).toThrow(TypeError);
+			expect(() => evaluate('DATE(2024.5, 6, 15)', defaultContext)).toThrow(EvaluationError);
+			expect(() => evaluate('DATE(2024, 6.5, 15)', defaultContext)).toThrow(EvaluationError);
+			expect(() => evaluate('DATE(2024, 6, 15.5)', defaultContext)).toThrow(EvaluationError);
 		});
 
 		test('YEAR, MONTH, DAY', () => {
@@ -488,18 +489,20 @@ describe('Default Context Functions', () => {
 
 		test('AGE throws on future birth date', () => {
 			expect(() => evaluate('AGE(DATE(2030, 1, 1), DATE(2024, 1, 1))', defaultContext)).toThrow(
-				RangeError,
+				EvaluationError,
 			);
 		});
 
 		test('AGE throws on non-date argument', () => {
-			expect(() => evaluate('AGE(42)', defaultContext)).toThrow(TypeError);
-			expect(() => evaluate('AGE(DATE(2000, 1, 1), "hello")', defaultContext)).toThrow(TypeError);
+			expect(() => evaluate('AGE(42)', defaultContext)).toThrow(EvaluationError);
+			expect(() => evaluate('AGE(DATE(2000, 1, 1), "hello")', defaultContext)).toThrow(
+				EvaluationError,
+			);
 		});
 
 		test('date functions throw TypeError on non-date', () => {
-			expect(() => evaluate('YEAR(42)', defaultContext)).toThrow(TypeError);
-			expect(() => evaluate('ADD_DAYS("hello", 1)', defaultContext)).toThrow(TypeError);
+			expect(() => evaluate('YEAR(42)', defaultContext)).toThrow(EvaluationError);
+			expect(() => evaluate('ADD_DAYS("hello", 1)', defaultContext)).toThrow(EvaluationError);
 		});
 	});
 });

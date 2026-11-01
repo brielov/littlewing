@@ -75,14 +75,14 @@ STR(effective_rate) + "% bonus = $" + STR(bonus)`,
 	},
 	{
 		title: 'Date Arithmetic',
-		description: 'Business days, deadlines, and quarter boundaries',
+		description: 'Durations, deadlines, and quarter boundaries',
 		source: `// Project timeline calculations
 start = DATE(2026, 3, 10)
 deadline = DATE(2026, 6, 30)
 
 total_days = DIFFERENCE_IN_DAYS(start, deadline)
 total_weeks = DIFFERENCE_IN_WEEKS(start, deadline)
-quarter_end = END_OF_YEAR(start)
+year_end = END_OF_YEAR(start)
 
 // How many days into the quarter are we?
 quarter_start = START_OF_QUARTER(start)

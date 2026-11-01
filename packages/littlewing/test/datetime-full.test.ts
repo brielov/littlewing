@@ -3,6 +3,7 @@ import { Temporal } from 'temporal-polyfill';
 import { evaluate } from '../src/interpreter';
 import { defaultContext } from '../src/stdlib';
 import type { RuntimeValue } from '../src/types';
+import { EvaluationError } from '../src/errors';
 
 /**
  * Helper to create a context with variables
@@ -27,28 +28,28 @@ describe('DateTime Full Functions', () => {
 
 		test('DATETIME() type errors', () => {
 			expect(() => evaluate('DATETIME("2024", 6, 15, 14, 30, 0)', defaultContext)).toThrow(
-				TypeError,
+				EvaluationError,
 			);
 		});
 
 		test('DATETIME() rejects fractional fields', () => {
 			expect(() => evaluate('DATETIME(2024.5, 6, 15, 14, 30, 0)', defaultContext)).toThrow(
-				TypeError,
+				EvaluationError,
 			);
 			expect(() => evaluate('DATETIME(2024, 6.5, 15, 14, 30, 0)', defaultContext)).toThrow(
-				TypeError,
+				EvaluationError,
 			);
 			expect(() => evaluate('DATETIME(2024, 6, 15.5, 14, 30, 0)', defaultContext)).toThrow(
-				TypeError,
+				EvaluationError,
 			);
 			expect(() => evaluate('DATETIME(2024, 6, 15, 14.5, 30, 0)', defaultContext)).toThrow(
-				TypeError,
+				EvaluationError,
 			);
 			expect(() => evaluate('DATETIME(2024, 6, 15, 14, 30.5, 0)', defaultContext)).toThrow(
-				TypeError,
+				EvaluationError,
 			);
 			expect(() => evaluate('DATETIME(2024, 6, 15, 14, 30, 0.5)', defaultContext)).toThrow(
-				TypeError,
+				EvaluationError,
 			);
 		});
 
@@ -71,7 +72,7 @@ describe('DateTime Full Functions', () => {
 
 		test('TO_DATE() rejects non-datetime', () => {
 			const d = new Temporal.PlainDate(2024, 6, 15);
-			expect(() => evaluate('TO_DATE(d)', ctx({ d }))).toThrow(TypeError);
+			expect(() => evaluate('TO_DATE(d)', ctx({ d }))).toThrow(EvaluationError);
 		});
 
 		test('TO_TIME() extracts PlainTime from PlainDateTime', () => {
@@ -86,7 +87,7 @@ describe('DateTime Full Functions', () => {
 
 		test('TO_TIME() rejects non-datetime', () => {
 			const t = new Temporal.PlainTime(14, 30, 0);
-			expect(() => evaluate('TO_TIME(t)', ctx({ t }))).toThrow(TypeError);
+			expect(() => evaluate('TO_TIME(t)', ctx({ t }))).toThrow(EvaluationError);
 		});
 
 		test('COMBINE() creates PlainDateTime from date + time', () => {
@@ -105,9 +106,9 @@ describe('DateTime Full Functions', () => {
 
 		test('COMBINE() rejects wrong types', () => {
 			const t = new Temporal.PlainTime(14, 30, 0);
-			expect(() => evaluate('COMBINE(t, t)', ctx({ t }))).toThrow(TypeError);
+			expect(() => evaluate('COMBINE(t, t)', ctx({ t }))).toThrow(EvaluationError);
 			const d = new Temporal.PlainDate(2024, 6, 15);
-			expect(() => evaluate('COMBINE(d, d)', ctx({ d }))).toThrow(TypeError);
+			expect(() => evaluate('COMBINE(d, d)', ctx({ d }))).toThrow(EvaluationError);
 		});
 
 		test('round-trip: COMBINE(TO_DATE(dt), TO_TIME(dt)) == dt', () => {
@@ -135,7 +136,7 @@ describe('DateTime Full Functions', () => {
 
 		test('START_OF_DAY() rejects non-datetime', () => {
 			const d = new Temporal.PlainDate(2024, 6, 15);
-			expect(() => evaluate('START_OF_DAY(d)', ctx({ d }))).toThrow(TypeError);
+			expect(() => evaluate('START_OF_DAY(d)', ctx({ d }))).toThrow(EvaluationError);
 		});
 
 		test('END_OF_DAY() returns end of day', () => {
@@ -152,7 +153,7 @@ describe('DateTime Full Functions', () => {
 
 		test('END_OF_DAY() rejects non-datetime', () => {
 			const t = new Temporal.PlainTime(10, 0, 0);
-			expect(() => evaluate('END_OF_DAY(t)', ctx({ t }))).toThrow(TypeError);
+			expect(() => evaluate('END_OF_DAY(t)', ctx({ t }))).toThrow(EvaluationError);
 		});
 	});
 });

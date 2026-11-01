@@ -36,5 +36,5 @@
 		"builtin": true
 	},
 	"globals": {},
-	"ignorePatterns": []
+	"ignorePatterns": ["packages/littlewing/test/consumer"]
 }

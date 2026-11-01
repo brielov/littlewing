@@ -726,8 +726,8 @@ describe('Parser', () => {
 		const node = parse('1..5');
 		expectKind(node, NodeKind.RangeExpression);
 		const range = node as RangeExpression;
-		expectNumber(range.start, 1);
-		expectNumber(range.end, 5);
+		expectNumber(range.from, 1);
+		expectNumber(range.to, 5);
 		expect(range.inclusive).toBe(false);
 	});
 
@@ -735,8 +735,8 @@ describe('Parser', () => {
 		const node = parse('1..=5');
 		expectKind(node, NodeKind.RangeExpression);
 		const range = node as RangeExpression;
-		expectNumber(range.start, 1);
-		expectNumber(range.end, 5);
+		expectNumber(range.from, 1);
+		expectNumber(range.to, 5);
 		expect(range.inclusive).toBe(true);
 	});
 
@@ -745,8 +745,8 @@ describe('Parser', () => {
 		const node = parse('1 + 2..3 + 4');
 		expectKind(node, NodeKind.RangeExpression);
 		const range = node as RangeExpression;
-		expectBinaryOp(range.start, '+');
-		expectBinaryOp(range.end, '+');
+		expectBinaryOp(range.from, '+');
+		expectBinaryOp(range.to, '+');
 	});
 
 	test('parse range indexing', () => {

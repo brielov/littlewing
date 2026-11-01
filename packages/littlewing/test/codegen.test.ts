@@ -172,10 +172,10 @@ describe('CodeGenerator', () => {
 		expect(code).toBe('(-2) ^ 2');
 	});
 
-	test('precedence - unary minus wraps exponentiation', () => {
+	test('precedence - exponentiation binds tighter than unary minus', () => {
 		const node = ast.unaryOp('-', ast.exponentiate(ast.number(2), ast.number(2)));
 		const code = generate(node);
-		expect(code).toBe('-(2 ^ 2)');
+		expect(code).toBe('-2 ^ 2');
 	});
 
 	test('round-trip simple expression', () => {
@@ -541,7 +541,7 @@ describe('CodeGenerator', () => {
 			ast.add(ast.number(3), ast.number(4)),
 			false,
 		);
-		expect(generate(node)).toBe('(1 + 2)..(3 + 4)');
+		expect(generate(node)).toBe('1 + 2..3 + 4');
 	});
 
 	test('exclusive range round-trip', () => {

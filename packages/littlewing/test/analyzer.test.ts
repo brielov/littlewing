@@ -322,3 +322,32 @@ describe('extractAssignedVariables', () => {
 		expect(extractAssignedVariables(ast)).toEqual(['x']);
 	});
 });
+
+describe('Assignment order', () => {
+	test('only the first assignment decides an input', () => {
+		expect(extractInputVariables(parse('x = y; x = 5'))).toEqual([]);
+		expect(extractInputVariables(parse('x = 5; x = y'))).toEqual(['x']);
+		expect(extractInputVariables(parse('x = 1; x = 2'))).toEqual(['x']);
+	});
+
+	test('a variable bound by nested loops is not a reference', () => {
+		expect(extractInputVariables(parse('z = for x in [1] then for y in [2] then x'))).toEqual([
+			'z',
+		]);
+		expect(extractInputVariables(parse('z = for x in [1] then for y in [2] then w'))).toEqual([]);
+	});
+
+	test('a loop binding does not cover its own iterable', () => {
+		expect(extractInputVariables(parse('z = for x in x then x'))).toEqual([]);
+		expect(extractInputVariables(parse('z = for i in [1] into x = x then x'))).toEqual([]);
+	});
+
+	test('nested assignments are collected in order', () => {
+		expect(extractAssignedVariables(parse('x = (y = 1)'))).toEqual(['x', 'y']);
+		expect(extractAssignedVariables(parse('x = 1; x = 2'))).toEqual(['x']);
+		expect(extractAssignedVariables(parse('[a = 1, for i in [1] then (b = i)]'))).toEqual([
+			'a',
+			'b',
+		]);
+	});
+});

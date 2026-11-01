@@ -142,6 +142,12 @@ describe('toLineColumn', () => {
 		expect(toLineColumn('a\nb\nc', 4)).toEqual({ line: 3, column: 1 });
 	});
 
+	test('line endings match the lexer', () => {
+		expect(toLineColumn('a\r\nb', 3)).toEqual({ line: 2, column: 1 });
+		expect(toLineColumn('a\rb', 2)).toEqual({ line: 2, column: 1 });
+		expect(toLineColumn('a\r\r\nb', 4)).toEqual({ line: 3, column: 1 });
+	});
+
 	test('offset beyond source length clamps', () => {
 		expect(toLineColumn('abc', 100)).toEqual({ line: 1, column: 4 });
 	});

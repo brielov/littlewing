@@ -1,5 +1,7 @@
-import type { RuntimeValue } from '../types';
-import { assertNumber, assertString } from '../utils';
+import type { RuntimeValue } from '../types.js';
+import { charge } from '../limits.js';
+import { assertNumber, assertString } from '../utils.js';
+import { findSubstring } from './search.js';
 
 /**
  * Convert string to uppercase
@@ -25,13 +27,31 @@ export const STR_TRIM = (s: RuntimeValue): RuntimeValue => {
 	return s.trim();
 };
 
+function splitOn(s: string, sep: string): string[] {
+	const parts: string[] = [];
+	let start = 0;
+	let end = findSubstring(s, sep);
+	while (end !== -1) {
+		parts.push(s.slice(start, end));
+		start = end + sep.length;
+		end = findSubstring(s, sep, start);
+	}
+	parts.push(s.slice(start));
+	return parts;
+}
+
 /**
- * Split a string by a separator into a string array
+ * Split a string by a separator into a string array. An empty separator splits
+ * between code points.
  */
 export const STR_SPLIT = (s: RuntimeValue, sep: RuntimeValue): RuntimeValue => {
 	assertString(s, 'STR_SPLIT');
 	assertString(sep, 'STR_SPLIT (separator)');
-	return s.split(sep);
+	const parts = sep === '' ? Array.from(s) : splitOn(s, sep);
+	// On top of the array, every part is a string of its own
+	charge(parts.length);
+	// Without the spare room growing the array left behind
+	return parts.slice();
 };
 
 /**
@@ -45,7 +65,9 @@ export const STR_REPLACE = (
 	assertString(s, 'STR_REPLACE');
 	assertString(search, 'STR_REPLACE (search)');
 	assertString(replacement, 'STR_REPLACE (replacement)');
-	return s.replace(search, replacement);
+	const offset = findSubstring(s, search);
+	if (offset === -1) return s;
+	return s.slice(0, offset) + replacement + s.slice(offset + search.length);
 };
 
 /**
@@ -75,5 +97,6 @@ export const STR_REPEAT = (s: RuntimeValue, count: RuntimeValue): RuntimeValue =
 	if (!Number.isInteger(count) || count < 0) {
 		throw new RangeError(`STR_REPEAT: count must be a non-negative integer, got ${count}`);
 	}
+	charge(s.length * count);
 	return s.repeat(count);
 };

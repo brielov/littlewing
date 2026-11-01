@@ -1,6 +1,6 @@
 import { type ASTNode, NodeKind, type RuntimeValue, defaultContext, evaluate } from 'littlewing';
 import { useEffect, useRef, useState } from 'react';
-import type { UseEvaluationReturn } from './use-evaluation.ts';
+import { LIMITS, type UseEvaluationReturn } from './use-evaluation.ts';
 
 interface SidebarProps {
 	evaluation: UseEvaluationReturn;
@@ -332,7 +332,7 @@ function ExpressionInput({
 
 	function tryEvaluate(value: string): boolean {
 		try {
-			const result = evaluate(value, defaultContext);
+			const result = evaluate(value, { ...defaultContext, limits: LIMITS });
 			if (Array.isArray(result)) {
 				setOverride(name, result);
 				setError(false);
@@ -586,8 +586,8 @@ function buildAstEntries(node: ASTNode): AstEntry {
 				label: 'RangeExpression',
 				value: node.inclusive ? '..=' : '..',
 				children: [
-					{ label: 'start', children: [recurse(node.start)] },
-					{ label: 'end', children: [recurse(node.end)] },
+					{ label: 'from', children: [recurse(node.from)] },
+					{ label: 'to', children: [recurse(node.to)] },
 				],
 			};
 		case NodeKind.PipeExpression:
@@ -676,9 +676,21 @@ function SectionHeader({ children }: { children: React.ReactNode }) {
 	);
 }
 
+/**
+ * Format a value for display. A program can nest arrays deeper than the call stack
+ * can walk, which must not take the page down with it.
+ */
 function formatValue(value: RuntimeValue): string {
+	try {
+		return formatNested(value);
+	} catch {
+		return '(too deeply nested to display)';
+	}
+}
+
+function formatNested(value: RuntimeValue): string {
 	if (Array.isArray(value)) {
-		return `[${value.map(formatValue).join(', ')}]`;
+		return `[${value.map(formatNested).join(', ')}]`;
 	}
 	if (typeof value === 'string') {
 		return `"${value}"`;

@@ -1,5 +1,6 @@
-import type { RuntimeValue } from '../types';
-import { assertDateOrDateTime, assertInteger, assertNumber, typeOf } from '../utils';
+import { CLOCK_STEPS, charge, DURATION_STEPS } from '../limits.js';
+import type { PlainDate, PlainDateTime, RuntimeValue } from '../types.js';
+import { assertDateOrDateTime, assertInteger, temporalDifference } from '../utils.js';
 
 /**
  * Date utility functions using Temporal.PlainDate and Temporal.PlainDateTime
@@ -14,7 +15,10 @@ import { assertDateOrDateTime, assertInteger, assertNumber, typeOf } from '../ut
 /**
  * Get today's date as a Temporal.PlainDate
  */
-export const TODAY = (): RuntimeValue => Temporal.Now.plainDateISO();
+export const TODAY = (): RuntimeValue => {
+	charge(CLOCK_STEPS);
+	return Temporal.Now.plainDateISO();
+};
 
 /**
  * Create a date from year, month (1-based), and day
@@ -87,7 +91,7 @@ export const QUARTER = (date: RuntimeValue): RuntimeValue => {
  */
 export const ADD_DAYS = (date: RuntimeValue, days: RuntimeValue): RuntimeValue => {
 	assertDateOrDateTime(date, 'ADD_DAYS');
-	assertNumber(days, 'ADD_DAYS', 'days');
+	assertInteger(days, 'ADD_DAYS', 'days');
 	return date.add({ days });
 };
 
@@ -96,7 +100,7 @@ export const ADD_DAYS = (date: RuntimeValue, days: RuntimeValue): RuntimeValue =
  */
 export const ADD_MONTHS = (date: RuntimeValue, months: RuntimeValue): RuntimeValue => {
 	assertDateOrDateTime(date, 'ADD_MONTHS');
-	assertNumber(months, 'ADD_MONTHS', 'months');
+	assertInteger(months, 'ADD_MONTHS', 'months');
 	return date.add({ months });
 };
 
@@ -105,7 +109,7 @@ export const ADD_MONTHS = (date: RuntimeValue, months: RuntimeValue): RuntimeVal
  */
 export const ADD_YEARS = (date: RuntimeValue, years: RuntimeValue): RuntimeValue => {
 	assertDateOrDateTime(date, 'ADD_YEARS');
-	assertNumber(years, 'ADD_YEARS', 'years');
+	assertInteger(years, 'ADD_YEARS', 'years');
 	return date.add({ years });
 };
 
@@ -114,85 +118,42 @@ export const ADD_YEARS = (date: RuntimeValue, years: RuntimeValue): RuntimeValue
 // ============================================================================
 
 /**
- * Assert both arguments are the same date-like type (both PlainDate or both PlainDateTime).
- * Mixed date+datetime is a TypeError because Temporal .until() requires matching types.
+ * Get the absolute difference between two dates or datetimes in whole units.
  */
-function assertSameDateType(
-	d1: Temporal.PlainDate | Temporal.PlainDateTime,
-	d2: RuntimeValue,
+function difference(
 	context: string,
-): asserts d2 is Temporal.PlainDate | Temporal.PlainDateTime {
+	unit: 'day' | 'week' | 'month' | 'year',
+	d1: RuntimeValue,
+	d2: RuntimeValue,
+): number {
+	assertDateOrDateTime(d1, context);
 	assertDateOrDateTime(d2, context);
-	const t1 = typeOf(d1);
-	const t2 = typeOf(d2);
-	if (t1 !== t2) {
-		throw new TypeError(`${context} requires same type, got ${t1} and ${t2}`);
-	}
+	return temporalDifference(d1, d2, unit, context);
 }
 
 /**
  * Get the difference in days between two dates or datetimes (same type required)
  */
-export const DIFFERENCE_IN_DAYS = (d1: RuntimeValue, d2: RuntimeValue): RuntimeValue => {
-	assertDateOrDateTime(d1, 'DIFFERENCE_IN_DAYS');
-	assertSameDateType(d1, d2, 'DIFFERENCE_IN_DAYS');
-	if (d1 instanceof Temporal.PlainDate && d2 instanceof Temporal.PlainDate) {
-		const duration = d1.until(d2, { largestUnit: 'day' });
-		return Math.abs(duration.days);
-	}
-	const dt1 = d1 as Temporal.PlainDateTime;
-	const dt2 = d2 as Temporal.PlainDateTime;
-	const duration = dt1.until(dt2, { largestUnit: 'day' });
-	return Math.abs(duration.days);
-};
+export const DIFFERENCE_IN_DAYS = (d1: RuntimeValue, d2: RuntimeValue): RuntimeValue =>
+	difference('DIFFERENCE_IN_DAYS', 'day', d1, d2);
 
 /**
  * Get the difference in weeks between two dates or datetimes (same type, whole weeks)
  */
-export const DIFFERENCE_IN_WEEKS = (d1: RuntimeValue, d2: RuntimeValue): RuntimeValue => {
-	assertDateOrDateTime(d1, 'DIFFERENCE_IN_WEEKS');
-	assertSameDateType(d1, d2, 'DIFFERENCE_IN_WEEKS');
-	if (d1 instanceof Temporal.PlainDate && d2 instanceof Temporal.PlainDate) {
-		const duration = d1.until(d2, { largestUnit: 'week' });
-		return Math.abs(duration.weeks);
-	}
-	const dt1 = d1 as Temporal.PlainDateTime;
-	const dt2 = d2 as Temporal.PlainDateTime;
-	const duration = dt1.until(dt2, { largestUnit: 'week' });
-	return Math.abs(duration.weeks);
-};
+export const DIFFERENCE_IN_WEEKS = (d1: RuntimeValue, d2: RuntimeValue): RuntimeValue =>
+	difference('DIFFERENCE_IN_WEEKS', 'week', d1, d2);
 
 /**
  * Get the difference in months between two dates or datetimes (same type, whole months)
  */
-export const DIFFERENCE_IN_MONTHS = (d1: RuntimeValue, d2: RuntimeValue): RuntimeValue => {
-	assertDateOrDateTime(d1, 'DIFFERENCE_IN_MONTHS');
-	assertSameDateType(d1, d2, 'DIFFERENCE_IN_MONTHS');
-	if (d1 instanceof Temporal.PlainDate && d2 instanceof Temporal.PlainDate) {
-		const duration = d1.until(d2, { largestUnit: 'month' });
-		return Math.abs(duration.months + duration.years * 12);
-	}
-	const dt1 = d1 as Temporal.PlainDateTime;
-	const dt2 = d2 as Temporal.PlainDateTime;
-	const duration = dt1.until(dt2, { largestUnit: 'month' });
-	return Math.abs(duration.months + duration.years * 12);
-};
+export const DIFFERENCE_IN_MONTHS = (d1: RuntimeValue, d2: RuntimeValue): RuntimeValue =>
+	difference('DIFFERENCE_IN_MONTHS', 'month', d1, d2);
 
 /**
  * Get the difference in years between two dates or datetimes (same type, whole years)
  */
-export const DIFFERENCE_IN_YEARS = (d1: RuntimeValue, d2: RuntimeValue): RuntimeValue => {
-	assertDateOrDateTime(d1, 'DIFFERENCE_IN_YEARS');
-	assertSameDateType(d1, d2, 'DIFFERENCE_IN_YEARS');
-	if (d1 instanceof Temporal.PlainDate && d2 instanceof Temporal.PlainDate) {
-		const duration = d1.until(d2, { largestUnit: 'year' });
-		return Math.abs(duration.years);
-	}
-	const dt1 = d1 as Temporal.PlainDateTime;
-	const dt2 = d2 as Temporal.PlainDateTime;
-	const duration = dt1.until(dt2, { largestUnit: 'year' });
-	return Math.abs(duration.years);
-};
+export const DIFFERENCE_IN_YEARS = (d1: RuntimeValue, d2: RuntimeValue): RuntimeValue =>
+	difference('DIFFERENCE_IN_YEARS', 'year', d1, d2);
 
 // ============================================================================
 // START/END OF PERIOD
@@ -249,6 +210,13 @@ export const START_OF_QUARTER = (date: RuntimeValue): RuntimeValue => {
 	return date.with({ month: quarterStartMonth, day: 1 });
 };
 
+/**
+ * Get the date of a date or datetime
+ */
+function datePart(value: PlainDate | PlainDateTime): PlainDate {
+	return 'toPlainDate' in value ? value.toPlainDate() : value;
+}
+
 // ============================================================================
 // DATE COMPARISONS
 // ============================================================================
@@ -261,9 +229,7 @@ export const START_OF_QUARTER = (date: RuntimeValue): RuntimeValue => {
 export const IS_SAME_DAY = (d1: RuntimeValue, d2: RuntimeValue): RuntimeValue => {
 	assertDateOrDateTime(d1, 'IS_SAME_DAY');
 	assertDateOrDateTime(d2, 'IS_SAME_DAY');
-	const date1 = d1 instanceof Temporal.PlainDateTime ? d1.toPlainDate() : d1;
-	const date2 = d2 instanceof Temporal.PlainDateTime ? d2.toPlainDate() : d2;
-	return date1.equals(date2);
+	return datePart(d1).equals(datePart(d2));
 };
 
 /**
@@ -290,14 +256,15 @@ export const IS_LEAP_YEAR = (date: RuntimeValue): RuntimeValue => {
  */
 export const AGE = (birthDate: RuntimeValue, ...rest: RuntimeValue[]): RuntimeValue => {
 	assertDateOrDateTime(birthDate, 'AGE');
-	const birth = birthDate instanceof Temporal.PlainDateTime ? birthDate.toPlainDate() : birthDate;
+	const birth = datePart(birthDate);
 
-	let reference: Temporal.PlainDate;
+	let reference: PlainDate;
 	if (rest.length > 0) {
 		const ref = rest[0] as RuntimeValue;
 		assertDateOrDateTime(ref, 'AGE');
-		reference = ref instanceof Temporal.PlainDateTime ? ref.toPlainDate() : ref;
+		reference = datePart(ref);
 	} else {
+		charge(CLOCK_STEPS);
 		reference = Temporal.Now.plainDateISO();
 	}
 
@@ -305,5 +272,6 @@ export const AGE = (birthDate: RuntimeValue, ...rest: RuntimeValue[]): RuntimeVa
 		throw new RangeError('AGE requires birth date to be on or before reference date');
 	}
 
+	charge(DURATION_STEPS);
 	return birth.until(reference, { largestUnit: 'year' }).years;
 };

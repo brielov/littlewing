@@ -19,17 +19,22 @@ export type Operator =
 
 /**
  * Base interface for all AST nodes.
- * Optional comment metadata preserved through parse → generate roundtrips.
+ *
+ * `start` and `end` are UTF-16 offsets into the source a node was parsed from;
+ * they are absent on hand-built nodes. Comment metadata is preserved through
+ * parse → generate roundtrips.
  */
 export interface ASTNodeBase {
+	readonly start?: number | undefined;
+	readonly end?: number | undefined;
 	readonly leadingComments?: readonly string[];
 	readonly trailingComments?: readonly string[];
 }
 
 /**
- * AST Node kind discriminator (const enum for zero-cost abstraction)
+ * AST Node kind discriminator
  */
-export const enum NodeKind {
+export enum NodeKind {
 	Program,
 	NumberLiteral,
 	Identifier,
@@ -172,8 +177,8 @@ export interface IndexAccess extends ASTNodeBase {
  */
 export interface RangeExpression extends ASTNodeBase {
 	readonly kind: NodeKind.RangeExpression;
-	readonly start: ASTNode;
-	readonly end: ASTNode;
+	readonly from: ASTNode;
+	readonly to: ASTNode;
 	readonly inclusive: boolean;
 }
 
@@ -342,92 +347,268 @@ export function isPlaceholder(node: ASTNode): node is Placeholder {
 }
 
 /**
- * Builder functions for creating AST nodes manually
+ * Call `fn` on each node, stopping at (and returning) the first truthy result.
  */
-
-/**
- * Create a program node
- */
-export function program(statements: readonly ASTNode[]): Program {
-	return { kind: NodeKind.Program, statements };
+function forEachNode<T>(nodes: readonly ASTNode[], fn: (child: ASTNode) => T): T | undefined {
+	for (const child of nodes) {
+		const result = fn(child);
+		if (result) return result;
+	}
+	return undefined;
 }
 
 /**
- * Create a number literal node
+ * Call `fn` on each direct child of `node`, in evaluation order, stopping at
+ * (and returning) the first truthy result.
  */
-export function number(value: number): NumberLiteral {
-	return { kind: NodeKind.NumberLiteral, value };
+export function forEachChild<T>(node: ASTNode, fn: (child: ASTNode) => T): T | undefined {
+	switch (node.kind) {
+		case NodeKind.Program:
+			return forEachNode(node.statements, fn);
+		case NodeKind.ArrayLiteral:
+			return forEachNode(node.elements, fn);
+		case NodeKind.BinaryOp:
+			return fn(node.left) || fn(node.right) || undefined;
+		case NodeKind.UnaryOp:
+			return fn(node.argument) || undefined;
+		case NodeKind.FunctionCall:
+			return forEachNode(node.args, fn);
+		case NodeKind.Assignment:
+			return fn(node.value) || undefined;
+		case NodeKind.IfExpression:
+			return fn(node.condition) || fn(node.consequent) || fn(node.alternate) || undefined;
+		case NodeKind.ForExpression:
+			return (
+				fn(node.iterable) ||
+				(node.accumulator && fn(node.accumulator.initial)) ||
+				(node.guard && fn(node.guard)) ||
+				fn(node.body) ||
+				undefined
+			);
+		case NodeKind.IndexAccess:
+			return fn(node.object) || fn(node.index) || undefined;
+		case NodeKind.RangeExpression:
+			return fn(node.from) || fn(node.to) || undefined;
+		case NodeKind.PipeExpression:
+			return fn(node.value) || forEachNode(node.args, fn);
+		case NodeKind.NumberLiteral:
+		case NodeKind.StringLiteral:
+		case NodeKind.BooleanLiteral:
+		case NodeKind.Identifier:
+		case NodeKind.Placeholder:
+			return undefined;
+	}
 }
 
 /**
- * Create a string literal node
+ * Map `fn` over `nodes`, returning the original array when nothing changed.
  */
-export function string(value: string): StringLiteral {
-	return { kind: NodeKind.StringLiteral, value };
+function mapNodes(nodes: readonly ASTNode[], fn: (child: ASTNode) => ASTNode): readonly ASTNode[] {
+	let mapped: ASTNode[] | undefined;
+	for (let i = 0; i < nodes.length; i++) {
+		const child = nodes[i] as ASTNode;
+		const replacement = fn(child);
+		if (mapped) {
+			mapped.push(replacement);
+		} else if (replacement !== child) {
+			mapped = nodes.slice(0, i);
+			mapped.push(replacement);
+		}
+	}
+	return mapped ?? nodes;
 }
 
 /**
- * Create a boolean literal node
+ * Give a rebuilt node the comments of the one it replaces, which few nodes have.
+ * The builders keep every node of a kind in one shape, unlike spreading.
  */
-const TRUE_LITERAL: BooleanLiteral = { kind: NodeKind.BooleanLiteral, value: true };
-const FALSE_LITERAL: BooleanLiteral = { kind: NodeKind.BooleanLiteral, value: false };
-
-export function boolean(value: boolean): BooleanLiteral {
-	return value ? TRUE_LITERAL : FALSE_LITERAL;
+function withComments<T extends ASTNode>(original: ASTNode, rebuilt: T): T {
+	const { leadingComments, trailingComments } = original;
+	if (!leadingComments && !trailingComments) return rebuilt;
+	return {
+		...rebuilt,
+		...(leadingComments ? { leadingComments } : {}),
+		...(trailingComments ? { trailingComments } : {}),
+	};
 }
 
 /**
- * Create an array literal node
+ * Rebuild `node` with `fn` applied to each direct child, in evaluation order.
+ * Returns `node` itself when no child changed. Spans and comments are preserved.
  */
-export function array(elements: readonly ASTNode[]): ArrayLiteral {
-	return { kind: NodeKind.ArrayLiteral, elements };
+export function mapChildren(node: ASTNode, fn: (child: ASTNode) => ASTNode): ASTNode {
+	const { start, end } = node;
+	switch (node.kind) {
+		case NodeKind.Program: {
+			const statements = mapNodes(node.statements, fn);
+			return statements === node.statements
+				? node
+				: withComments(node, program(statements, start, end));
+		}
+		case NodeKind.ArrayLiteral: {
+			const elements = mapNodes(node.elements, fn);
+			return elements === node.elements ? node : withComments(node, array(elements, start, end));
+		}
+		case NodeKind.BinaryOp: {
+			const left = fn(node.left);
+			const right = fn(node.right);
+			return left === node.left && right === node.right
+				? node
+				: withComments(node, binaryOp(left, node.operator, right, start, end));
+		}
+		case NodeKind.UnaryOp: {
+			const argument = fn(node.argument);
+			return argument === node.argument
+				? node
+				: withComments(node, unaryOp(node.operator, argument, start, end));
+		}
+		case NodeKind.FunctionCall: {
+			const args = mapNodes(node.args, fn);
+			return args === node.args
+				? node
+				: withComments(node, functionCall(node.name, args, start, end));
+		}
+		case NodeKind.Assignment: {
+			const value = fn(node.value);
+			return value === node.value ? node : withComments(node, assign(node.name, value, start, end));
+		}
+		case NodeKind.IfExpression: {
+			const condition = fn(node.condition);
+			const consequent = fn(node.consequent);
+			const alternate = fn(node.alternate);
+			return condition === node.condition &&
+				consequent === node.consequent &&
+				alternate === node.alternate
+				? node
+				: withComments(node, ifExpr(condition, consequent, alternate, start, end));
+		}
+		case NodeKind.ForExpression: {
+			const iterable = fn(node.iterable);
+			const initial = node.accumulator && fn(node.accumulator.initial);
+			const guard = node.guard && fn(node.guard);
+			const body = fn(node.body);
+			if (
+				iterable === node.iterable &&
+				initial === (node.accumulator && node.accumulator.initial) &&
+				guard === node.guard &&
+				body === node.body
+			) {
+				return node;
+			}
+			const accumulator =
+				node.accumulator && initial ? { name: node.accumulator.name, initial } : null;
+			return withComments(
+				node,
+				forExpr(node.variable, iterable, guard, accumulator, body, start, end),
+			);
+		}
+		case NodeKind.IndexAccess: {
+			const object = fn(node.object);
+			const index = fn(node.index);
+			return object === node.object && index === node.index
+				? node
+				: withComments(node, indexAccess(object, index, start, end));
+		}
+		case NodeKind.RangeExpression: {
+			const from = fn(node.from);
+			const to = fn(node.to);
+			return from === node.from && to === node.to
+				? node
+				: withComments(node, rangeExpr(from, to, node.inclusive, start, end));
+		}
+		case NodeKind.PipeExpression: {
+			const value = fn(node.value);
+			const args = mapNodes(node.args, fn);
+			return value === node.value && args === node.args
+				? node
+				: withComments(node, pipeExpr(value, node.name, args, start, end));
+		}
+		case NodeKind.NumberLiteral:
+		case NodeKind.StringLiteral:
+		case NodeKind.BooleanLiteral:
+		case NodeKind.Identifier:
+		case NodeKind.Placeholder:
+			return node;
+	}
 }
 
 /**
- * Create an identifier node
+ * Builder functions for creating AST nodes manually.
+ *
+ * Every builder takes optional trailing `start` and `end` source offsets, which
+ * the parser supplies so that all nodes of a kind share one object shape.
  */
-export function identifier(name: string): Identifier {
-	return { kind: NodeKind.Identifier, name };
+
+export function program(statements: readonly ASTNode[], start?: number, end?: number): Program {
+	return { kind: NodeKind.Program, statements, start, end };
 }
 
-/**
- * Create a binary operation node
- */
-export function binaryOp(left: ASTNode, operator: Operator, right: ASTNode): BinaryOp {
-	return { kind: NodeKind.BinaryOp, left, operator, right };
+export function number(value: number, start?: number, end?: number): NumberLiteral {
+	return { kind: NodeKind.NumberLiteral, value, start, end };
+}
+
+export function string(value: string, start?: number, end?: number): StringLiteral {
+	return { kind: NodeKind.StringLiteral, value, start, end };
+}
+
+export function boolean(value: boolean, start?: number, end?: number): BooleanLiteral {
+	return { kind: NodeKind.BooleanLiteral, value, start, end };
+}
+
+export function array(elements: readonly ASTNode[], start?: number, end?: number): ArrayLiteral {
+	return { kind: NodeKind.ArrayLiteral, elements, start, end };
+}
+
+export function identifier(name: string, start?: number, end?: number): Identifier {
+	return { kind: NodeKind.Identifier, name, start, end };
+}
+
+export function binaryOp(
+	left: ASTNode,
+	operator: Operator,
+	right: ASTNode,
+	start?: number,
+	end?: number,
+): BinaryOp {
+	return { kind: NodeKind.BinaryOp, left, operator, right, start, end };
 }
 
 /**
  * Create a unary operation node (unary minus or logical NOT)
  */
-export function unaryOp(operator: '-' | '!', argument: ASTNode): UnaryOp {
-	return { kind: NodeKind.UnaryOp, operator, argument };
+export function unaryOp(
+	operator: '-' | '!',
+	argument: ASTNode,
+	start?: number,
+	end?: number,
+): UnaryOp {
+	return { kind: NodeKind.UnaryOp, operator, argument, start, end };
 }
 
-/**
- * Create a function call node
- */
-export function functionCall(name: string, args: readonly ASTNode[] = []): FunctionCall {
-	return { kind: NodeKind.FunctionCall, name, args };
+export function functionCall(
+	name: string,
+	args: readonly ASTNode[] = [],
+	start?: number,
+	end?: number,
+): FunctionCall {
+	return { kind: NodeKind.FunctionCall, name, args, start, end };
 }
 
-/**
- * Create a variable assignment node
- */
-export function assign(name: string, value: ASTNode): Assignment {
-	return { kind: NodeKind.Assignment, name, value };
+export function assign(name: string, value: ASTNode, start?: number, end?: number): Assignment {
+	return { kind: NodeKind.Assignment, name, value, start, end };
 }
 
 /**
  * Create an if expression node (if condition then consequent else alternate)
  */
-export function ifExpr(condition: ASTNode, consequent: ASTNode, alternate: ASTNode): IfExpression {
-	return {
-		kind: NodeKind.IfExpression,
-		condition,
-		consequent,
-		alternate,
-	};
+export function ifExpr(
+	condition: ASTNode,
+	consequent: ASTNode,
+	alternate: ASTNode,
+	start?: number,
+	end?: number,
+): IfExpression {
+	return { kind: NodeKind.IfExpression, condition, consequent, alternate, start, end };
 }
 
 /**
@@ -439,45 +620,55 @@ export function forExpr(
 	guard: ASTNode | null,
 	accumulator: { readonly name: string; readonly initial: ASTNode } | null,
 	body: ASTNode,
+	start?: number,
+	end?: number,
 ): ForExpression {
-	return {
-		kind: NodeKind.ForExpression,
-		variable,
-		iterable,
-		guard,
-		accumulator,
-		body,
-	};
+	return { kind: NodeKind.ForExpression, variable, iterable, guard, accumulator, body, start, end };
 }
 
 /**
  * Create an index access node (arr[0], str[1])
  */
-export function indexAccess(object: ASTNode, index: ASTNode): IndexAccess {
-	return { kind: NodeKind.IndexAccess, object, index };
+export function indexAccess(
+	object: ASTNode,
+	index: ASTNode,
+	start?: number,
+	end?: number,
+): IndexAccess {
+	return { kind: NodeKind.IndexAccess, object, index, start, end };
 }
 
 /**
  * Create a range expression node (1..5, 1..=5)
  */
-export function rangeExpr(start: ASTNode, end: ASTNode, inclusive: boolean): RangeExpression {
-	return { kind: NodeKind.RangeExpression, start, end, inclusive };
+export function rangeExpr(
+	from: ASTNode,
+	to: ASTNode,
+	inclusive: boolean,
+	start?: number,
+	end?: number,
+): RangeExpression {
+	return { kind: NodeKind.RangeExpression, from, to, inclusive, start, end };
 }
 
 /**
  * Create a pipe expression node (value |> FUN(?, arg))
  */
-export function pipeExpr(value: ASTNode, name: string, args: readonly ASTNode[]): PipeExpression {
-	return { kind: NodeKind.PipeExpression, value, name, args };
+export function pipeExpr(
+	value: ASTNode,
+	name: string,
+	args: readonly ASTNode[],
+	start?: number,
+	end?: number,
+): PipeExpression {
+	return { kind: NodeKind.PipeExpression, value, name, args, start, end };
 }
 
 /**
  * Create a placeholder node (?) for use in pipe expression arguments
  */
-const PLACEHOLDER_SINGLETON: Placeholder = { kind: NodeKind.Placeholder };
-
-export function placeholder(): Placeholder {
-	return PLACEHOLDER_SINGLETON;
+export function placeholder(start?: number, end?: number): Placeholder {
+	return { kind: NodeKind.Placeholder, start, end };
 }
 
 /**
@@ -549,40 +740,5 @@ export function logicalOr(left: ASTNode, right: ASTNode): BinaryOp {
 }
 
 export function getNodeName(node: ASTNode): string {
-	switch (node.kind) {
-		case NodeKind.Assignment:
-			return 'Assignment';
-		case NodeKind.BinaryOp:
-			return 'BinaryOp';
-		case NodeKind.IfExpression:
-			return 'IfExpression';
-		case NodeKind.ForExpression:
-			return 'ForExpression';
-		case NodeKind.FunctionCall:
-			return 'FunctionCall';
-		case NodeKind.Identifier:
-			return 'Identifier';
-		case NodeKind.NumberLiteral:
-			return 'NumberLiteral';
-		case NodeKind.StringLiteral:
-			return 'StringLiteral';
-		case NodeKind.BooleanLiteral:
-			return 'BooleanLiteral';
-		case NodeKind.ArrayLiteral:
-			return 'ArrayLiteral';
-		case NodeKind.Program:
-			return 'Program';
-		case NodeKind.UnaryOp:
-			return 'UnaryOp';
-		case NodeKind.IndexAccess:
-			return 'IndexAccess';
-		case NodeKind.RangeExpression:
-			return 'RangeExpression';
-		case NodeKind.PipeExpression:
-			return 'PipeExpression';
-		case NodeKind.Placeholder:
-			return 'Placeholder';
-		default:
-			throw new Error(`Unknown node kind: ${(node as ASTNode).kind}`);
-	}
+	return NodeKind[node.kind];
 }

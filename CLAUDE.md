@@ -4,435 +4,132 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**littlewing** is a minimal, high-performance multi-type expression language with a complete lexer, parser, and interpreter. It supports seven types: numbers, strings, booleans, dates (`Temporal.PlainDate`), times (`Temporal.PlainTime`), datetimes (`Temporal.PlainDateTime`), and homogeneous arrays. The library provides a functional API for evaluating expressions with variables and custom functions.
+**littlewing** is a small multi-type expression language with a lexer, parser, interpreter, optimizer and code generator, built to evaluate untrusted formulas. [LANGUAGE.md](./LANGUAGE.md) is the language reference, and [README.md](./README.md) documents the API.
 
-Key characteristics:
-
-- **Multi-type system** - Seven types: `number`, `string`, `boolean`, `Temporal.PlainDate`, `Temporal.PlainTime`, `Temporal.PlainDateTime`, `readonly RuntimeValue[]`
-- **No implicit coercion** - Explicit conversion via `STR()`, `NUM()`, etc.
-- **Strict boolean logic** - `!`, `&&`, `||`, and `if` conditions require boolean operands
-- **Pipe operator** - `x |> FUN(?) |> OTHER(?, 1)` chains values through function calls using `?` placeholders
-- **Control flow** - `if/then/else` expressions, `for/in/then` comprehensions (with optional `when` guard and `into` accumulator)
-- **Deep structural equality** - `[1, 2] == [1, 2]` → `true`; cross-type `==` → `false`
-- **Homogeneous arrays** - `[1, "two"]` is a TypeError
-- **Full Temporal support** - PlainDate (date-only), PlainTime (time-only), PlainDateTime (date+time, no timezone)
-- **O(n) algorithms** - Lexer, parser, interpreter all run in linear time
-- **100% ESM** - No Node.js APIs, optimized for browsers
-- **Zero runtime dependencies** - Requires global `Temporal` API (native or user-provided polyfill)
-
-## Architecture
-
-The codebase follows a **three-stage compilation pipeline**:
-
-1. **Lexer** (`packages/littlewing/src/lexer.ts`) - Tokenizes source code into a token stream
-   - Single-pass O(n) tokenization
-   - Handles numbers (integers and standard decimals like `0.5`), identifiers, operators, punctuation
-   - Handles string literals with escape sequences (`\"`, `\\`, `\n`, `\t`)
-   - Handles bracket tokens (`[`, `]`) for array literals and index access
-   - Handles range tokens (`..`, `..=`) for range expressions
-   - Handles pipe token (`|>`) and placeholder token (`?`)
-   - Skips whitespace, semicolons, and single-line comments (`//`) automatically
-   - `true` and `false` are parsed as identifiers and handled in the parser
-
-2. **Parser** (`packages/littlewing/src/parser.ts`) - Builds an Abstract Syntax Tree (AST)
-   - Pratt parsing (top-down operator precedence climbing)
-   - Supports: unary > exponentiation > mult/div/mod > add/sub > range > comparison > logical AND > logical OR > pipe > assignment
-   - Postfix bracket indexing (`arr[0]`, `str[1]`) with chaining support (`a[0][1]`, `f()[0]`)
-   - `if/then/else` and `for/in/then` are prefix expressions (not infix), parsed in prefix position
-   - Pipe expressions: `x |> FUN(?)` parsed as infix with precedence 2 (above assignment, below `||`), left-associative
-   - `?` placeholder token only valid inside pipe step arguments; parser validates at least one `?` per pipe step
-   - Keywords: `if`, `then`, `else`, `for`, `in`, `when`, `into` — have no precedence, naturally terminate sub-expressions
-   - Handles string literals, boolean literals (`true`/`false` in prefix position), array literals (`[...]`)
-   - `true`/`false` cannot be used as assignment targets
-
-3. **Interpreter** (`packages/littlewing/src/interpreter.ts`) - Tree-walk evaluation
-   - Evaluates AST nodes using the visitor pattern
-   - Maintains variable state in a `Map<string, RuntimeValue>`
-   - Short-circuit evaluation for `&&` and `||` (both require boolean operands)
-   - `if` condition must be boolean
-   - `for` expression iterates arrays and strings (strings split into single-character strings)
-   - `for` with `when` guard filters elements (guard must be boolean)
-   - `for` without `into`: map mode, result must be a homogeneous array
-   - `for` with `into name = init`: reduce/fold mode, returns final accumulator value
-   - `!` operator requires boolean, `-` operator requires number
-   - Validates homogeneous array elements at construction time
-   - Pipe expressions (`|>`) evaluate piped value, substitute `?` placeholders with the result, then call the function
-   - Supports custom functions and variables via `ExecutionContext`
-
-### Key Types and Contracts
-
-- **RuntimeValue** (`packages/littlewing/src/types.ts`) - `number | string | boolean | Temporal.PlainDate | Temporal.PlainTime | Temporal.PlainDateTime | readonly RuntimeValue[]`
-- **ASTNode** (`packages/littlewing/src/ast.ts`) - Discriminated union of 16 node types:
-  - Program, NumberLiteral, StringLiteral, BooleanLiteral, ArrayLiteral, Identifier, BinaryOp, UnaryOp, FunctionCall, Assignment, IfExpression, ForExpression, IndexAccess, RangeExpression, PipeExpression, Placeholder
-- **ExecutionContext** (`packages/littlewing/src/types.ts`) - Provides global `functions` and `variables`
-  - Functions: `(...args: RuntimeValue[]) => RuntimeValue`
-  - Variables: `Record<string, RuntimeValue>`
-
-Type guards (`isNumberLiteral`, `isStringLiteral`, `isBooleanLiteral`, `isArrayLiteral`, `isBinaryOp`, `isPipeExpression`, etc.) enable safe pattern matching on the ASTNode union.
-
-### Operator Semantics
-
-| Operator                | Types                                               | Behavior                                   |
-| ----------------------- | --------------------------------------------------- | ------------------------------------------ | ------------ | ------------------------------ |
-| `+`                     | number+number, string+string, array+array           | Add, concatenate, or concat arrays         |
-| `-`, `*`, `/`, `%`, `^` | number only                                         | Arithmetic                                 |
-| `==`, `!=`              | any types                                           | Deep equality (cross-type → `false`)       |
-| `<`, `>`, `<=`, `>=`    | number, string, date, time, or datetime (same type) | Ordered comparison                         |
-| `&&`, `                 |                                                     | `                                          | boolean only | Short-circuit; returns boolean |
-| `!`                     | boolean only                                        | Logical NOT                                |
-| `-` (unary)             | number only                                         | Negation                                   |
-| `[]`                    | array or string                                     | Bracket indexing (zero-based, negative OK) |
-| `..`                    | number                                              | Exclusive range (`1..4` → `[1, 2, 3]`)     |
-| `..=`                   | number                                              | Inclusive range (`1..=3` → `[1, 2, 3]`)    |
-| `\|>`                   | any value `\|>` FUNCTION(?)                         | Pipe value through function call           |
-
-### Public API
-
-**Core Functions:**
-
-- `evaluate(source | ast, context?)` - Evaluate and return `RuntimeValue`
-- `evaluateScope(source | ast, context?)` - Evaluate and return all assigned variables
-- `parse(source)` - Parse without evaluating, returns AST
-- `generate(ast)` - Convert AST back to source code
-- `optimize(ast, externalVariables?)` - Optimize AST with constant folding, constant propagation, and dead code elimination
-- `extractInputVariables(ast)` - Extract variables assigned to constant values
-- `extractAssignedVariables(ast)` - Extract all assigned variable names
-
-**Builders (`ast` namespace):**
-
-- Core: `program()`, `number()`, `string()`, `boolean()`, `array()`, `identifier()`, `binaryOp()`, `unaryOp()`, `functionCall()`, `assign()`, `ifExpr()`, `forExpr()`, `indexAccess()`, `rangeExpr()`, `pipeExpr()`, `placeholder()`
-- Arithmetic: `add()`, `subtract()`, `multiply()`, `divide()`, `modulo()`, `exponentiate()`, `negate()`
-- Comparison: `equals()`, `notEquals()`, `lessThan()`, `greaterThan()`, `lessEqual()`, `greaterEqual()`
-- Logical: `logicalAnd()`, `logicalOr()`, `logicalNot()`
-
-**Visitor Pattern:**
-
-- `visit<T>(node, visitor)` - Exhaustive visitor requiring handlers for all 16 node types
-- `visitPartial<T>(node, visitor, defaultHandler)` - Partial visitor with fallback
-- `Visitor<T>` - Type definition for visitor objects
-- `VisitorHandler<N, T>` - Type alias for individual handler signatures: `(node: N, recurse: (n: ASTNode) => T) => T`
-
-**Type Guards:**
-
-- `isProgram()`, `isNumberLiteral()`, `isStringLiteral()`, `isBooleanLiteral()`, `isArrayLiteral()`, `isIdentifier()`, `isBinaryOp()`, `isUnaryOp()`, `isFunctionCall()`, `isAssignment()`, `isIfExpression()`, `isForExpression()`, `isIndexAccess()`, `isRangeExpression()`, `isPipeExpression()`, `isPlaceholder()`
-
-**Utilities:**
-
-- `typeOf(value)` - Returns type name as string: `"number"`, `"string"`, `"boolean"`, `"date"`, `"array"`
-
-**Standard Library:**
-
-- `defaultContext` - All 82 built-in functions
-- `core` - Type conversion and polymorphic collection functions (8)
-- `math` - Math functions (14)
-- `string` - String functions (8)
-- `array` - Array functions (7)
-- `datetime` - Date functions (25, most also accept PlainDateTime)
-- `time` - Time functions (13)
-- `datetimefull` - DateTime construction/conversion functions (7)
+- **Seven types**: `number`, `string`, `boolean`, date, time, datetime (`Temporal.Plain*`), and homogeneous arrays
+- **No implicit coercion**, and `!`, `&&`, `||` and `if` require booleans
+- **Bounded**: every evaluation spends from a step budget, which bounds its time and memory
+- **100% ESM**, no Node.js APIs. Needs a global `Temporal`; `temporal-spec` is a types-only dependency
 
 ## Development Commands
 
 ```bash
-# Root-level commands (run from repo root)
-bun run build           # Build the library
+# From the repo root
+bun run build           # Build the library and the playground
 bun run test            # Run all library tests
-bun run lint            # Lint all packages
+bun run test:package    # Check the built package: consumer types, then a Node smoke test
+bun run lint            # Lint with type checking
 bun run lint:fix        # Auto-fix lint issues
 bun run fmt             # Format all files
 bun run fmt:check       # Check formatting
 
-# Library-specific commands
-bun run --cwd packages/littlewing dev            # Watch mode
-bun run --cwd packages/littlewing test:watch      # Tests in watch mode
-bun run --cwd packages/littlewing test:coverage   # Coverage report
-bun run --cwd packages/littlewing release         # Bump version, commit, push, tag
+# Library
+bun run --cwd packages/littlewing dev            # Rebuild on change
+bun run --cwd packages/littlewing test:watch     # Tests in watch mode
+bun run --cwd packages/littlewing test:coverage  # Coverage report
+bun run --cwd packages/littlewing test test/time.test.ts  # One test file
 
 # Playground
-bun run --cwd packages/playground dev      # Start Vite dev server
-bun run --cwd packages/playground build    # Production build
-bun run --cwd packages/playground preview  # Preview production build
+bun run --cwd packages/playground dev      # Start the Vite dev server
 ```
 
-## Project Structure
+Releases follow [AGENTS.md](./AGENTS.md).
 
-This is a **Bun workspaces monorepo** with two packages:
+### Running anything memory-hungry
+
+Stress tests, mutation runs and fuzzers exercise the very limits that protect a machine, so a bug in them can consume all its memory. `timeout` does not bound memory. Run these under a hard cap, such as `systemd-run --user --scope -p MemoryMax=3G -p MemorySwapMax=0 ...`. Tests of a limit must stay small in absolute terms if the limit is broken: use a small budget, as the hostile programs in `test/evaluation.test.ts` do.
+
+## Architecture
 
 ```
-/
-├── package.json              # Workspace root (private)
-├── bunfig.toml               # [install] linker = "hoisted"
-├── tsconfig.json             # Project references only
-├── .oxlintrc.json            # Shared lint config
-├── .oxfmtrc.json             # Shared format config
-├── packages/
-│   ├── littlewing/           # Publishable library
-│   │   ├── package.json
-│   │   ├── tsconfig.json
-│   │   ├── bunfig.toml       # [test] preload only
-│   │   ├── bunup.config.ts
-│   │   ├── src/
-│   │   │   ├── index.ts          # Public API exports
-│   │   │   ├── types.ts          # RuntimeValue, ExecutionContext
-│   │   │   ├── lexer.ts          # Tokenization (source → tokens)
-│   │   │   ├── parser.ts         # Parsing (tokens → AST)
-│   │   │   ├── interpreter.ts    # Tree-walk evaluation (AST + context → result)
-│   │   │   ├── optimizer.ts      # AST optimization (constant folding + DCE)
-│   │   │   ├── visitor.ts        # Visitor pattern for AST traversal
-│   │   │   ├── ast.ts            # AST node types, type guards, builder functions
-│   │   │   ├── codegen.ts        # Code generation (AST → source)
-│   │   │   ├── analyzer.ts       # Static analysis utilities
-│   │   │   ├── utils.ts          # Shared utilities (operators, type assertions, equality)
-│   │   │   └── stdlib/
-│   │   │       ├── index.ts          # Combines all stdlib modules into defaultContext
-│   │   │       ├── core.ts           # Type conversion + polymorphic functions (8)
-│   │   │       ├── math.ts           # Math functions (14)
-│   │   │       ├── string.ts         # String functions (8)
-│   │   │       ├── array.ts          # Array functions (7)
-│   │   │       ├── datetime.ts       # Date functions (25)
-│   │   │       ├── time.ts           # Time functions (13)
-│   │   │       └── datetimefull.ts   # DateTime functions (7)
-│   │   └── test/                 # 17 test files, 852 tests
-│   └── playground/           # Private web app
-│       ├── package.json
-│       ├── tsconfig.json
-│       ├── vite.config.ts    # React + Tailwind + source alias
-│       ├── index.html
-│       └── src/
-│           ├── main.tsx
-│           ├── App.tsx
-│           └── index.css
+source → lexer → parser → AST → interpreter → value
+                           ├──→ optimizer → AST
+                           └──→ codegen → source
 ```
+
+All of it lives in `packages/littlewing/src`:
+
+| File               | Role                                                                        |
+| ------------------ | --------------------------------------------------------------------------- |
+| `lexer.ts`         | Tokens, comments, and whether a line break precedes each token              |
+| `parser.ts`        | Pratt parser; statement separation, depth limits, spans, comment attachment |
+| `ast.ts`           | Node types, guards, builders, `visit`, `forEachChild`, `mapChildren`        |
+| `interpreter.ts`   | Compiles the AST to closures and runs them; errors, `evaluate*`             |
+| `limits.ts`        | The step budget, and which functions are trusted                            |
+| `optimizer.ts`     | Constant folding and propagation, dead code elimination                     |
+| `codegen.ts`       | AST back to source, with parentheses from precedence                        |
+| `analyzer.ts`      | `extractInputVariables`, `extractAssignedVariables`                         |
+| `utils.ts`         | Operators, equality, type assertions, array shapes, precedence, ranges      |
+| `errors.ts`        | `ParseError`, `EvaluationError`, `toLineColumn`                             |
+| `stdlib/*.ts`      | The 82 built-in functions, one module per family                            |
+| `stdlib/search.ts` | Substring search that stays linear and respects code points                 |
+
+`packages/playground` is a private Vite app that consumes the library from source.
+
+### Grammar
+
+- Precedence, loosest to tightest: assignment, pipe, `||`, `&&`, comparison, range, additive, multiplicative, unary, `^`, postfix indexing. Unary operators parse their operand at the `^` level, so `-2 ^ 2` is `-(2 ^ 2)` but `-2 * 3` is `(-2) * 3`.
+- `;` is a token, and statements need a `;` or a line break between them. A line starting with `-`, `(` or `[` starts a new statement, unless enclosed by brackets or a keyword pair. The parser tracks that in `state.enclosed`, and the cursor tracks `newlineBefore`.
+- `if` and `for` are prefix expressions with open-ended tails that absorb anything after them, which is why codegen has to know whether a position is a tail.
+- `else if` chains are parsed in a loop. Nesting is limited to `MAX_NESTING` and AST height to `MAX_HEIGHT`, which every recursive pass relies on staying within the call stack.
+- `?` is only valid directly as a pipe argument, and a pipe step needs at least one.
+
+### The budget
+
+`limits.ts` holds the steps remaining in a module-level variable, because work is charged wherever it happens. Evaluation is synchronous, and `run` saves and restores the budget, so only a nested `evaluate` can interleave.
+
+The rule is that **anything a program can make take time or memory has to charge for it, before doing it where the size is known**:
+
+- Every compiled node spends a `step`, and arrays and dates cost extra because they weigh more.
+- Reading a string natively pays `chargeRead`, as the first read flattens a lazily concatenated string.
+- The `assert*` helpers charge for reading their argument, so most stdlib functions are metered by their first line.
+- `assertReadable` rejects results whose logical size exceeds the budget, because aliasing makes a value exponentially larger than the work that built it.
+- Never hash program-controlled data: engines hash integers without a seed and long strings by length alone. `ARR_UNIQUE` sorts instead.
+- Never use a regular expression that can backtrack, or a native search with a long pattern.
+
+Functions in `defaultContext` are trusted: they skip the charge for their arguments and the check on their result, so `LEN` is free on arrays. The public namespaces (`core.LEN`) hold bound copies, which count as host functions everywhere, bundled or not. A bound call costs about 15%, so the trusted table keeps the originals. Host functions are charged for the logical size of their arguments, and their results are validated.
+
+Check the costs with `stepsOf` in `test/helpers.ts`, which finds the exact number of steps a program takes. A test that merely expects a limit error usually passes for the wrong reason.
+
+### Evaluation
+
+`compile` turns each node into a closure, so evaluating it skips the dispatch on its kind, and variables are numbered into slots at compile time. An AST is compiled once and cached in a `WeakMap`; a string is compiled afresh, as nothing can reuse it. An AST from the host can share nodes, so its compilation is memoized by node. What a string parses to cannot, and skips that. The closures for `+`, `-` and `*` are separate on purpose: merging them was measured at four times slower on loops. A call site caches the function it resolved for one evaluation, keyed by `frame.id`. One- and two-argument calls have their own paths for the same reason as the arithmetic.
+
+`step` runs for every node, so everything on that path is measured. Change it with the profiler open: `node --cpu-prof`, and the inspector's `HeapProfiler.startSampling` with `includeObjectsCollectedByMinorGC` for allocation, since `--heap-prof` only shows what survives.
+
+### Optimizer contract
+
+The result evaluates exactly like the original: to the same value or the same failure, with the same function calls. So nothing that may fail is removed, and a fold that fails leaves the expression in place.
+
+One forward pass folds and propagates together, so a constant only reaches statements after its assignment. Dead code elimination then walks backwards. `externalVariables` enables propagation, and names what the host may supply. `preserveScope` keeps every assignment.
+
+Long strings are not propagated, and a variable stays in `s[i]` when the index does not fold, because the interpreter caches a split string by variable slot.
+
+### Types and contracts
+
+- `RuntimeValue` (`types.ts`) uses `PlainDate`, `PlainTime` and `PlainDateTime`, which resolve to the global `Temporal` types where a project has them and to `temporal-spec` otherwise. Public signatures must use those aliases. The source gets its global `Temporal` from tsconfig `types`, and the published types must not depend on one.
+- Runtime failures are `EvaluationError`s with `start`, `end` and the original `cause`. `frame.current` is the node to blame. It is only set where something can fail, and has to be set again after evaluating children.
+- Parsed nodes carry `start` and `end`. Builders take them as optional trailing arguments, so every node of a kind has one shape.
+- `forEachChild` and `mapChildren` cover generic traversal. Prefer them to a new switch over every kind. `mapChildren` keeps spans and comments and returns the same node if nothing changed.
 
 ## Key Development Notes
 
-### Type Safety
-
-- Strict TypeScript mode enforced
-- No implicit `any` types
-- Type guards required for safe union type narrowing
-- `isolatedDeclarations` enabled
-- `RuntimeValue` is a 7-type union requiring explicit type handling
-
-### Visitor Pattern
-
-The codebase uses a centralized visitor pattern for AST traversal, implemented in `packages/littlewing/src/visitor.ts`.
-
-**Two visitor functions:**
-
-1. **`visit<T>(node, visitor)`** - Exhaustive visitor requiring all 16 node type handlers
-2. **`visitPartial<T>(node, visitor, defaultHandler)`** - Partial visitor with fallback
-
-**Used by:** interpreter, optimizer, codegen, analyzer
-
-**Example (custom traversal):**
-
-```typescript
-import { visit } from 'littlewing';
-
-const count = visit(ast, {
-	Program: (n, recurse) => n.statements.reduce((sum, s) => sum + recurse(s), 0),
-	NumberLiteral: () => 1,
-	StringLiteral: () => 1,
-	BooleanLiteral: () => 1,
-	ArrayLiteral: (n, recurse) => 1 + n.elements.reduce((sum, el) => sum + recurse(el), 0),
-	Identifier: () => 1,
-	BinaryOp: (n, recurse) => 1 + recurse(n.left) + recurse(n.right),
-	UnaryOp: (n, recurse) => 1 + recurse(n.argument),
-	FunctionCall: (n, recurse) => 1 + n.args.reduce((sum, arg) => sum + recurse(arg), 0),
-	Assignment: (n, recurse) => 1 + recurse(n.value),
-	IfExpression: (n, recurse) =>
-		1 + recurse(n.condition) + recurse(n.consequent) + recurse(n.alternate),
-	ForExpression: (n, recurse) =>
-		1 +
-		recurse(n.iterable) +
-		(n.guard ? recurse(n.guard) : 0) +
-		(n.accumulator ? recurse(n.accumulator.initial) : 0) +
-		recurse(n.body),
-	IndexAccess: (n, recurse) => 1 + recurse(n.object) + recurse(n.index),
-	RangeExpression: (n, recurse) => 1 + recurse(n.start) + recurse(n.end),
-	PipeExpression: (n, recurse) =>
-		1 + recurse(n.value) + n.args.reduce((sum, arg) => sum + recurse(arg), 0),
-	Placeholder: () => 1,
-});
-```
-
-**Important: Object-based AST structure:**
-
-- Nodes are readonly objects with a `kind` discriminator
-- Access fields by name: `n.left`, `n.operator`, `n.right`, etc.
-- Use type guards for safe type narrowing: `if (isBinaryOp(node))`
-
-### Optimization
-
-The optimizer (`packages/littlewing/src/optimizer.ts`) implements constant folding, constant propagation, and dead code elimination:
-
-- **Constant folding** - Evaluates pure expressions at compile time (numbers, strings, booleans)
-- **Cross-type folding** - `1 == "1"` folds to `false`, `"a" + "b"` folds to `"ab"`
-- **Conditional folding** - `if true then x else y` folds to `x` (requires boolean literal condition)
-- **Constant propagation** - When `externalVariables` is provided, substitutes single-assignment literal variables and re-folds iteratively until stable. Variables in the `externalVariables` set, reassigned variables, `for` loop variables, and `for` accumulator variables are never propagated.
-- **Dead code elimination** - Removes unused variable assignments
-- **Without `externalVariables`** - No variables are propagated (backward-compatible; they can be overridden by `ExecutionContext.variables` at runtime)
+- Strict TypeScript with `isolatedDeclarations`, `noUncheckedIndexedAccess` and `verbatimModuleSyntax`.
+- Imports in `src` use explicit `.js` specifiers, as the output is one module per source file for `tsc` to emit unchanged. That per-module `dist` is what lets bundlers tree-shake.
+- oxlint for linting, oxfmt for formatting, tabs for indentation, single quotes in source.
 
 ### Testing
 
-Tests use Bun's built-in test framework:
+Tests use Bun's test runner, in `packages/littlewing/test`.
 
-- **852 tests** across 17 test files
-- Run a single test file: `bun test packages/littlewing/test/optimizer.test.ts`
+- `generators.ts` builds random ASTs and programs. `roundtrip.test.ts` and `optimizer-contract.test.ts` hold the properties that matter most: any AST survives `generate` and `parse`, and an optimized program behaves like the original.
+- `evaluation.test.ts` covers errors, host values, budgets and hostile programs. `stdlib.test.ts` covers function behaviour and exact costs. `grammar.test.ts` covers statements, numbers, depth and spans.
+- `consumer/` is a strict TypeScript consumer of the built package, and a smoke test on Node, whose engine differs from Bun's in ways that have hidden bugs.
 
-### Code Style
+### Common tasks
 
-- oxlint for linting, oxfmt for formatting
-- Tabs for indentation
-- Double quotes, semicolons (configured in oxlint/oxfmt)
-- Git hooks enforce lint and type-check on pre-commit
+**Adding a stdlib function:** implement it in the right `stdlib/*.ts` module with an UPPERCASE name. Use the `assert*` helpers, charge for any work they do not cover, and return a valid `RuntimeValue`, as nothing checks it. Add behaviour and cost tests to `stdlib.test.ts`, metadata to the playground's `function-metadata.ts`, and a row to LANGUAGE.md.
 
-### Common Development Tasks
+**Adding an AST node:** add the `NodeKind`, interface, guard and builder in `ast.ts`, extend `ASTNode`, `Visitor`, `visit`, `forEachChild` and `mapChildren`, then handle it in the interpreter, `collectFreeIdentifiers` if it binds names, codegen's `precedenceOf` and `emitBare`, the optimizer if it can fold, and the parser. Add it to `randomAst`, so the round trip tests reach it.
 
-**Adding a new stdlib function:**
-
-1. Implement in the appropriate `packages/littlewing/src/stdlib/*.ts` module
-2. Use assertion helpers (`assertNumber`, `assertString`, `assertArray`, `assertDate`, `assertBoolean`) for type safety
-3. Use UPPERCASE naming convention
-4. Add tests in `packages/littlewing/test/defaults.test.ts`
-5. Export is automatic via the stdlib `index.ts` spread
-
-**Adding a new AST node type:**
-
-1. Add `NodeKind` variant in `packages/littlewing/src/ast.ts`
-2. Add interface type definition, type guard, and builder function in `packages/littlewing/src/ast.ts`
-3. Expand `ASTNode` union and update `getNodeName`
-4. Add handler to `Visitor<T>` in `packages/littlewing/src/visitor.ts`
-5. Add case to `visitPartial` switch
-6. Update all visitor consumers: interpreter, optimizer, codegen
-7. Update `collectAllIdentifiers` in `packages/littlewing/src/utils.ts`
-8. Add parser support in `packages/littlewing/src/parser.ts`
-
-**Adding a new binary operator:**
-
-1. Add token type to `TokenKind` in `packages/littlewing/src/lexer.ts`
-2. Handle tokenization in `nextToken`
-3. Add precedence in parser's `getTokenPrecedence`
-4. Add to `Operator` type in `packages/littlewing/src/ast.ts`
-5. Add to `evaluateBinaryOperation()` in `packages/littlewing/src/utils.ts`
-6. Add tests
-
-## AST Node Types Reference
-
-```typescript
-// 16 readonly object-based AST node types
-
-interface Program {
-	readonly kind: NodeKind.Program;
-	readonly statements: readonly ASTNode[];
-}
-interface NumberLiteral {
-	readonly kind: NodeKind.NumberLiteral;
-	readonly value: number;
-}
-interface StringLiteral {
-	readonly kind: NodeKind.StringLiteral;
-	readonly value: string;
-}
-interface BooleanLiteral {
-	readonly kind: NodeKind.BooleanLiteral;
-	readonly value: boolean;
-}
-interface ArrayLiteral {
-	readonly kind: NodeKind.ArrayLiteral;
-	readonly elements: readonly ASTNode[];
-}
-interface Identifier {
-	readonly kind: NodeKind.Identifier;
-	readonly name: string;
-}
-interface BinaryOp {
-	readonly kind: NodeKind.BinaryOp;
-	readonly left: ASTNode;
-	readonly operator: Operator;
-	readonly right: ASTNode;
-}
-interface UnaryOp {
-	readonly kind: NodeKind.UnaryOp;
-	readonly operator: '-' | '!';
-	readonly argument: ASTNode;
-}
-interface FunctionCall {
-	readonly kind: NodeKind.FunctionCall;
-	readonly name: string;
-	readonly args: readonly ASTNode[];
-}
-interface Assignment {
-	readonly kind: NodeKind.Assignment;
-	readonly name: string;
-	readonly value: ASTNode;
-}
-interface IfExpression {
-	readonly kind: NodeKind.IfExpression;
-	readonly condition: ASTNode;
-	readonly consequent: ASTNode;
-	readonly alternate: ASTNode;
-}
-interface ForExpression {
-	readonly kind: NodeKind.ForExpression;
-	readonly variable: string;
-	readonly iterable: ASTNode;
-	readonly guard: ASTNode | null;
-	readonly accumulator: { readonly name: string; readonly initial: ASTNode } | null;
-	readonly body: ASTNode;
-}
-interface IndexAccess {
-	readonly kind: NodeKind.IndexAccess;
-	readonly object: ASTNode;
-	readonly index: ASTNode;
-}
-interface RangeExpression {
-	readonly kind: NodeKind.RangeExpression;
-	readonly start: ASTNode;
-	readonly end: ASTNode;
-	readonly inclusive: boolean;
-}
-interface PipeExpression {
-	readonly kind: NodeKind.PipeExpression;
-	readonly value: ASTNode;
-	readonly name: string;
-	readonly args: readonly ASTNode[];
-}
-interface Placeholder {
-	readonly kind: NodeKind.Placeholder;
-}
-```
-
-## Built-in Functions Summary
-
-**Total: 82 built-in functions in `defaultContext`**
-
-- **Core (8):** STR, NUM, TYPE, LEN, SLICE, CONTAINS, REVERSE, INDEX_OF
-- **Math (14):** ABS, CEIL, FLOOR, ROUND, SQRT, MIN, MAX, CLAMP, SIN, COS, TAN, LOG, LOG10, EXP
-- **String (8):** STR_UPPER, STR_LOWER, STR_TRIM, STR_SPLIT, STR_REPLACE, STR_STARTS_WITH, STR_ENDS_WITH, STR_REPEAT
-- **Array (7):** ARR_SORT, ARR_UNIQUE, ARR_FLAT, ARR_JOIN, ARR_SUM, ARR_MIN, ARR_MAX
-- **Date - Core (2):** TODAY, DATE
-- **Date - Extractors (6):** YEAR, MONTH, DAY, WEEKDAY, DAY_OF_YEAR, QUARTER
-- **Date - Arithmetic (3):** ADD_DAYS, ADD_MONTHS, ADD_YEARS
-- **Date - Differences (4):** DIFFERENCE_IN_DAYS, DIFFERENCE_IN_WEEKS, DIFFERENCE_IN_MONTHS, DIFFERENCE_IN_YEARS
-- **Date - Period Boundaries (6):** START_OF_MONTH, END_OF_MONTH, START_OF_YEAR, END_OF_YEAR, START_OF_WEEK, START_OF_QUARTER
-- **Date - Comparisons (4):** IS_SAME_DAY, IS_WEEKEND, IS_LEAP_YEAR, AGE
-- **Time - Core (2):** TIME, NOW_TIME
-- **Time - Extractors (4):** HOUR, MINUTE, SECOND, MILLISECOND
-- **Time - Arithmetic (3):** ADD_HOURS, ADD_MINUTES, ADD_SECONDS
-- **Time - Differences (3):** DIFFERENCE_IN_HOURS, DIFFERENCE_IN_MINUTES, DIFFERENCE_IN_SECONDS
-- **Time - Comparisons (1):** IS_SAME_TIME
-- **DateTime - Core (2):** DATETIME, NOW
-- **DateTime - Conversions (3):** TO_DATE, TO_TIME, COMBINE
-- **DateTime - Day Boundaries (2):** START_OF_DAY, END_OF_DAY
-
-Date functions use `Temporal.PlainDate` (most also accept `Temporal.PlainDateTime`). Time functions use `Temporal.PlainTime` (most also accept `Temporal.PlainDateTime`). DateTime functions use `Temporal.PlainDateTime`.
-
-## Build Output
-
-- ESM-only distribution
-- TypeScript declaration files generated
-- Main entry point: `packages/littlewing/dist/index.js`
-- Type definitions: `packages/littlewing/dist/index.d.ts`
-- Optimized for tree-shaking
+**Adding a binary operator:** add the token in `lexer.ts`, its precedence in `getTokenPrecedence` and `getOperatorPrecedence`, the `Operator` type, and the operation in `evaluateBinaryOperation`, charged for what it costs.

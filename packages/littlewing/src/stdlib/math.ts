@@ -1,5 +1,5 @@
-import type { RuntimeValue } from '../types';
-import { assertNumber } from '../utils';
+import type { RuntimeValue } from '../types.js';
+import { assertNumber } from '../utils.js';
 
 /**
  * Math utility functions

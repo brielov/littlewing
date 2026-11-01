@@ -3,13 +3,13 @@
  */
 
 // Analyzer
-export { extractAssignedVariables, extractInputVariables } from './analyzer';
+export { extractAssignedVariables, extractInputVariables } from './analyzer.js';
 
 // Errors
-export { ParseError, toLineColumn } from './errors';
+export { EvaluationError, ParseError, toLineColumn } from './errors.js';
 
 // AST builders
-export * as ast from './ast';
+export * as ast from './ast.js';
 // AST types and type guards
 export {
 	type ArrayLiteral,
@@ -20,6 +20,7 @@ export {
 	type BooleanLiteral,
 	type ForExpression,
 	type FunctionCall,
+	forEachChild,
 	type Identifier,
 	type IfExpression,
 	type IndexAccess,
@@ -39,6 +40,7 @@ export {
 	isRangeExpression,
 	isStringLiteral,
 	isUnaryOp,
+	mapChildren,
 	NodeKind,
 	type NumberLiteral,
 	type Operator,
@@ -50,19 +52,39 @@ export {
 	type UnaryOp,
 	type Visitor,
 	visit,
-} from './ast';
+} from './ast.js';
 // Code generation
-export { generate } from './codegen';
+export { generate } from './codegen.js';
 // Interpreter
-export { evaluate, evaluateScope, evaluateWithScope } from './interpreter';
+export { DEFAULT_MAX_STEPS, evaluate, evaluateScope, evaluateWithScope } from './interpreter.js';
+// Limits
+export { LimitExceededError } from './limits.js';
 // Optimizer
-export { optimize } from './optimizer';
+export { type OptimizeOptions, optimize } from './optimizer.js';
 // Parser
-export { parse } from './parser';
+export { parse } from './parser.js';
 // Standard library
-export { array, core, datetime, datetimefull, defaultContext, math, string, time } from './stdlib';
+export {
+	array,
+	core,
+	datetime,
+	datetimefull,
+	defaultContext,
+	math,
+	string,
+	time,
+} from './stdlib/index.js';
 // Type definitions
-export type { ExecutionContext, ExecutionResult, RuntimeValue } from './types';
+export type {
+	ExecutionContext,
+	ExecutionLimits,
+	ExecutionResult,
+	HostFunction,
+	PlainDate,
+	PlainDateTime,
+	PlainTime,
+	RuntimeValue,
+} from './types.js';
 // Utilities
 export {
 	assertArray,
@@ -70,9 +92,11 @@ export {
 	assertDate,
 	assertDateOrDateTime,
 	assertDateTime,
+	assertInteger,
 	assertNumber,
+	assertRuntimeValue,
 	assertString,
 	assertTime,
 	assertTimeOrDateTime,
 	typeOf,
-} from './utils';
+} from './utils.js';

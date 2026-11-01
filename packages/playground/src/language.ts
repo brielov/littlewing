@@ -44,14 +44,22 @@ function levenshteinDistance(a: string, b: string): number {
  * Format a RuntimeValue for display in hover tooltips.
  */
 function formatValue(value: RuntimeValue): string {
+	try {
+		return formatNested(value);
+	} catch {
+		return '(too deeply nested to display)';
+	}
+}
+
+function formatNested(value: RuntimeValue): string {
 	if (typeof value === 'string') return `"${value}"`;
 	if (typeof value === 'number' || typeof value === 'boolean') return String(value);
 	if (Array.isArray(value)) {
 		if (value.length > 5) {
-			const head = value.slice(0, 5).map(formatValue).join(', ');
+			const head = value.slice(0, 5).map(formatNested).join(', ');
 			return `[${head}, ... (${value.length} items)]`;
 		}
-		return `[${value.map(formatValue).join(', ')}]`;
+		return `[${value.map(formatNested).join(', ')}]`;
 	}
 	return String(value);
 }
@@ -138,6 +146,7 @@ export function registerLittlewingLanguage(monaco: Monaco): void {
 				[/"/, 'string', '@string'],
 
 				// Numbers
+				[/\d+(\.\d+)?[eE][+-]?\d+/, 'number.float'],
 				[/\d+\.\d+/, 'number.float'],
 				[/\d+/, 'number'],
 
@@ -168,8 +177,8 @@ export function registerLittlewingLanguage(monaco: Monaco): void {
 				// Brackets
 				[/[[\]()]/, '@brackets'],
 
-				// Comma
-				[/,/, 'delimiter'],
+				// Comma and semicolon
+				[/[,;]/, 'delimiter'],
 
 				// Whitespace
 				[/\s+/, 'white'],
@@ -404,6 +413,9 @@ export function registerLittlewingLanguage(monaco: Monaco): void {
 					if (suffixIndex < 0) continue;
 					const name = msg.slice(prefix.length, suffixIndex);
 					if (name.length === 0) continue;
+
+					// Only offer a replacement if the marker covers exactly the name
+					if (model.getValueInRange(marker) !== name) continue;
 
 					// Score candidates by Levenshtein distance
 					const scored: { candidate: string; distance: number }[] = [];

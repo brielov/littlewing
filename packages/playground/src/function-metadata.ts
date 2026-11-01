@@ -22,8 +22,8 @@ export const FUNCTION_SIGNATURES: Record<string, FunctionSignature> = {
 		parameters: [
 			{
 				label: 'value',
-				type: 'any',
-				description: 'Value to convert (number, boolean, date, time, or datetime)',
+				type: 'string | number | boolean | date | time | datetime',
+				description: 'Value to convert (anything but an array)',
 			},
 		],
 		returnType: 'string',
@@ -33,8 +33,8 @@ export const FUNCTION_SIGNATURES: Record<string, FunctionSignature> = {
 		parameters: [
 			{
 				label: 'value',
-				type: 'string | boolean',
-				description: 'Value to convert (string or boolean)',
+				type: 'string | number | boolean',
+				description: 'Value to convert (decimal string, number or boolean)',
 			},
 		],
 		returnType: 'number',
@@ -548,7 +548,7 @@ export const FUNCTION_SIGNATURES: Record<string, FunctionSignature> = {
 
 	// Time - Differences
 	DIFFERENCE_IN_HOURS: {
-		description: 'Absolute difference in hours',
+		description: 'Absolute difference in whole hours',
 		parameters: [
 			{ label: 't1', type: 'time | datetime', description: 'First time or datetime' },
 			{
@@ -560,7 +560,7 @@ export const FUNCTION_SIGNATURES: Record<string, FunctionSignature> = {
 		returnType: 'number',
 	},
 	DIFFERENCE_IN_MINUTES: {
-		description: 'Absolute difference in minutes',
+		description: 'Absolute difference in whole minutes',
 		parameters: [
 			{ label: 't1', type: 'time | datetime', description: 'First time or datetime' },
 			{
@@ -572,7 +572,7 @@ export const FUNCTION_SIGNATURES: Record<string, FunctionSignature> = {
 		returnType: 'number',
 	},
 	DIFFERENCE_IN_SECONDS: {
-		description: 'Absolute difference in seconds',
+		description: 'Absolute difference in whole seconds',
 		parameters: [
 			{ label: 't1', type: 'time | datetime', description: 'First time or datetime' },
 			{

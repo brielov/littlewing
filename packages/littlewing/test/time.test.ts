@@ -3,6 +3,7 @@ import { Temporal } from 'temporal-polyfill';
 import { evaluate } from '../src/interpreter';
 import { defaultContext } from '../src/stdlib';
 import type { RuntimeValue } from '../src/types';
+import { EvaluationError } from '../src/errors';
 
 /**
  * Helper to create a context with time/datetime variables
@@ -42,15 +43,15 @@ describe('Time Functions', () => {
 		});
 
 		test('TIME() type errors', () => {
-			expect(() => evaluate('TIME("14", 30, 0)', defaultContext)).toThrow(TypeError);
-			expect(() => evaluate('TIME(14, "30", 0)', defaultContext)).toThrow(TypeError);
-			expect(() => evaluate('TIME(14, 30, "0")', defaultContext)).toThrow(TypeError);
+			expect(() => evaluate('TIME("14", 30, 0)', defaultContext)).toThrow(EvaluationError);
+			expect(() => evaluate('TIME(14, "30", 0)', defaultContext)).toThrow(EvaluationError);
+			expect(() => evaluate('TIME(14, 30, "0")', defaultContext)).toThrow(EvaluationError);
 		});
 
 		test('TIME() rejects fractional fields', () => {
-			expect(() => evaluate('TIME(14.5, 30, 0)', defaultContext)).toThrow(TypeError);
-			expect(() => evaluate('TIME(14, 30.5, 0)', defaultContext)).toThrow(TypeError);
-			expect(() => evaluate('TIME(14, 30, 0.5)', defaultContext)).toThrow(TypeError);
+			expect(() => evaluate('TIME(14.5, 30, 0)', defaultContext)).toThrow(EvaluationError);
+			expect(() => evaluate('TIME(14, 30.5, 0)', defaultContext)).toThrow(EvaluationError);
+			expect(() => evaluate('TIME(14, 30, 0.5)', defaultContext)).toThrow(EvaluationError);
 		});
 	});
 
@@ -83,11 +84,11 @@ describe('Time Functions', () => {
 
 		test('extractors reject date', () => {
 			const d = new Temporal.PlainDate(2024, 6, 15);
-			expect(() => evaluate('HOUR(d)', ctx({ d }))).toThrow(TypeError);
+			expect(() => evaluate('HOUR(d)', ctx({ d }))).toThrow(EvaluationError);
 		});
 
 		test('extractors reject number', () => {
-			expect(() => evaluate('HOUR(5)', defaultContext)).toThrow(TypeError);
+			expect(() => evaluate('HOUR(5)', defaultContext)).toThrow(EvaluationError);
 		});
 	});
 
@@ -136,12 +137,12 @@ describe('Time Functions', () => {
 
 		test('arithmetic rejects date', () => {
 			const d = new Temporal.PlainDate(2024, 6, 15);
-			expect(() => evaluate('ADD_HOURS(d, 1)', ctx({ d }))).toThrow(TypeError);
+			expect(() => evaluate('ADD_HOURS(d, 1)', ctx({ d }))).toThrow(EvaluationError);
 		});
 
 		test('arithmetic rejects non-number amount', () => {
 			const t = new Temporal.PlainTime(10, 0, 0);
-			expect(() => evaluate('ADD_HOURS(t, "3")', ctx({ t }))).toThrow(TypeError);
+			expect(() => evaluate('ADD_HOURS(t, "3")', ctx({ t }))).toThrow(EvaluationError);
 		});
 	});
 
@@ -179,13 +180,13 @@ describe('Time Functions', () => {
 		test('mixed time+datetime rejects', () => {
 			const t = new Temporal.PlainTime(10, 0, 0);
 			const dt = new Temporal.PlainDateTime(2024, 6, 15, 10, 0, 0);
-			expect(() => evaluate('DIFFERENCE_IN_HOURS(t, dt)', ctx({ t, dt }))).toThrow(TypeError);
+			expect(() => evaluate('DIFFERENCE_IN_HOURS(t, dt)', ctx({ t, dt }))).toThrow(EvaluationError);
 		});
 
 		test('mixed datetime+time rejects', () => {
 			const dt = new Temporal.PlainDateTime(2024, 6, 15, 10, 0, 0);
 			const t = new Temporal.PlainTime(10, 0, 0);
-			expect(() => evaluate('DIFFERENCE_IN_HOURS(dt, t)', ctx({ dt, t }))).toThrow(TypeError);
+			expect(() => evaluate('DIFFERENCE_IN_HOURS(dt, t)', ctx({ dt, t }))).toThrow(EvaluationError);
 		});
 	});
 
@@ -217,7 +218,7 @@ describe('Time Functions', () => {
 		test('IS_SAME_TIME() rejects date', () => {
 			const d = new Temporal.PlainDate(2024, 6, 15);
 			const t = new Temporal.PlainTime(10, 0, 0);
-			expect(() => evaluate('IS_SAME_TIME(d, t)', ctx({ d, t }))).toThrow(TypeError);
+			expect(() => evaluate('IS_SAME_TIME(d, t)', ctx({ d, t }))).toThrow(EvaluationError);
 		});
 	});
 });

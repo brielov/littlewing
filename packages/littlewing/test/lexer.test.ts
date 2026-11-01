@@ -1,4 +1,5 @@
 import { describe, expect, test } from 'bun:test';
+import type { ParseError } from '../src/errors';
 import {
 	createCursor,
 	nextToken,
@@ -111,10 +112,34 @@ describe('Lexer', () => {
 		expectTokenNumber(cursor, tokens[1], TokenKind.Number, 3.14);
 	});
 
-	test('skip whitespace and semicolons', () => {
+	test('skip whitespace and tokenize semicolons', () => {
 		const tokens = tokenize('x = 1 ; y = 2');
 		const filtered = tokens.filter((t) => t[0] !== TokenKind.Eof);
-		expect(filtered.length).toBe(6); // x, =, 1, y, =, 2
+		expect(filtered.length).toBe(7); // x, =, 1, ;, y, =, 2
+		expectToken(filtered[3], TokenKind.Semicolon);
+	});
+
+	test('tracks line breaks before each token', () => {
+		const cursor = createCursor('a b\n// note\n  c');
+		const seen: boolean[] = [];
+		for (let i = 0; i < 3; i++) {
+			nextToken(cursor);
+			seen.push(cursor.newlineBefore);
+		}
+		expect(seen).toEqual([false, false, true]);
+	});
+
+	test('ignores a leading byte order mark', () => {
+		const tokens = tokenize('\ufeff1');
+		expectToken(tokens[0], TokenKind.Number);
+		expect(tokens[0]?.[1]).toBe(1);
+	});
+
+	test('true and false are keywords', () => {
+		const tokens = tokenize('true false truthy');
+		expectToken(tokens[0], TokenKind.True);
+		expectToken(tokens[1], TokenKind.False);
+		expectToken(tokens[2], TokenKind.Identifier);
 	});
 
 	test('tokenize full expression', () => {
@@ -153,13 +178,27 @@ describe('Lexer', () => {
 		expect(() => tokenize('.2 + .3')).toThrow('Unexpected character');
 	});
 
-	test('error on scientific notation', () => {
-		// 1e6 is now lexed as number(1) then identifier(e6)
-		const source = '1e6';
+	test('tokenize scientific notation', () => {
+		const source = '1e6 2.5E-3 7e+2';
 		const cursor = createCursor(source);
 		const tokens = tokenize(source);
-		expectTokenNumber(cursor, tokens[0], TokenKind.Number, 1);
-		expectTokenText(cursor, tokens[1], TokenKind.Identifier, 'e6');
+		expectTokenNumber(cursor, tokens[0], TokenKind.Number, 1e6);
+		expectTokenNumber(cursor, tokens[1], TokenKind.Number, 2.5e-3);
+		expectTokenNumber(cursor, tokens[2], TokenKind.Number, 7e2);
+	});
+
+	test('error on a number running into an identifier', () => {
+		expect(() => tokenize('3x')).toThrow("Invalid number '3x'");
+		expect(() => tokenize('1e')).toThrow("Invalid number '1e'");
+		expect(() => tokenize('1e+')).toThrow("Invalid number '1e'");
+		expect(() => tokenize('2.5e-x')).toThrow("Invalid number '2.5e'");
+		expect(() => tokenize('1_000')).toThrow("Invalid number '1_000'");
+	});
+
+	test('a number may be followed directly by a range operator', () => {
+		const tokens = tokenize('1e2..3');
+		expectToken(tokens[0], TokenKind.Number);
+		expectToken(tokens[1], TokenKind.DotDot);
 	});
 
 	test('error on lone decimal point', () => {
@@ -293,12 +332,31 @@ describe('Lexer', () => {
 		expectToken(tokens[2], TokenKind.Number);
 	});
 
+	test('unexpected characters are reported as whole code points', () => {
+		expect(() => tokenize('😀')).toThrow("Unexpected character '😀'");
+	});
+
 	test('single & throws error', () => {
 		expect(() => tokenize('5 & 3')).toThrow("Unexpected character '&'");
 	});
 
 	test('single | throws error', () => {
 		expect(() => tokenize('5 | 3')).toThrow("Unexpected character '|'");
+	});
+
+	test('string escapes', () => {
+		const source = '"a\\nb\\rc\\td\\\\e\\"f\\qg"';
+		const cursor = createCursor(source);
+		expect(readStringValue(cursor, nextToken(cursor))).toBe('a\nb\rc\td\\e"f\\qg');
+	});
+
+	test('unterminated string ending in a backslash stays within the source', () => {
+		try {
+			tokenize('"abc\\');
+			expect.unreachable('should have thrown');
+		} catch (err) {
+			expect((err as ParseError).end).toBe(5);
+		}
 	});
 
 	test('tokenize string literal', () => {

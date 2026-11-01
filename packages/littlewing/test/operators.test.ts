@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'bun:test';
 import { Temporal } from 'temporal-polyfill';
 import { evaluate } from '../src/interpreter';
+import { EvaluationError } from '../src/errors';
 
 describe('Operators', () => {
 	describe('Comparison', () => {
@@ -120,10 +121,10 @@ describe('Operators', () => {
 		test('cross-type ordered comparison throws TypeError', () => {
 			const t = new Temporal.PlainTime(10, 0, 0);
 			const d = new Temporal.PlainDate(2024, 6, 15);
-			expect(() => evaluate('t < d', { variables: { t, d } })).toThrow(TypeError);
+			expect(() => evaluate('t < d', { variables: { t, d } })).toThrow(EvaluationError);
 			const dt = new Temporal.PlainDateTime(2024, 6, 15, 10, 0, 0);
-			expect(() => evaluate('t < dt', { variables: { t, dt } })).toThrow(TypeError);
-			expect(() => evaluate('d < dt', { variables: { d, dt } })).toThrow(TypeError);
+			expect(() => evaluate('t < dt', { variables: { t, dt } })).toThrow(EvaluationError);
+			expect(() => evaluate('d < dt', { variables: { d, dt } })).toThrow(EvaluationError);
 		});
 
 		test('array equality (deep structural)', () => {
@@ -228,9 +229,9 @@ describe('Operators', () => {
 		});
 
 		test('logical operators require boolean operands', () => {
-			expect(() => evaluate('1 && 1')).toThrow(TypeError);
-			expect(() => evaluate('0 || 1')).toThrow(TypeError);
-			expect(() => evaluate('5 && 3')).toThrow(TypeError);
+			expect(() => evaluate('1 && 1')).toThrow(EvaluationError);
+			expect(() => evaluate('0 || 1')).toThrow(EvaluationError);
+			expect(() => evaluate('5 && 3')).toThrow(EvaluationError);
 		});
 
 		test('realistic boolean logic examples', () => {
@@ -304,8 +305,8 @@ describe('Operators', () => {
 		});
 
 		test('if requires boolean condition', () => {
-			expect(() => evaluate('if 1 then 100 else 50')).toThrow(TypeError);
-			expect(() => evaluate('if 0 then 100 else 50')).toThrow(TypeError);
+			expect(() => evaluate('if 1 then 100 else 50')).toThrow(EvaluationError);
+			expect(() => evaluate('if 0 then 100 else 50')).toThrow(EvaluationError);
 		});
 
 		test('discount calculation with if', () => {

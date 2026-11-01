@@ -1,30 +1,53 @@
-import type { RuntimeValue } from '../types';
-import { assertNumber, assertString, deepEquals, typeOf } from '../utils';
+import type { RuntimeValue } from '../types.js';
+import { chargeValue } from '../limits.js';
+import {
+	assertInteger,
+	assertString,
+	codePointLength,
+	deepEquals,
+	toIndexable,
+	typeOf,
+} from '../utils.js';
+import { findSubstring } from './search.js';
+
+/**
+ * Fail if an argument was left out, which a function's types cannot catch when a
+ * program calls it.
+ */
+function assertProvided(v: RuntimeValue | undefined, context: string): asserts v is RuntimeValue {
+	if (v === undefined) {
+		throw new TypeError(`${context} requires an argument`);
+	}
+}
 
 /**
  * Convert a value to string representation
- * Supports numbers, booleans, and dates. Arrays throw TypeError.
+ * Supports strings, numbers, booleans, dates, times and datetimes. Arrays throw
+ * TypeError.
  */
 export const STR = (v: RuntimeValue): RuntimeValue => {
-	if (typeof v === 'string') return v;
-	if (typeof v === 'number') return String(v);
-	if (typeof v === 'boolean') return v ? 'true' : 'false';
-	if (typeof v === 'object' && v !== null && 'toString' in v && !Array.isArray(v)) {
-		return v.toString();
+	assertProvided(v, 'STR');
+	if (Array.isArray(v)) {
+		throw new TypeError(`STR: cannot convert ${typeOf(v)} to string`);
 	}
-	throw new TypeError(`STR: cannot convert ${typeOf(v)} to string`);
+	chargeValue(v);
+	return typeof v === 'string' ? v : String(v);
 };
+
+// Each part has one way to match, as a regular expression must on untrusted input
+const NUMERIC = /^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?$/;
 
 /**
  * Convert a value to number
- * Supports strings (via Number()) and booleans (true→1, false→0).
- * Dates and arrays throw TypeError.
+ * Supports decimal strings, surrounding whitespace aside, and booleans (true→1,
+ * false→0). Dates and arrays throw TypeError.
  */
 export const NUM = (v: RuntimeValue): RuntimeValue => {
 	if (typeof v === 'number') return v;
 	if (typeof v === 'string') {
+		chargeValue(v);
 		const n = Number(v);
-		if (Number.isNaN(n)) {
+		if (!NUMERIC.test(v.trim()) || !Number.isFinite(n)) {
 			throw new TypeError(`NUM: cannot convert string "${v}" to number`);
 		}
 		return n;
@@ -37,6 +60,7 @@ export const NUM = (v: RuntimeValue): RuntimeValue => {
  * Returns the type name of a value as a string
  */
 export const TYPE = (v: RuntimeValue): RuntimeValue => {
+	assertProvided(v, 'TYPE');
 	return typeOf(v);
 };
 
@@ -53,67 +77,12 @@ function assertStringOrArray(
 	}
 }
 
-function hasSurrogateCodeUnit(value: string): boolean {
-	for (let i = 0; i < value.length; i++) {
-		const code = value.charCodeAt(i);
-		if (code >= 0xd800 && code <= 0xdfff) return true;
-	}
-	return false;
-}
-
-function codePointLength(value: string): number {
-	let length = 0;
-	for (let i = 0; i < value.length; i++) {
-		const code = value.charCodeAt(i);
-		if (code >= 0xd800 && code <= 0xdbff && i + 1 < value.length) {
-			const next = value.charCodeAt(i + 1);
-			if (next >= 0xdc00 && next <= 0xdfff) i++;
-		}
-		length++;
-	}
-	return length;
-}
-
-function stringLength(value: string): number {
-	return hasSurrogateCodeUnit(value) ? codePointLength(value) : value.length;
-}
-
-function sliceString(value: string, start: number, end?: number): string {
-	if (!hasSurrogateCodeUnit(value)) return value.slice(start, end);
-	return Array.from(value).slice(start, end).join('');
-}
-
-function indexOfString(value: string, search: string): number {
-	if (search === '') return 0;
-	if (!hasSurrogateCodeUnit(value) && !hasSurrogateCodeUnit(search)) {
-		return value.indexOf(search);
-	}
-
-	const haystack = Array.from(value);
-	const needle = Array.from(search);
-	if (needle.length > haystack.length) return -1;
-
-	const limit = haystack.length - needle.length;
-	for (let i = 0; i <= limit; i++) {
-		let found = true;
-		for (let j = 0; j < needle.length; j++) {
-			if (haystack[i + j] !== needle[j]) {
-				found = false;
-				break;
-			}
-		}
-		if (found) return i;
-	}
-	return -1;
-}
-
 /**
  * Get the length of a string or array
  */
 export const LEN = (v: RuntimeValue): RuntimeValue => {
 	assertStringOrArray(v, 'LEN');
-	if (typeof v === 'string') return stringLength(v);
-	return v.length;
+	return typeof v === 'string' ? codePointLength(v) : v.length;
 };
 
 /**
@@ -121,14 +90,13 @@ export const LEN = (v: RuntimeValue): RuntimeValue => {
  */
 export const SLICE = (v: RuntimeValue, start: RuntimeValue, end?: RuntimeValue): RuntimeValue => {
 	assertStringOrArray(v, 'SLICE');
-	assertNumber(start, 'SLICE', 'start');
-	if (end !== undefined) {
-		assertNumber(end, 'SLICE', 'end');
-		if (typeof v === 'string') return sliceString(v, start, end);
-		return v.slice(start, end);
-	}
-	if (typeof v === 'string') return sliceString(v, start);
-	return v.slice(start);
+	assertInteger(start, 'SLICE', 'start');
+	if (end !== undefined) assertInteger(end, 'SLICE', 'end');
+	if (typeof v !== 'string') return v.slice(start, end as number | undefined);
+
+	const items = toIndexable(v);
+	const sliced = items.slice(start, end as number | undefined);
+	return typeof sliced === 'string' ? sliced : sliced.join('');
 };
 
 /**
@@ -138,9 +106,11 @@ export const SLICE = (v: RuntimeValue, start: RuntimeValue, end?: RuntimeValue):
  */
 export const CONTAINS = (v: RuntimeValue, search: RuntimeValue): RuntimeValue => {
 	assertStringOrArray(v, 'CONTAINS');
+	assertProvided(search, 'CONTAINS');
+	chargeValue(v);
 	if (typeof v === 'string') {
 		assertString(search, 'CONTAINS (search)');
-		return v.includes(search);
+		return findSubstring(v, search) !== -1;
 	}
 	for (const elem of v) {
 		if (deepEquals(elem, search)) return true;
@@ -153,10 +123,11 @@ export const CONTAINS = (v: RuntimeValue, search: RuntimeValue): RuntimeValue =>
  */
 export const REVERSE = (v: RuntimeValue): RuntimeValue => {
 	assertStringOrArray(v, 'REVERSE');
+	chargeValue(v);
 	if (typeof v === 'string') {
 		return Array.from(v).reverse().join('');
 	}
-	return [...v].reverse();
+	return v.slice().reverse();
 };
 
 /**
@@ -167,9 +138,12 @@ export const REVERSE = (v: RuntimeValue): RuntimeValue => {
  */
 export const INDEX_OF = (v: RuntimeValue, search: RuntimeValue): RuntimeValue => {
 	assertStringOrArray(v, 'INDEX_OF');
+	assertProvided(search, 'INDEX_OF');
+	chargeValue(v);
 	if (typeof v === 'string') {
 		assertString(search, 'INDEX_OF (search)');
-		return indexOfString(v, search);
+		const offset = findSubstring(v, search);
+		return offset === -1 ? -1 : codePointLength(v.slice(0, offset));
 	}
 	for (let i = 0; i < v.length; i++) {
 		if (deepEquals(v[i] as RuntimeValue, search)) return i;

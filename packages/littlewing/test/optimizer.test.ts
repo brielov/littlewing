@@ -22,9 +22,12 @@ import {
 	isStringLiteral,
 	isUnaryOp,
 } from '../src/ast';
+import { generate } from '../src/codegen';
 import { evaluate } from '../src/interpreter';
 import { optimize } from '../src/optimizer';
 import { parse } from '../src/parser';
+import { withoutSpans } from './helpers';
+import { EvaluationError } from '../src/errors';
 
 describe('Optimizer', () => {
 	test('constant folding binary operations', () => {
@@ -113,12 +116,16 @@ describe('Optimizer', () => {
 		expect(optimized).toBe(13);
 	});
 
-	test('division by zero error during folding', () => {
-		expect(() => optimize(parse('1 / 0'))).toThrow('Division by zero');
+	test('division by zero stays a runtime error', () => {
+		const optimized = optimize(parse('1 / 0'));
+		expect(isBinaryOp(optimized)).toBe(true);
+		expect(() => evaluate(optimized)).toThrow('Division by zero');
 	});
 
-	test('modulo by zero error during folding', () => {
-		expect(() => optimize(parse('10 % 0'))).toThrow('Modulo by zero');
+	test('modulo by zero stays a runtime error', () => {
+		const optimized = optimize(parse('10 % 0'));
+		expect(isBinaryOp(optimized)).toBe(true);
+		expect(() => evaluate(optimized)).toThrow('Modulo by zero');
 	});
 
 	test('function call arguments are optimized recursively', () => {
@@ -261,12 +268,13 @@ describe('Optimizer', () => {
 		expect(JSON.stringify(node)).toContain('NOW');
 	});
 
-	test('variable reassignment prevents propagation', () => {
+	test('an overwritten assignment is dead', () => {
 		const source = 'x = 5; x = 10; x';
 		const node = optimize(parse(source));
 		expect(isProgram(node)).toBe(true);
 		const programNode = node as Program;
-		expect(programNode.statements.length).toBe(3);
+		expect(programNode.statements.length).toBe(2);
+		expect(evaluate(node)).toBe(10);
 	});
 
 	test('complex arithmetic preserves variables', () => {
@@ -351,38 +359,38 @@ describe('Optimizer', () => {
 	});
 
 	test('constant folding for && with booleans', () => {
-		expect(optimize(parse('true && true'))).toEqual(ast.boolean(true));
-		expect(optimize(parse('true && false'))).toEqual(ast.boolean(false));
-		expect(optimize(parse('false && true'))).toEqual(ast.boolean(false));
-		expect(optimize(parse('false && false'))).toEqual(ast.boolean(false));
+		expect(withoutSpans(optimize(parse('true && true')))).toEqual(ast.boolean(true));
+		expect(withoutSpans(optimize(parse('true && false')))).toEqual(ast.boolean(false));
+		expect(withoutSpans(optimize(parse('false && true')))).toEqual(ast.boolean(false));
+		expect(withoutSpans(optimize(parse('false && false')))).toEqual(ast.boolean(false));
 	});
 
 	test('constant folding for || with booleans', () => {
-		expect(optimize(parse('true || true'))).toEqual(ast.boolean(true));
-		expect(optimize(parse('true || false'))).toEqual(ast.boolean(true));
-		expect(optimize(parse('false || true'))).toEqual(ast.boolean(true));
-		expect(optimize(parse('false || false'))).toEqual(ast.boolean(false));
+		expect(withoutSpans(optimize(parse('true || true')))).toEqual(ast.boolean(true));
+		expect(withoutSpans(optimize(parse('true || false')))).toEqual(ast.boolean(true));
+		expect(withoutSpans(optimize(parse('false || true')))).toEqual(ast.boolean(true));
+		expect(withoutSpans(optimize(parse('false || false')))).toEqual(ast.boolean(false));
 	});
 
 	test('logical operators with comparisons fold to boolean', () => {
-		expect(optimize(parse('5 > 3 && 10 > 8'))).toEqual(ast.boolean(true));
-		expect(optimize(parse('5 < 3 || 10 > 8'))).toEqual(ast.boolean(true));
-		expect(optimize(parse('5 < 3 && 10 < 8'))).toEqual(ast.boolean(false));
+		expect(withoutSpans(optimize(parse('5 > 3 && 10 > 8')))).toEqual(ast.boolean(true));
+		expect(withoutSpans(optimize(parse('5 < 3 || 10 > 8')))).toEqual(ast.boolean(true));
+		expect(withoutSpans(optimize(parse('5 < 3 && 10 < 8')))).toEqual(ast.boolean(false));
 	});
 
 	test('logical folding preserves short-circuit semantics', () => {
-		expect(optimize(parse('false && (1 / 0)'))).toEqual(ast.boolean(false));
-		expect(optimize(parse('true || (1 / 0)'))).toEqual(ast.boolean(true));
-		expect(optimize(parse('false && SIDE()'))).toEqual(ast.boolean(false));
-		expect(optimize(parse('true || SIDE()'))).toEqual(ast.boolean(true));
+		expect(withoutSpans(optimize(parse('false && (1 / 0)')))).toEqual(ast.boolean(false));
+		expect(withoutSpans(optimize(parse('true || (1 / 0)')))).toEqual(ast.boolean(true));
+		expect(withoutSpans(optimize(parse('false && SIDE()')))).toEqual(ast.boolean(false));
+		expect(withoutSpans(optimize(parse('true || SIDE()')))).toEqual(ast.boolean(true));
 	});
 
 	test('logical folding keeps right-side type checks when not short-circuited', () => {
 		const andNode = optimize(parse('true && 1'));
 		const orNode = optimize(parse('false || 1'));
 
-		expect(() => evaluate(andNode)).toThrow(TypeError);
-		expect(() => evaluate(orNode)).toThrow(TypeError);
+		expect(() => evaluate(andNode)).toThrow(EvaluationError);
+		expect(() => evaluate(orNode)).toThrow(EvaluationError);
 	});
 
 	test('unary operation with variable (cannot fold)', () => {
@@ -441,21 +449,21 @@ describe('Optimizer', () => {
 	});
 
 	test('string comparison folding', () => {
-		expect(optimize(parse('"abc" == "abc"'))).toEqual(ast.boolean(true));
-		expect(optimize(parse('"abc" != "def"'))).toEqual(ast.boolean(true));
-		expect(optimize(parse('"abc" < "def"'))).toEqual(ast.boolean(true));
+		expect(withoutSpans(optimize(parse('"abc" == "abc"')))).toEqual(ast.boolean(true));
+		expect(withoutSpans(optimize(parse('"abc" != "def"')))).toEqual(ast.boolean(true));
+		expect(withoutSpans(optimize(parse('"abc" < "def"')))).toEqual(ast.boolean(true));
 	});
 
 	test('cross-type equality folding', () => {
-		expect(optimize(parse('5 == "5"'))).toEqual(ast.boolean(false));
-		expect(optimize(parse('5 != "5"'))).toEqual(ast.boolean(true));
-		expect(optimize(parse('true == 1'))).toEqual(ast.boolean(false));
+		expect(withoutSpans(optimize(parse('5 == "5"')))).toEqual(ast.boolean(false));
+		expect(withoutSpans(optimize(parse('5 != "5"')))).toEqual(ast.boolean(true));
+		expect(withoutSpans(optimize(parse('true == 1')))).toEqual(ast.boolean(false));
 	});
 
 	test('boolean equality folding', () => {
-		expect(optimize(parse('true == true'))).toEqual(ast.boolean(true));
-		expect(optimize(parse('true == false'))).toEqual(ast.boolean(false));
-		expect(optimize(parse('true != false'))).toEqual(ast.boolean(true));
+		expect(withoutSpans(optimize(parse('true == true')))).toEqual(ast.boolean(true));
+		expect(withoutSpans(optimize(parse('true == false')))).toEqual(ast.boolean(false));
+		expect(withoutSpans(optimize(parse('true != false')))).toEqual(ast.boolean(true));
 	});
 
 	test('array literal elements are optimized', () => {
@@ -582,7 +590,7 @@ describe('Dead Code Elimination', () => {
 		const prog = optimized as Program;
 		expect(prog.statements.length).toBe(3);
 		expect((prog.statements[0] as Assignment).name).toBe('x');
-		expect((prog.statements[0] as Assignment).value).toEqual(ast.number(10));
+		expect(withoutSpans((prog.statements[0] as Assignment).value)).toEqual(ast.number(10));
 		expect((prog.statements[1] as Assignment).name).toBe('y');
 	});
 
@@ -616,13 +624,16 @@ describe('Dead Code Elimination', () => {
 		expect(names).not.toContain('y');
 	});
 
-	test('handles unary operations on unused variables', () => {
+	test('keeps operations on variables a host could replace', () => {
 		const source = 'x = 10; y = -x; z = 5; z';
 		const optimized = optimize(parse(source));
-		expect(isProgram(optimized)).toBe(true);
-		const prog = optimized as Program;
-		expect(prog.statements.length).toBe(2);
-		expect((prog.statements[0] as Assignment).name).toBe('z');
+		expect(generate(optimized)).toBe('x = 10\ny = -x\nz = 5\nz');
+		expect(() => evaluate(optimized, { variables: { x: 'text' } })).toThrow('expected number');
+	});
+
+	test('removes operations once variables are known', () => {
+		const source = 'x = 10; y = -x; z = 5; z';
+		expect(generate(optimize(parse(source), { externalVariables: new Set() }))).toBe('5');
 	});
 
 	test('preserves variables used in logical expressions', () => {
@@ -635,11 +646,8 @@ describe('Dead Code Elimination', () => {
 
 	test('handles variables used only in assignment RHS', () => {
 		const source = 'a = 10; b = a + 5; c = 20; c';
-		const optimized = optimize(parse(source));
-		expect(isProgram(optimized)).toBe(true);
-		const prog = optimized as Program;
-		expect(prog.statements.length).toBe(2);
-		expect((prog.statements[0] as Assignment).name).toBe('c');
+		expect(generate(optimize(parse(source)))).toBe('a = 10\nb = a + 5\nc = 20\nc');
+		expect(generate(optimize(parse(source), { externalVariables: new Set() }))).toBe('20');
 	});
 
 	test('preserves assignments with function calls in RHS', () => {
@@ -690,37 +698,45 @@ describe('Constant Propagation', () => {
 	const noExternals = new Set<string>();
 
 	test('propagates single-assignment literal', () => {
-		const optimized = optimize(parse('x = 5; x + 10'), noExternals);
+		const optimized = optimize(parse('x = 5; x + 10'), { externalVariables: noExternals });
 		expect(isNumberLiteral(optimized)).toBe(true);
 		expect((optimized as NumberLiteral).value).toBe(15);
 	});
 
 	test('propagates multiple variables', () => {
-		const optimized = optimize(parse('x = 5; y = 10; x + y'), noExternals);
+		const optimized = optimize(parse('x = 5; y = 10; x + y'), { externalVariables: noExternals });
 		expect(isNumberLiteral(optimized)).toBe(true);
 		expect((optimized as NumberLiteral).value).toBe(15);
 	});
 
 	test('chains through expressions', () => {
-		const optimized = optimize(parse('x = 5; y = x + 10; y * 2'), noExternals);
+		const optimized = optimize(parse('x = 5; y = x + 10; y * 2'), {
+			externalVariables: noExternals,
+		});
 		expect(isNumberLiteral(optimized)).toBe(true);
 		expect((optimized as NumberLiteral).value).toBe(30);
 	});
 
 	test('propagates string literals', () => {
-		const optimized = optimize(parse('greeting = "hello"; greeting + " world"'), noExternals);
+		const optimized = optimize(parse('greeting = "hello"; greeting + " world"'), {
+			externalVariables: noExternals,
+		});
 		expect(isStringLiteral(optimized)).toBe(true);
 		expect((optimized as StringLiteral).value).toBe('hello world');
 	});
 
 	test('propagates boolean literals', () => {
-		const optimized = optimize(parse('flag = true; if flag then 1 else 0'), noExternals);
+		const optimized = optimize(parse('flag = true; if flag then 1 else 0'), {
+			externalVariables: noExternals,
+		});
 		expect(isNumberLiteral(optimized)).toBe(true);
 		expect((optimized as NumberLiteral).value).toBe(1);
 	});
 
 	test('does NOT propagate external variables', () => {
-		const optimized = optimize(parse('x = 5; y = 10; x + y'), new Set(['x']));
+		const optimized = optimize(parse('x = 5; y = 10; x + y'), {
+			externalVariables: new Set(['x']),
+		});
 		expect(isProgram(optimized)).toBe(true);
 		const prog = optimized as Program;
 		// x is external, so x assignment kept; y=10 propagated and folded
@@ -736,15 +752,13 @@ describe('Constant Propagation', () => {
 	});
 
 	test('does NOT propagate reassigned variables', () => {
-		const optimized = optimize(parse('x = 5; x = 10; x'), noExternals);
-		expect(isProgram(optimized)).toBe(true);
-		const prog = optimized as Program;
-		expect(prog.statements.length).toBe(3);
+		const optimized = optimize(parse('x = 5; x = 10; x'), { externalVariables: noExternals });
+		expect(generate(optimized)).toBe('x = 10\nx');
 	});
 
 	test('does NOT propagate variables reassigned in nested expressions', () => {
 		const source = 'x = 1; y = (x = 2); x';
-		const optimized = optimize(parse(source), noExternals);
+		const optimized = optimize(parse(source), { externalVariables: noExternals });
 		// x is assigned at top-level AND inside y's RHS — must not propagate x
 		expect(evaluate(source)).toBe(2);
 		expect(evaluate(optimized)).toBe(2);
@@ -752,20 +766,20 @@ describe('Constant Propagation', () => {
 
 	test('nested assignment: semantics preserved after optimization', () => {
 		const source = 'x = 1; y = (x = 2); x + y';
-		const optimized = optimize(parse(source), noExternals);
+		const optimized = optimize(parse(source), { externalVariables: noExternals });
 		expect(evaluate(source)).toBe(4);
 		expect(evaluate(optimized)).toBe(4);
 	});
 
 	test('does NOT propagate non-literal values (function calls)', () => {
-		const optimized = optimize(parse('x = NOW(); x'), noExternals);
+		const optimized = optimize(parse('x = NOW(); x'), { externalVariables: noExternals });
 		expect(isProgram(optimized)).toBe(true);
 		const prog = optimized as Program;
 		expect(prog.statements.length).toBe(2);
 	});
 
 	test('does NOT propagate non-literal values (identifiers)', () => {
-		const optimized = optimize(parse('x = y; x + 1'), noExternals);
+		const optimized = optimize(parse('x = y; x + 1'), { externalVariables: noExternals });
 		expect(isProgram(optimized)).toBe(true);
 		const prog = optimized as Program;
 		expect(prog.statements.length).toBe(2);
@@ -781,7 +795,7 @@ describe('Constant Propagation', () => {
 	});
 
 	test('DCE removes propagated-then-unused assignments', () => {
-		const optimized = optimize(parse('x = 5; y = 10; x + y'), noExternals);
+		const optimized = optimize(parse('x = 5; y = 10; x + y'), { externalVariables: noExternals });
 		// Both x and y are propagated and folded to 15
 		// Their assignments become dead code and are eliminated
 		expect(isNumberLiteral(optimized)).toBe(true);
@@ -790,7 +804,7 @@ describe('Constant Propagation', () => {
 
 	test('does NOT propagate for loop variables', () => {
 		const source = 'x = 5; for x in [1, 2, 3] then x * 2';
-		const optimized = optimize(parse(source), noExternals);
+		const optimized = optimize(parse(source), { externalVariables: noExternals });
 		expect(isForExpression(optimized)).toBe(true);
 		const forNode = optimized as ForExpression;
 		expect(forNode.variable).toBe('x');
@@ -799,7 +813,7 @@ describe('Constant Propagation', () => {
 	test('preserves execution semantics with propagation', () => {
 		const source = 'price = 100; tax = 0.08; total = price * (1 + tax); total';
 		const withoutProp = evaluate(source);
-		const optimized = optimize(parse(source), noExternals);
+		const optimized = optimize(parse(source), { externalVariables: noExternals });
 		const withProp = evaluate(optimized);
 		expect(withProp).toBe(withoutProp);
 		expect(withProp).toBeCloseTo(108, 10);
@@ -808,14 +822,14 @@ describe('Constant Propagation', () => {
 	test('preserves execution semantics with external overrides', () => {
 		const source = 'price = 100; tax = 0.08; total = price * (1 + tax); total';
 		const externals = new Set(['price']);
-		const optimized = optimize(parse(source), externals);
+		const optimized = optimize(parse(source), { externalVariables: externals });
 		// With price overridden at runtime, tax is still propagated
 		expect(evaluate(optimized, { variables: { price: 200 } })).toBeCloseTo(216, 10);
 	});
 
 	test('full pipeline example: all locals fold away', () => {
 		const source = 'price = 100; tax = 0.08; total = price * (1 + tax); total';
-		const optimized = optimize(parse(source), noExternals);
+		const optimized = optimize(parse(source), { externalVariables: noExternals });
 		// All variables are local literals, everything folds
 		expect(isNumberLiteral(optimized)).toBe(true);
 		expect((optimized as NumberLiteral).value).toBeCloseTo(108, 10);
@@ -823,10 +837,9 @@ describe('Constant Propagation', () => {
 
 	test('partial propagation with mixed external and local', () => {
 		const source = 'a = 5; b = external; c = a + 10; c';
-		const optimized = optimize(parse(source), new Set(['external']));
-		// a=5 propagated, c = 5 + 10 = 15, b=external kept but DCE removes it
-		expect(isNumberLiteral(optimized)).toBe(true);
-		expect((optimized as NumberLiteral).value).toBe(15);
+		const optimized = optimize(parse(source), { externalVariables: new Set(['external']) });
+		// a=5 propagated and c = 5 + 10 = 15, but b stays: reading external may fail
+		expect(generate(optimized)).toBe('b = external\n15');
 	});
 });
 
@@ -943,7 +956,7 @@ describe('Comment preservation through optimizer', () => {
 
 	test('for accumulator variable not propagated', () => {
 		const source = 'sum = 10; for x in [1, 2] into sum = 0 then sum + x';
-		const optimized = optimize(parse(source), new Set());
+		const optimized = optimize(parse(source), { externalVariables: new Set() });
 		expect(isForExpression(optimized)).toBe(true);
 		const forNode = optimized as ForExpression;
 		expect(forNode.accumulator?.name).toBe('sum');

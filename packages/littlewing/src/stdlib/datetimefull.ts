@@ -1,5 +1,6 @@
-import type { RuntimeValue } from '../types';
-import { assertDate, assertDateTime, assertInteger, assertTime } from '../utils';
+import { CLOCK_STEPS, charge } from '../limits.js';
+import type { RuntimeValue } from '../types.js';
+import { assertDate, assertDateTime, assertInteger, assertTime } from '../utils.js';
 
 /**
  * DateTime construction and conversion functions using Temporal.PlainDateTime
@@ -32,7 +33,10 @@ export const DATETIME = (
 /**
  * Get the current date and time as a PlainDateTime
  */
-export const NOW = (): RuntimeValue => Temporal.Now.plainDateTimeISO();
+export const NOW = (): RuntimeValue => {
+	charge(CLOCK_STEPS);
+	return Temporal.Now.plainDateTimeISO();
+};
 
 // ============================================================================
 // CONVERSIONS

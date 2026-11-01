@@ -12,11 +12,13 @@ import * as ast from '../src/ast';
 import { generate } from '../src/codegen';
 import { evaluate, evaluateScope } from '../src/interpreter';
 import { optimize } from '../src/optimizer';
+import type { EvaluationError } from '../src/errors';
 import { parse } from '../src/parser';
+import { stepsOf } from './helpers';
 import { extractAssignedVariables, extractInputVariables } from '../src/analyzer';
 import { createCursor, nextToken, TokenKind } from '../src/lexer';
 import { defaultContext } from '../src/stdlib';
-import type { ExecutionContext, RuntimeValue } from '../src/types';
+import type { ExecutionContext, HostFunction, RuntimeValue } from '../src/types';
 
 const stdlibCtx: ExecutionContext = defaultContext;
 
@@ -378,7 +380,7 @@ describe('Optimizer: pipe expressions', () => {
 	});
 
 	test('constant propagation into pipe value', () => {
-		const node = optimize(parse('x = 5; x |> ABS(?)'), new Set<string>());
+		const node = optimize(parse('x = 5; x |> ABS(?)'), { externalVariables: new Set() });
 		expect(isPipeExpression(node)).toBe(true);
 		const pipe = node as PipeExpression;
 		expect(isNumberLiteral(pipe.value)).toBe(true);
@@ -443,5 +445,100 @@ describe('AST builders: pipe', () => {
 	test('isPlaceholder type guard', () => {
 		expect(isPlaceholder(ast.placeholder())).toBe(true);
 		expect(isPlaceholder(ast.number(1))).toBe(false);
+	});
+});
+
+describe('Pipe calls', () => {
+	const seen: string[] = [];
+	const context = {
+		variables: { a: 1 },
+		functions: {
+			F: (...args: RuntimeValue[]) => {
+				seen.push(`F(${args.join(',')})`);
+				return args.length;
+			},
+			V: (x: RuntimeValue) => {
+				seen.push(`V(${String(x)})`);
+				return x;
+			},
+		},
+	};
+
+	test.each([
+		['V(1) |> F(?)', ['V(1)', 'F(1)']],
+		['V(1) |> F(?, V(2))', ['V(1)', 'V(2)', 'F(1,2)']],
+		['V(1) |> F(V(2), ?)', ['V(1)', 'V(2)', 'F(2,1)']],
+		['V(1) |> F(?, ?)', ['V(1)', 'F(1,1)']],
+		['V(1) |> F(?, V(2), ?)', ['V(1)', 'V(2)', 'F(1,2,1)']],
+	])('%s evaluates in order', (source, expected) => {
+		seen.length = 0;
+		evaluate(source, context);
+		expect(seen).toEqual(expected);
+	});
+
+	test('the piped value runs before the function is resolved', () => {
+		seen.length = 0;
+		expect(() => evaluate('V(1) |> NOPE(?)', context)).toThrow('Undefined function: NOPE');
+		expect(seen).toEqual(['V(1)']);
+	});
+
+	test.each([
+		['"😀" |> LEN(?)', 1],
+		['[1, 2] |> LEN(?)', 2],
+		['1 |> MIN(?, 2)', 1],
+		['2 |> MIN(1, ?)', 1],
+		['3 |> MIN(?, ?)', 3],
+		['5 |> CLAMP(?, 0, 3)', 3],
+	])('%s calls a trusted function', (source, expected) => {
+		expect(evaluate(source, defaultContext)).toBe(expected);
+	});
+
+	describe('metering', () => {
+		const metered: ExecutionContext = {
+			functions: {
+				...defaultContext.functions,
+				BAD: (() => null) as unknown as HostFunction,
+				G: (x) => (x as RuntimeValue[]).length ?? 0,
+			},
+		};
+
+		test.each([['1 |> BAD(?)'], ['1 |> BAD(?, 2)']])('%s validates a host result', (source) => {
+			expect(() => evaluate(source, metered)).toThrow('Function BAD');
+		});
+
+		test.each([
+			['(0..1000) |> G(?)', 'G(0..1000)'],
+			['(0..1000) |> G(?, 1)', 'G(0..1000, 1)'],
+			['(0..1000) |> LEN(?)', 'LEN(0..1000)'],
+			['(0..1000) |> CONTAINS(?, 5)', 'CONTAINS(0..1000, 5)'],
+			['"abc" |> STR_UPPER(?)', 'STR_UPPER("abc")'],
+			['"x" |> STR_REPEAT(?, 1000)', 'STR_REPEAT("x", 1000)'],
+		])('%s costs the same as a call', (pipe, call) => {
+			expect(stepsOf(pipe, metered)).toBe(stepsOf(call, metered));
+		});
+	});
+
+	test('two arguments resolve the function after the piped value, before the others', () => {
+		seen.length = 0;
+		expect(() => evaluate('V(1) |> NOPE(?, V(2))', context)).toThrow('Undefined function: NOPE');
+		expect(seen).toEqual(['V(1)']);
+	});
+
+	test('a failure blames the whole pipe, even after evaluating an argument', () => {
+		const source = '1 |> MIN(?, "a" + "b")';
+		try {
+			evaluate(source, defaultContext);
+			expect.unreachable('should have thrown');
+		} catch (err) {
+			const { start, end } = err as EvaluationError;
+			expect(source.slice(start, end)).toBe(source);
+		}
+	});
+
+	test('a hand-built pipe with no placeholder evaluates its arguments in order', () => {
+		seen.length = 0;
+		const call = (value: number) => ast.functionCall('V', [ast.number(value)]);
+		evaluate(ast.pipeExpr(call(1), 'F', [call(2), call(3)]), context);
+		expect(seen).toEqual(['V(1)', 'V(2)', 'V(3)', 'F(2,3)']);
 	});
 });

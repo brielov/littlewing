@@ -17,12 +17,12 @@ Littlewing is a **multi-type expression language** with seven value types: numbe
 - **Range expressions** - `1..5` (exclusive), `1..=5` (inclusive)
 - **Deep equality** - `[1, 2] == [1, 2]` evaluates to `true`
 - **Temporal arithmetic** - Built-in date, time, and datetime functions using Temporal API
-- **Zero runtime dependencies** - Requires global `Temporal` API (native or user-provided polyfill)
-- **Linear time execution** - O(n) parsing and evaluation
+- **Zero runtime code in dependencies** - Requires global `Temporal` API (native or user-provided polyfill)
+- **Bounded execution** - A step budget stops any program
 - **Context variables** - Runtime value injection
 - **Custom functions** - Extensible with JavaScript functions
 - **Comments supported** - Single-line comments with `//`
-- **Optional semicolons** - Semicolons between statements are optional
+- **Statements** - Separated by line breaks or semicolons
 
 ## Quick Examples
 
@@ -70,7 +70,7 @@ evens = for x in 1..=10 when x % 2 == 0 then x // → [2, 4, 6, 8, 10]
 principal = 1000
 rate = 0.05
 years = 3
-futureValue = principal * (1 + rate) ^ years // → 1157.625
+futureValue = principal * (1 + rate) ^ years // → about 1157.63
 ```
 
 ## Language Fundamentals
@@ -102,12 +102,18 @@ TYPE(true) // → "boolean"
 
 - Integers: `42`, `0`, `-17`
 - Decimals: `3.14159`, `0.5`, `-0.5`
+- Exponents: `1e6`, `2.5e-3`, `1E+21`
 
 ```
 x = 42        // integer
 y = 3.14159   // decimal
 z = 0.5       // decimal (leading zero required)
+w = 1.5e3     // 1500
 ```
+
+A number cannot run into a name: `3x` and `1e` are errors. Neither can a literal overflow: `1e999` is an error.
+
+Arithmetic follows IEEE 754, so results can be `Infinity` or `NaN`, as in `0 ^ -1` or `SQRT(-1)`. Dividing by zero, or taking a modulo by zero, is an error. `NaN` is not equal to anything, itself included.
 
 ### Strings
 
@@ -121,7 +127,7 @@ path = "C:\\Users\\file"   // escaped backslash
 empty = ""                 // empty string
 ```
 
-Supported escape sequences: `\"`, `\\`, `\n`, `\t`
+Supported escape sequences: `\"`, `\\`, `\n`, `\r`, `\t`. Strings count and index by code point, so `LEN("😀")` is `1`.
 
 String concatenation uses `+`:
 
@@ -227,11 +233,12 @@ Homogeneous arrays (all elements must be the same type):
 nums = [1, 2, 3]            // array of numbers
 names = ["alice", "bob"]     // array of strings
 flags = [true, false, true]  // array of booleans
-empty = []                   // empty array (type determined on first operation)
+empty = []                   // empty array (fits any array type)
 nested = [[1, 2], [3, 4]]   // nested arrays
+sparse = [[], [1, 2]]       // nested arrays, one of them empty
 ```
 
-Mixed-type arrays are a TypeError:
+Mixed-type arrays are a TypeError (the `cause` of an `EvaluationError`, as for every TypeError below), at any depth:
 
 ```
 // TypeError: [1, "two", true]
@@ -314,18 +321,36 @@ x = 10 // Comment after code
 z = 30
 ```
 
-### Semicolons
+### Statements
 
-Semicolons between statements are **optional**:
+Statements are separated by line breaks or semicolons:
 
 ```
 // With semicolons
 x = 10; y = 20; x + y
 
-// Without semicolons (also valid)
+// With line breaks
 x = 10
 y = 20
 x + y
+```
+
+Two statements on one line need a semicolon: `1 2` is an error.
+
+A line starting with `-`, `(`, `[` or `!` is a new statement, since those can start an expression. Any other operator continues the expression from the line before, and so does an operator at the end of a line. Inside parentheses, brackets and calls, and between `if`, `then` and `else` or `for` and `then`, line breaks mean nothing:
+
+```
+a = 5
+-1          // a new statement: a is 5, and the result is -1
+
+total = a
+  + 1       // continues: total is 6
+
+total = a -
+  1         // continues: total is 4
+
+total = (a
+  - 1)      // continues: total is 4
 ```
 
 ### Operators
@@ -430,7 +455,7 @@ squares = for i in 1..=5 then i ^ 2 // → [1, 4, 9, 16, 25]
 chars = for c in "hello" then STR_UPPER(c) // → ["H", "E", "L", "L", "O"]
 ```
 
-The `when` guard must be a boolean expression. The map result must be a homogeneous array.
+The `when` guard must be a boolean expression, and sees the loop variable and the accumulator. The map result must be a homogeneous array. The loop variable and accumulator exist only inside the loop, and need different names.
 
 **Reduce (with `into`):**
 
@@ -474,10 +499,10 @@ The pipe operator chains a value through one or more function calls. Each step m
 
 // Placeholder in any argument position
 150 |> CLAMP(?, 0, 100) // → 100 (equivalent to CLAMP(150, 0, 100))
-10 |> ADD(5, ?)          // → 15 (equivalent to ADD(5, 10))
+10 |> MIN(5, ?)          // → 5 (equivalent to MIN(5, 10))
 
 // Multiple placeholders (same value injected into all)
-5 |> ADD(?, ?) // → 10 (equivalent to ADD(5, 5))
+5 |> MIN(?, ?) // → 5 (equivalent to MIN(5, 5))
 
 // With expressions on the left
 2 + 3 |> ABS(?) // → 5 (parsed as (2 + 3) |> ABS(?))
@@ -486,15 +511,15 @@ The pipe operator chains a value through one or more function calls. Each step m
 result = -7 |> ABS(?) // result = 7
 ```
 
-The `?` token is only valid inside pipe step arguments. Using `?` outside a pipe expression is a syntax error. Each pipe step must be a function call with at least one `?`.
+The `?` token is only valid as a whole argument of a pipe step: `x |> ABS(? + 1)` and `x |> F(G(?))` are syntax errors, and so is `?` outside a pipe. Each pipe step must be a function call with at least one `?`.
 
 ### Operator Precedence
 
 From highest to lowest (use parentheses to override):
 
 1. **Parentheses / Bracket indexing:** `(expression)`, `expr[index]`
-2. **Unary operators:** `-x`, `!x`
-3. **Exponentiation:** `x ^ y` (right-associative)
+2. **Exponentiation:** `x ^ y` (right-associative)
+3. **Unary operators:** `-x`, `!x`
 4. **Multiply/Divide/Modulo:** `x * y`, `x / y`, `x % y`
 5. **Add/Subtract:** `x + y`, `x - y`
 6. **Range:** `x..y`, `x..=y`
@@ -504,27 +529,31 @@ From highest to lowest (use parentheses to override):
 10. **Pipe:** `x |> FUN(?)` (left-associative)
 11. **Assignment:** `x = y` (right-associative)
 
+A unary operator may follow any operator, and applies only to what comes next.
+
 ```
 // Examples showing precedence
-2 + 3 * 4      // → 14 (not 20)
-2 ^ 3 ^ 2      // → 512 (right-associative: 2^(3^2))
+2 + 3 * 4       // → 14 (not 20)
+2 ^ 3 ^ 2       // → 512 (right-associative: 2^(3^2))
 -2 ^ 2          // → -4 (parsed as -(2^2))
 (-2) ^ 2        // → 4 (parentheses change precedence)
+8 / -2 * 4      // → -16 (parsed as (8 / (-2)) * 4)
+2 ^ -1 * 3      // → 1.5 (parsed as (2 ^ (-1)) * 3)
 1 + 2..3 + 4    // → [3, 4, 5, 6] (parsed as (1+2)..(3+4))
 ```
 
 ### Multiple Statements
 
-Separate statements with semicolons or newlines. The last expression is the return value:
+Separate statements with line breaks or semicolons (see [Statements](#statements)). The last statement is the return value:
 
 ```
 // Calculate compound interest
 principal = 1000
 rate = 0.05
 years = 3
-principal * (1 + rate) ^ years // → 1157.625
+principal * (1 + rate) ^ years // → about 1157.63
 
-// The whole program returns 1157.625
+// The whole program returns about 1157.63
 ```
 
 ## Built-in Functions
@@ -536,6 +565,8 @@ principal * (1 + rate) ^ years // → 1157.625
 | `STR(v)`  | Convert to string | `STR(42)` → `"42"`      |
 | `NUM(v)`  | Convert to number | `NUM("42")` → `42`      |
 | `TYPE(v)` | Get type name     | `TYPE(42)` → `"number"` |
+
+`NUM` reads decimal strings, surrounding whitespace aside, and booleans. It rejects empty strings, hexadecimal, binary, octal, `Infinity`, and values that overflow. `STR` converts anything but arrays.
 
 ### Math Functions (14 functions)
 
@@ -568,7 +599,7 @@ These functions accept both strings and arrays:
 | `REVERSE(x)`            | Reverse         | `REVERSE("hello")` → `"olleh"`      | `REVERSE([1, 2, 3])` → `[3, 2, 1]` |
 | `INDEX_OF(x, search)`   | Find index      | `INDEX_OF("hello", "ll")` → `2`     | `INDEX_OF([10, 20], 20)` → `1`     |
 
-Note: `CONTAINS` and `INDEX_OF` use substring matching for strings and deep equality for arrays. `INDEX_OF` returns `-1` if not found.
+Note: `CONTAINS` and `INDEX_OF` use substring matching for strings and deep equality for arrays. `INDEX_OF` returns `-1` if not found. `SLICE` takes integers, and negative ones count from the end. On strings, all of these work in code points.
 
 ### String Functions (8 functions)
 
@@ -583,7 +614,7 @@ Note: `CONTAINS` and `INDEX_OF` use substring matching for strings and deep equa
 | `STR_ENDS_WITH(s, suffix)`     | Suffix check       | `STR_ENDS_WITH("hello", "lo")` → `true`      |
 | `STR_REPEAT(s, n)`             | Repeat n times     | `STR_REPEAT("ab", 3)` → `"ababab"`           |
 
-Note: Use bracket indexing for character access: `"hello"[0]` → `"h"`, `"hello"[-1]` → `"o"`.
+Note: Use bracket indexing for character access: `"hello"[0]` → `"h"`, `"hello"[-1]` → `"o"`. `STR_SPLIT` with an empty separator splits into code points. `STR_REPLACE` takes its replacement literally.
 
 ### Array Functions (7 functions)
 
@@ -597,7 +628,7 @@ Note: Use bracket indexing for character access: `"hello"[0]` → `"h"`, `"hello
 | `ARR_MIN(a)`       | Minimum element   | `ARR_MIN([3, 1, 2])` → `1`               |
 | `ARR_MAX(a)`       | Maximum element   | `ARR_MAX([3, 1, 2])` → `3`               |
 
-Note: Use `arr + [item]` for appending elements. Use bracket indexing for element access: `arr[0]`, `arr[-1]`. `ARR_SORT` supports numbers, strings, dates, times, and datetimes. `ARR_MIN`/`ARR_MAX` support the same types. `ARR_FLAT` requires all elements to be arrays; result is validated for homogeneity. `ARR_JOIN` requires all elements to be strings.
+Note: Use `arr + [item]` for appending elements. Use bracket indexing for element access: `arr[0]`, `arr[-1]`. `ARR_SORT` supports numbers, strings, dates, times, and datetimes, and puts `NaN` last. `ARR_MIN`/`ARR_MAX` support the same types, and return `NaN` if any element is `NaN`. `ARR_UNIQUE` uses deep equality, like `==`, so it keeps every `NaN`. `ARR_FLAT` requires all elements to be arrays; result is validated for homogeneity. `ARR_JOIN` requires all elements to be strings.
 
 ### Date Functions (25 functions)
 
@@ -690,11 +721,11 @@ Time functions operate on `Temporal.PlainTime` values. Extractors and arithmetic
 
 #### Time Differences (same type required)
 
-| Function                        | Description                    |
-| ------------------------------- | ------------------------------ |
-| `DIFFERENCE_IN_HOURS(t1, t2)`   | Absolute difference in hours   |
-| `DIFFERENCE_IN_MINUTES(t1, t2)` | Absolute difference in minutes |
-| `DIFFERENCE_IN_SECONDS(t1, t2)` | Absolute difference in seconds |
+| Function                        | Description           |
+| ------------------------------- | --------------------- |
+| `DIFFERENCE_IN_HOURS(t1, t2)`   | Whole hours between   |
+| `DIFFERENCE_IN_MINUTES(t1, t2)` | Whole minutes between |
+| `DIFFERENCE_IN_SECONDS(t1, t2)` | Whole seconds between |
 
 #### Time Comparisons
 
@@ -812,6 +843,7 @@ Littlewing exports the same assertion helpers used by the built-in standard libr
 | Function                       | Narrows to                                     |
 | ------------------------------ | ---------------------------------------------- |
 | `assertNumber(v, ctx, side?)`  | `number`                                       |
+| `assertInteger(v, ctx, side?)` | `number`, and an integer                       |
 | `assertString(v, ctx)`         | `string`                                       |
 | `assertBoolean(v, ctx, side?)` | `boolean`                                      |
 | `assertArray(v, ctx)`          | `readonly RuntimeValue[]`                      |
@@ -820,6 +852,7 @@ Littlewing exports the same assertion helpers used by the built-in standard libr
 | `assertDateTime(v, ctx)`       | `Temporal.PlainDateTime`                       |
 | `assertDateOrDateTime(v, ctx)` | `Temporal.PlainDate \| Temporal.PlainDateTime` |
 | `assertTimeOrDateTime(v, ctx)` | `Temporal.PlainTime \| Temporal.PlainDateTime` |
+| `assertRuntimeValue(v, ctx)`   | `RuntimeValue`, checked at every depth         |
 
 Each throws a `TypeError` with a descriptive message on type mismatch. The `ctx` parameter is the function name for error context, and the optional `side` identifies the argument (e.g., `"left"`, `"price"`).
 
@@ -902,10 +935,11 @@ label = "Score: " + STR(95) // → "Score: 95"
 
 ## Performance
 
-1. **Small bundle** - Minimal impact on your app size
-2. **O(n) performance** - Linear time parsing and evaluation
-3. **Parse once, evaluate many** - Reuse ASTs for repeated evaluation
-4. **Predictable evaluation time** - O(n) based on expression size
+1. **Small bundle** - About 8 KB gzipped for `evaluate`, 12 KB with the standard library
+2. **Parse once, evaluate many** - Reuse ASTs for repeated evaluation
+3. **Linear compilation** - Parsing, optimizing and generating take time proportional to the source
+
+Evaluation takes as long as the program does, up to its budget of steps. A program of a few lines can loop a million times, so what bounds it is the budget, not its size.
 
 ```typescript
 import { evaluate, parse } from 'littlewing';
@@ -916,32 +950,45 @@ evaluate(formula, { variables: { price: 10, quantity: 5, discount: 0.1 } }); // 
 evaluate(formula, { variables: { price: 20, quantity: 3, discount: 0.15 } }); // → 51
 ```
 
+Some patterns are worth knowing about:
+
+- `for x in s then ...` is cheaper than `for i in 0..LEN(s) then s[i]`, although both are linear
+- Appending with `acc + [x]` copies the array each time, so it is quadratic. Prefer a `for` that builds the array
+- Comparing long strings costs a step per eight characters
+
 ## Limitations
 
 ### What Littlewing Doesn't Support
 
 - **No function definitions** - Provide via context
 - **No mutations** - Variables are reassigned, not mutated; arrays are immutable
-- **No side effects** - Pure expression evaluation
 - **No implicit coercion** - Use explicit conversion functions
 - **No general-purpose loops** - `for` comprehensions map or reduce (no imperative looping)
 
 These limitations are features! They ensure:
 
-- Predictable performance
+- Bounded execution
 - Safe user input evaluation
 - Simple mental model
 - Small implementation
 
+### Limits
+
+- Nesting: 256 levels of parentheses, brackets, calls and the like
+- Expressions: an AST 1024 levels tall, which allows chains of about a thousand operators or `else if` branches
+- Identifiers: 1024 characters
+- Evaluation: 20 million steps by default, set through `limits.maxSteps`
+- Results: as many elements and characters as the budget has steps
+
 ## Security
 
-Littlewing is safe for evaluating untrusted user input:
+Littlewing is designed for evaluating untrusted user input:
 
-- No access to global scope
-- No eval() or code generation
-- No infinite loops possible
-- No prototype pollution
-- No injection attacks
-- Bounded execution time (O(n))
+- No access to anything but the functions and variables you provide
+- No `eval()` or code generation
+- No prototype pollution: functions resolve as own properties, and variables live in a `Map`
+- No infinite loops: `for` only iterates finite arrays and strings
+- Bounded time and memory: every operation spends from a step budget, whatever it is doing
+- A failure while evaluating is an `EvaluationError`, including running out of budget and results too large to read. A program that does not parse is a `ParseError`, and an invalid `variables` entry or `limits.maxSteps` is a `TypeError`, since that is a mistake in the host
 
-The worst a malicious user can do is write an expression that returns an unexpected value or triggers a type error.
+The worst a malicious user can do within the budget is use it up. What that costs, and what stays your responsibility, is covered in the [README](./README.md#running-untrusted-programs).

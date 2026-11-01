@@ -24,6 +24,7 @@ bun run fmt:check
 bun run lint
 bun run test
 bun run build
+bun run test:package
 ```
 
 Notes:

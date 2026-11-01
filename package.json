@@ -13,7 +13,8 @@
 		"build:littlewing": "bun run --cwd packages/littlewing build",
 		"build:playground": "bun run --cwd packages/playground build",
 		"test": "bun run --cwd packages/littlewing test",
-		"build": "bun run build:littlewing && bun run build:playground"
+		"build": "bun run build:littlewing && bun run build:playground",
+		"test:package": "bun run --cwd packages/littlewing test:package"
 	},
 	"devDependencies": {
 		"oxfmt": "^0.46.0",

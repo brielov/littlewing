@@ -1,728 +1,395 @@
-import * as ast from './ast';
+import * as ast from './ast.js';
 import {
+	type ArrayLiteral,
 	type ASTNode,
-	isArrayLiteral,
-	isAssignment,
+	type BooleanLiteral,
+	forEachChild,
 	isBooleanLiteral,
 	isNumberLiteral,
-	isProgram,
 	isStringLiteral,
+	mapChildren,
 	NodeKind,
+	type NumberLiteral,
+	type Operator,
 	type Program,
-} from './ast';
-import { buildRange, collectAllIdentifiers, evaluateBinaryOperation, resolveIndex } from './utils';
+	type StringLiteral,
+} from './ast.js';
+import { setBudget } from './limits.js';
+import type { RuntimeValue } from './types.js';
+import {
+	buildRange,
+	collectFreeIdentifiers,
+	evaluateBinaryOperation,
+	resolveIndex,
+} from './utils.js';
 
 /**
- * Copy leadingComments and trailingComments from original node to replacement node when present.
- * Returns the replacement unchanged if there are no comments to preserve.
+ * Longest string literal folding may produce. Propagation can double a string
+ * per statement, so this keeps a short program from building an enormous one.
  */
-function preserveComments<T extends ASTNode>(original: ASTNode, replacement: T): T {
-	const hasLeading = original.leadingComments && original.leadingComments.length > 0;
-	const hasTrailing = original.trailingComments && original.trailingComments.length > 0;
-	if (!hasLeading && !hasTrailing) return replacement;
-	return {
-		...replacement,
-		...(hasLeading ? { leadingComments: original.leadingComments } : {}),
-		...(hasTrailing ? { trailingComments: original.trailingComments } : {}),
-	};
+const MAX_FOLDED_STRING_LENGTH = 4096;
+
+/**
+ * Longest string constant copied to where it is read. Each copy adds its whole
+ * length to the output, and folding an index into one has to split it again.
+ */
+const MAX_PROPAGATED_STRING_LENGTH = 64;
+
+/**
+ * Most elements a range may expand to. Beyond this an array literal is both
+ * larger and slower to evaluate than the range it replaced.
+ */
+const MAX_FOLDED_RANGE_LENGTH = 64;
+
+export interface OptimizeOptions {
+	/**
+	 * The variables the host may supply through `ExecutionContext.variables`.
+	 * Passing this enables constant propagation, which treats every other
+	 * variable as fully determined by the program.
+	 */
+	readonly externalVariables?: ReadonlySet<string>;
+	/**
+	 * Keep every assignment, so that `evaluateScope` reports the same variables as
+	 * it does for the original program. By default only the program's result is
+	 * preserved: assignments that do not contribute to it are removed, so a variable
+	 * can go missing from the scope or show the value it held before.
+	 */
+	readonly preserveScope?: boolean;
 }
 
-/**
- * Eliminate dead code (unused variable assignments) from a Program.
- */
-function eliminateDeadCode(program: Program): Program {
-	const statements = program.statements;
-	const liveVars = new Set<string>();
-	const keptIndices: number[] = [];
+type Literal = NumberLiteral | StringLiteral | BooleanLiteral;
 
-	for (let i = statements.length - 1; i >= 0; i--) {
-		const stmt = statements[i];
-		if (!stmt) continue;
-
-		if (i === statements.length - 1) {
-			keptIndices.push(i);
-			const identifiers = collectAllIdentifiers(stmt);
-			for (const id of identifiers) {
-				liveVars.add(id);
-			}
-			continue;
-		}
-
-		if (isAssignment(stmt)) {
-			if (liveVars.has(stmt.name) || mightHaveSideEffects(stmt.value)) {
-				keptIndices.push(i);
-				const identifiers = collectAllIdentifiers(stmt.value);
-				for (const id of identifiers) {
-					liveVars.add(id);
-				}
-			}
-		} else {
-			keptIndices.push(i);
-			const identifiers = collectAllIdentifiers(stmt);
-			for (const id of identifiers) {
-				liveVars.add(id);
-			}
-		}
-	}
-
-	const keptStatements: ASTNode[] = [];
-	for (let i = keptIndices.length - 1; i >= 0; i--) {
-		const idx = keptIndices[i];
-		if (idx !== undefined) {
-			const stmt = statements[idx];
-			if (stmt) {
-				keptStatements.push(stmt);
-			}
-		}
-	}
-
-	const result = ast.program(keptStatements);
-	if (program.trailingComments && program.trailingComments.length > 0) {
-		return { ...result, trailingComments: program.trailingComments };
-	}
-	return result;
-}
-
-/**
- * Check if a node is any kind of literal (number, string, boolean)
- */
-function isLiteral(node: ASTNode): boolean {
+function isLiteral(node: ASTNode): node is Literal {
 	return isNumberLiteral(node) || isStringLiteral(node) || isBooleanLiteral(node);
 }
 
 /**
- * Check if a node might have side effects (contains function calls or nested assignments).
- * Function calls may invoke user-provided functions with side effects.
- * Nested assignments write to variables as a side effect.
- *
- * Uses direct recursion with switch dispatch to avoid visitor object and closure allocation.
+ * Check if an array literal is guaranteed to construct: all literals of one kind.
  */
-function mightHaveSideEffects(node: ASTNode): boolean {
-	switch (node.kind) {
-		case NodeKind.Program:
-			return node.statements.some(mightHaveSideEffects);
-		case NodeKind.ArrayLiteral:
-			return node.elements.some(mightHaveSideEffects);
-		case NodeKind.BinaryOp:
-			return mightHaveSideEffects(node.left) || mightHaveSideEffects(node.right);
-		case NodeKind.UnaryOp:
-			return mightHaveSideEffects(node.argument);
-		case NodeKind.IfExpression:
-			return (
-				mightHaveSideEffects(node.condition) ||
-				mightHaveSideEffects(node.consequent) ||
-				mightHaveSideEffects(node.alternate)
-			);
-		case NodeKind.ForExpression:
-			return (
-				mightHaveSideEffects(node.iterable) ||
-				(node.guard !== null && mightHaveSideEffects(node.guard)) ||
-				(node.accumulator !== null && mightHaveSideEffects(node.accumulator.initial)) ||
-				mightHaveSideEffects(node.body)
-			);
-		case NodeKind.IndexAccess:
-			return mightHaveSideEffects(node.object) || mightHaveSideEffects(node.index);
-		case NodeKind.RangeExpression:
-			return mightHaveSideEffects(node.start) || mightHaveSideEffects(node.end);
-		case NodeKind.FunctionCall:
-		case NodeKind.PipeExpression:
-		case NodeKind.Assignment:
-			return true;
-		case NodeKind.NumberLiteral:
-		case NodeKind.StringLiteral:
-		case NodeKind.BooleanLiteral:
-		case NodeKind.Identifier:
-		case NodeKind.Placeholder:
-			return false;
+function isConstantArray(node: ArrayLiteral): boolean {
+	const first = node.elements[0];
+	return node.elements.every((element) => isLiteral(element) && element.kind === first?.kind);
+}
+
+/**
+ * Get the items of a constant that can be indexed at compile time.
+ */
+function constantItems(node: ASTNode): readonly RuntimeValue[] | undefined {
+	if (isStringLiteral(node)) return Array.from(node.value);
+	if (node.kind === NodeKind.ArrayLiteral && isConstantArray(node)) {
+		return node.elements.map((element) => (element as Literal).value);
+	}
+	return undefined;
+}
+
+/**
+ * Check if evaluating a node can neither fail nor have any effect, which makes it
+ * safe to remove: a constant, or a variable certain to be assigned already. Calling
+ * a function or applying an operator is excluded, as each of those may throw.
+ */
+function isInert(node: ASTNode, isAssigned: (name: string) => boolean): boolean {
+	if (isLiteral(node)) return true;
+	if (node.kind === NodeKind.Identifier) return isAssigned(node.name);
+	return node.kind === NodeKind.ArrayLiteral && isConstantArray(node);
+}
+
+/**
+ * Carry comments over to the node that replaces `original`, around any of its own.
+ */
+function preserveComments<T extends ASTNode>(original: ASTNode, replacement: T): T {
+	const { leadingComments, trailingComments } = original;
+	if (!leadingComments && !trailingComments) return replacement;
+	return {
+		...replacement,
+		...(leadingComments
+			? { leadingComments: [...leadingComments, ...(replacement.leadingComments ?? [])] }
+			: {}),
+		...(trailingComments
+			? { trailingComments: [...(replacement.trailingComments ?? []), ...trailingComments] }
+			: {}),
+	};
+}
+
+/**
+ * Build the literal that replaces `node`, if the language can spell `value`.
+ * There is no literal for non-finite numbers, so those stay as expressions.
+ */
+function toLiteral(value: Literal['value'], node: ASTNode): ASTNode | undefined {
+	if (typeof value === 'number') {
+		if (!Number.isFinite(value)) return undefined;
+		return preserveComments(node, ast.number(value, node.start, node.end));
+	}
+	if (typeof value === 'string') {
+		if (value.length > MAX_FOLDED_STRING_LENGTH) return undefined;
+		return preserveComments(node, ast.string(value, node.start, node.end));
+	}
+	return preserveComments(node, ast.boolean(value, node.start, node.end));
+}
+
+/**
+ * Evaluate an operation on constants, returning undefined if it fails. A failure
+ * has to stay in the program: it may be in code that never runs.
+ */
+function attempt<T>(operation: () => T): T | undefined {
+	try {
+		return operation();
+	} catch {
+		return undefined;
 	}
 }
 
 /**
- * Propagate constants by substituting single-assignment literal variables.
- *
- * Only variables that are:
- * - Assigned exactly once at the program top level
- * - Assigned a literal value (number, string, boolean) after initial folding
- * - Not in the externalVariables set (those can be overridden by context)
- * - Not used as a `for` loop variable (those are rebound per iteration)
- *
- * are eligible for propagation.
+ * Fold a node whose children are already folded.
  */
-function propagateConstants(
+function foldOperation(node: ASTNode): ASTNode {
+	switch (node.kind) {
+		case NodeKind.BinaryOp: {
+			const { left, operator, right } = node;
+			if (!isLiteral(left) || !isLiteral(right)) return node;
+			// `&&` and `||` were folded on the way down
+			const eager = operator as Exclude<Operator, '&&' | '||'>;
+			// An operation on literals gives a number, string or boolean
+			const result = attempt(
+				() => evaluateBinaryOperation(eager, left.value, right.value) as Literal['value'],
+			);
+			return (result !== undefined && toLiteral(result, node)) || node;
+		}
+
+		case NodeKind.UnaryOp: {
+			const { argument, operator } = node;
+			if (operator === '-' && isNumberLiteral(argument)) {
+				return toLiteral(-argument.value, node) ?? node;
+			}
+			if (operator === '!' && isBooleanLiteral(argument)) {
+				return toLiteral(!argument.value, node) ?? node;
+			}
+			return node;
+		}
+
+		case NodeKind.IndexAccess: {
+			const { index, object } = node;
+			if (!isNumberLiteral(index)) return node;
+			const items = constantItems(object);
+			if (!items) return node;
+			const item = attempt(() => resolveIndex(items, index.value) as Literal['value']);
+			return (item !== undefined && toLiteral(item, node)) || node;
+		}
+
+		case NodeKind.RangeExpression: {
+			const { from, inclusive, to } = node;
+			if (!isNumberLiteral(from) || !isNumberLiteral(to)) return node;
+			if (to.value - from.value + (inclusive ? 1 : 0) > MAX_FOLDED_RANGE_LENGTH) return node;
+			const values = attempt(() => buildRange(from.value, to.value, inclusive));
+			if (!values) return node;
+			const elements = values.map((value) => ast.number(value, node.start, node.end));
+			return preserveComments(node, ast.array(elements, node.start, node.end));
+		}
+
+		default:
+			return node;
+	}
+}
+
+/**
+ * Create a function that folds constants in a tree, replacing variables found in
+ * `constants` with their values.
+ */
+function createFolder(constants: ReadonlyMap<string, Literal>): (node: ASTNode) => ASTNode {
+	const fold = (node: ASTNode): ASTNode => {
+		switch (node.kind) {
+			case NodeKind.NumberLiteral:
+			case NodeKind.StringLiteral:
+			case NodeKind.BooleanLiteral:
+			case NodeKind.Placeholder:
+				return node;
+
+			case NodeKind.Identifier: {
+				const constant = constants.get(node.name);
+				return constant === undefined ? node : (toLiteral(constant.value, node) ?? node);
+			}
+
+			case NodeKind.BinaryOp: {
+				const { operator } = node;
+				if (operator === '&&' || operator === '||') {
+					const left = fold(node.left);
+					// The right side of a short circuit never runs
+					if (isBooleanLiteral(left) && left.value === (operator === '||')) {
+						return preserveComments(node, ast.boolean(left.value, node.start, node.end));
+					}
+					const right = fold(node.right);
+					if (isBooleanLiteral(left) && isBooleanLiteral(right)) {
+						return preserveComments(node, ast.boolean(right.value, node.start, node.end));
+					}
+					return left === node.left && right === node.right ? node : { ...node, left, right };
+				}
+				return foldOperation(mapChildren(node, fold));
+			}
+
+			case NodeKind.IfExpression: {
+				const condition = fold(node.condition);
+				if (isBooleanLiteral(condition)) {
+					const branch = condition.value ? node.consequent : node.alternate;
+					// A placeholder only counts directly inside a pipe, and this `if` is in the way
+					if (branch.kind !== NodeKind.Placeholder) {
+						return preserveComments(node, fold(branch));
+					}
+				}
+				const consequent = fold(node.consequent);
+				const alternate = fold(node.alternate);
+				return condition === node.condition &&
+					consequent === node.consequent &&
+					alternate === node.alternate
+					? node
+					: { ...node, condition, consequent, alternate };
+			}
+
+			case NodeKind.IndexAccess: {
+				const folded = foldOperation(mapChildren(node, fold));
+				// A variable splits its string once, where a literal would on every access
+				const keepsVariable =
+					folded.kind === NodeKind.IndexAccess &&
+					node.object.kind === NodeKind.Identifier &&
+					isStringLiteral(folded.object);
+				return keepsVariable ? { ...folded, object: node.object } : folded;
+			}
+
+			default:
+				return foldOperation(mapChildren(node, fold));
+		}
+	};
+	return fold;
+}
+
+/**
+ * Find the variables whose top-level assignment is the only write to them
+ * anywhere in the program, which makes that assignment's value their value.
+ */
+function findPropagatable(program: Program, externalVariables: ReadonlySet<string>): Set<string> {
+	const writes = new Map<string, number>();
+	const countWrite = (name: string): void => {
+		writes.set(name, (writes.get(name) ?? 0) + 1);
+	};
+	const visit = (node: ASTNode): void => {
+		if (node.kind === NodeKind.Identifier || isLiteral(node)) return;
+		if (node.kind === NodeKind.Assignment) {
+			countWrite(node.name);
+		} else if (node.kind === NodeKind.ForExpression) {
+			// Loop bindings count as writes, ruling out anything they shadow
+			countWrite(node.variable);
+			if (node.accumulator) countWrite(node.accumulator.name);
+		}
+		forEachChild(node, visit);
+	};
+	visit(program);
+
+	const propagatable = new Set<string>();
+	for (const statement of program.statements) {
+		if (
+			statement.kind === NodeKind.Assignment &&
+			writes.get(statement.name) === 1 &&
+			!externalVariables.has(statement.name)
+		) {
+			propagatable.add(statement.name);
+		}
+	}
+	return propagatable;
+}
+
+function isPropagatable(node: ASTNode): node is Literal {
+	if (isStringLiteral(node)) return node.value.length <= MAX_PROPAGATED_STRING_LENGTH;
+	return isLiteral(node);
+}
+
+/**
+ * Fold statements in order. Each constant assignment becomes visible to the
+ * statements after it, so references that run before it stay untouched.
+ */
+function foldStatements(
 	program: Program,
-	externalVariables: ReadonlySet<string>,
-): Program | null {
-	const statements = program.statements;
+	externalVariables: ReadonlySet<string> | undefined,
+): ASTNode[] {
+	const propagatable = externalVariables && findPropagatable(program, externalVariables);
+	const constants = new Map<string, Literal>();
+	const fold = createFolder(constants);
 
-	// Collect for-loop variable names (they shadow any top-level assignment)
-	const forLoopVars = new Set<string>();
-	for (const stmt of statements) {
-		collectForLoopVars(stmt, forLoopVars);
-	}
-
-	// Count all assignments at every depth to detect nested reassignment
-	const allAssignmentCounts = new Map<string, number>();
-	for (const stmt of statements) {
-		countAssignments(stmt, allAssignmentCounts);
-	}
-
-	// Build map of variables assigned exactly once (globally) to a literal value
-	const knownValues = new Map<string, ASTNode>();
-
-	for (const stmt of statements) {
-		if (!isAssignment(stmt)) continue;
-		if (externalVariables.has(stmt.name)) continue;
-		if (forLoopVars.has(stmt.name)) continue;
-
-		const totalCount = allAssignmentCounts.get(stmt.name) ?? 0;
-		if (totalCount > 1) continue;
-
-		if (isLiteral(stmt.value)) {
-			knownValues.set(stmt.name, stmt.value);
+	return program.statements.map((statement) => {
+		const folded = fold(statement);
+		if (
+			folded.kind === NodeKind.Assignment &&
+			propagatable?.has(folded.name) &&
+			isPropagatable(folded.value)
+		) {
+			constants.set(folded.name, folded.value);
 		}
-	}
-
-	if (knownValues.size === 0) return null;
-
-	// Check if any identifier in the program actually references a known value.
-	// If not, substitution would be a no-op — return null to terminate iteration.
-	const referencedIds = new Set<string>();
-	for (const stmt of statements) {
-		const identifiers = collectAllIdentifiers(isAssignment(stmt) ? stmt.value : stmt);
-		for (const id of identifiers) {
-			referencedIds.add(id);
-		}
-	}
-
-	let hasSubstitution = false;
-	for (const name of knownValues.keys()) {
-		if (referencedIds.has(name)) {
-			hasSubstitution = true;
-			break;
-		}
-	}
-
-	if (!hasSubstitution) return null;
-
-	// Substitute known values throughout the AST
-	const result = ast.program(statements.map((stmt) => substituteIdentifiers(stmt, knownValues)));
-	if (program.trailingComments && program.trailingComments.length > 0) {
-		return { ...result, trailingComments: program.trailingComments };
-	}
-	return result;
+		return folded;
+	});
 }
 
 /**
- * Collect all `for` loop variable names from an AST node (recursive).
+ * Remove statements that cannot affect the program's result. Walks backwards,
+ * tracking which variables are read by the statements that remain.
+ */
+function eliminateDeadCode(statements: readonly ASTNode[], preserveScope: boolean): ASTNode[] {
+	const firstAssigned = new Map<string, number>();
+	statements.forEach((statement, i) => {
+		if (statement.kind === NodeKind.Assignment && !firstAssigned.has(statement.name)) {
+			firstAssigned.set(statement.name, i);
+		}
+	});
+
+	const live = new Set<string>();
+	const kept: ASTNode[] = [];
+
+	for (let i = statements.length - 1; i >= 0; i--) {
+		const statement = statements[i] as ASTNode;
+		const isResult = i === statements.length - 1;
+		const isAssigned = (name: string): boolean => (firstAssigned.get(name) ?? i) < i;
+
+		if (statement.kind === NodeKind.Assignment) {
+			const isDead = !preserveScope && !live.has(statement.name);
+			if (!isResult && isDead && isInert(statement.value, isAssigned)) continue;
+			// Whatever this assignment overwrites is dead unless read further up
+			live.delete(statement.name);
+		} else if (!isResult && isInert(statement, isAssigned)) {
+			continue;
+		}
+
+		collectFreeIdentifiers(statement, live);
+		kept.push(statement);
+	}
+
+	return kept.reverse();
+}
+
+/**
+ * Optimize an AST using constant folding, constant propagation, and dead code
+ * elimination.
  *
- * Uses direct recursion with switch dispatch to avoid visitor object and closure allocation.
+ * The result evaluates exactly like the original: to the same value or the same
+ * failure, with the same function calls. Only the variables `evaluateScope`
+ * reports may differ, and hold earlier values, unless `preserveScope` is set.
  */
-function collectForLoopVars(node: ASTNode, vars: Set<string>): void {
-	switch (node.kind) {
-		case NodeKind.Program:
-			for (const s of node.statements) collectForLoopVars(s, vars);
-			break;
-		case NodeKind.ArrayLiteral:
-			for (const e of node.elements) collectForLoopVars(e, vars);
-			break;
-		case NodeKind.BinaryOp:
-			collectForLoopVars(node.left, vars);
-			collectForLoopVars(node.right, vars);
-			break;
-		case NodeKind.UnaryOp:
-			collectForLoopVars(node.argument, vars);
-			break;
-		case NodeKind.FunctionCall:
-			for (const a of node.args) collectForLoopVars(a, vars);
-			break;
-		case NodeKind.Assignment:
-			collectForLoopVars(node.value, vars);
-			break;
-		case NodeKind.IfExpression:
-			collectForLoopVars(node.condition, vars);
-			collectForLoopVars(node.consequent, vars);
-			collectForLoopVars(node.alternate, vars);
-			break;
-		case NodeKind.ForExpression:
-			vars.add(node.variable);
-			if (node.accumulator) vars.add(node.accumulator.name);
-			collectForLoopVars(node.iterable, vars);
-			if (node.guard) collectForLoopVars(node.guard, vars);
-			if (node.accumulator) collectForLoopVars(node.accumulator.initial, vars);
-			collectForLoopVars(node.body, vars);
-			break;
-		case NodeKind.IndexAccess:
-			collectForLoopVars(node.object, vars);
-			collectForLoopVars(node.index, vars);
-			break;
-		case NodeKind.RangeExpression:
-			collectForLoopVars(node.start, vars);
-			collectForLoopVars(node.end, vars);
-			break;
-		case NodeKind.PipeExpression:
-			collectForLoopVars(node.value, vars);
-			for (const a of node.args) collectForLoopVars(a, vars);
-			break;
-		case NodeKind.NumberLiteral:
-		case NodeKind.StringLiteral:
-		case NodeKind.BooleanLiteral:
-		case NodeKind.Identifier:
-		case NodeKind.Placeholder:
-			break;
+export function optimize(node: ASTNode, options: OptimizeOptions = {}): ASTNode {
+	// A host function may call this mid-evaluation, but the result must not depend
+	// on what that evaluation has left
+	const outerBudget = setBudget(Number.POSITIVE_INFINITY);
+	try {
+		return node.kind === NodeKind.Program
+			? optimizeProgram(node, options)
+			: createFolder(new Map())(node);
+	} finally {
+		setBudget(outerBudget);
 	}
 }
 
-/**
- * Count all assignments at every depth in an AST node.
- * Used to detect nested reassignment that the top-level scan would miss.
- *
- * Uses direct recursion with switch dispatch to avoid visitor object and closure allocation.
- */
-function countAssignments(node: ASTNode, counts: Map<string, number>): void {
-	switch (node.kind) {
-		case NodeKind.Program:
-			for (const s of node.statements) countAssignments(s, counts);
-			break;
-		case NodeKind.Assignment:
-			counts.set(node.name, (counts.get(node.name) ?? 0) + 1);
-			countAssignments(node.value, counts);
-			break;
-		case NodeKind.ArrayLiteral:
-			for (const e of node.elements) countAssignments(e, counts);
-			break;
-		case NodeKind.BinaryOp:
-			countAssignments(node.left, counts);
-			countAssignments(node.right, counts);
-			break;
-		case NodeKind.UnaryOp:
-			countAssignments(node.argument, counts);
-			break;
-		case NodeKind.FunctionCall:
-			for (const a of node.args) countAssignments(a, counts);
-			break;
-		case NodeKind.IfExpression:
-			countAssignments(node.condition, counts);
-			countAssignments(node.consequent, counts);
-			countAssignments(node.alternate, counts);
-			break;
-		case NodeKind.ForExpression:
-			countAssignments(node.iterable, counts);
-			if (node.guard) countAssignments(node.guard, counts);
-			if (node.accumulator) countAssignments(node.accumulator.initial, counts);
-			countAssignments(node.body, counts);
-			break;
-		case NodeKind.IndexAccess:
-			countAssignments(node.object, counts);
-			countAssignments(node.index, counts);
-			break;
-		case NodeKind.RangeExpression:
-			countAssignments(node.start, counts);
-			countAssignments(node.end, counts);
-			break;
-		case NodeKind.PipeExpression:
-			countAssignments(node.value, counts);
-			for (const a of node.args) countAssignments(a, counts);
-			break;
-		case NodeKind.NumberLiteral:
-		case NodeKind.StringLiteral:
-		case NodeKind.BooleanLiteral:
-		case NodeKind.Identifier:
-		case NodeKind.Placeholder:
-			break;
-	}
-}
+function optimizeProgram(program: Program, options: OptimizeOptions): ASTNode {
+	if (program.statements.length === 0) return program;
 
-/**
- * Returns true if all elements in original and mapped are reference-equal.
- * Used to detect when a recursive map produced no changes, enabling identity return.
- */
-function unchangedArray(original: readonly ASTNode[], mapped: readonly ASTNode[]): boolean {
-	for (let i = 0; i < original.length; i++) {
-		if (original[i] !== mapped[i]) return false;
-	}
-	return true;
-}
+	const folded = foldStatements(program, options.externalVariables);
+	const statements = eliminateDeadCode(folded, options.preserveScope ?? false);
 
-/**
- * Replace Identifier nodes whose names are in `knownValues` with their literal values.
- * Returns the original node unchanged when no substitution occurs (identity optimization).
- */
-function substituteIdentifiers(node: ASTNode, knownValues: ReadonlyMap<string, ASTNode>): ASTNode {
-	const recurse = (n: ASTNode): ASTNode => substituteIdentifiers(n, knownValues);
-
-	switch (node.kind) {
-		case NodeKind.Program: {
-			const stmts = node.statements.map(recurse);
-			if (unchangedArray(node.statements, stmts)) return node;
-			const result = ast.program(stmts);
-			if (node.trailingComments && node.trailingComments.length > 0) {
-				return { ...result, trailingComments: node.trailingComments };
-			}
-			return result;
-		}
-		case NodeKind.NumberLiteral:
-		case NodeKind.StringLiteral:
-		case NodeKind.BooleanLiteral:
-		case NodeKind.Placeholder:
-			return node;
-		case NodeKind.ArrayLiteral: {
-			const elements = node.elements.map(recurse);
-			if (unchangedArray(node.elements, elements)) return node;
-			return preserveComments(node, ast.array(elements));
-		}
-		case NodeKind.Identifier: {
-			const replacement = knownValues.get(node.name);
-			return replacement ? preserveComments(node, replacement) : node;
-		}
-		case NodeKind.BinaryOp: {
-			const left = recurse(node.left);
-			const right = recurse(node.right);
-			if (left === node.left && right === node.right) return node;
-			return preserveComments(node, ast.binaryOp(left, node.operator, right));
-		}
-		case NodeKind.UnaryOp: {
-			const argument = recurse(node.argument);
-			if (argument === node.argument) return node;
-			return preserveComments(node, ast.unaryOp(node.operator, argument));
-		}
-		case NodeKind.FunctionCall: {
-			const args = node.args.map(recurse);
-			if (unchangedArray(node.args, args)) return node;
-			return preserveComments(node, ast.functionCall(node.name, args));
-		}
-		case NodeKind.Assignment: {
-			const value = recurse(node.value);
-			if (value === node.value) return node;
-			return preserveComments(node, ast.assign(node.name, value));
-		}
-		case NodeKind.IfExpression: {
-			const condition = recurse(node.condition);
-			const consequent = recurse(node.consequent);
-			const alternate = recurse(node.alternate);
-			if (
-				condition === node.condition &&
-				consequent === node.consequent &&
-				alternate === node.alternate
-			)
-				return node;
-			return preserveComments(node, ast.ifExpr(condition, consequent, alternate));
-		}
-		case NodeKind.ForExpression: {
-			// Do not substitute the loop variable or accumulator name inside for body/guard
-			const innerKnown = new Map(knownValues);
-			innerKnown.delete(node.variable);
-			if (node.accumulator) innerKnown.delete(node.accumulator.name);
-			const iterable = recurse(node.iterable);
-			const guard = node.guard ? substituteIdentifiers(node.guard, innerKnown) : null;
-			// Accumulator initial is evaluated in outer scope, so use outer knownValues
-			const initial = node.accumulator ? recurse(node.accumulator.initial) : null;
-			const body = substituteIdentifiers(node.body, innerKnown);
-			if (
-				iterable === node.iterable &&
-				guard === node.guard &&
-				(node.accumulator === null || initial === node.accumulator.initial) &&
-				body === node.body
-			)
-				return node;
-			const accumulator = node.accumulator
-				? { name: node.accumulator.name, initial: initial as ASTNode }
-				: null;
-			return preserveComments(node, ast.forExpr(node.variable, iterable, guard, accumulator, body));
-		}
-		case NodeKind.IndexAccess: {
-			const object = recurse(node.object);
-			const index = recurse(node.index);
-			if (object === node.object && index === node.index) return node;
-			return preserveComments(node, ast.indexAccess(object, index));
-		}
-		case NodeKind.RangeExpression: {
-			const start = recurse(node.start);
-			const end = recurse(node.end);
-			if (start === node.start && end === node.end) return node;
-			return preserveComments(node, ast.rangeExpr(start, end, node.inclusive));
-		}
-		case NodeKind.PipeExpression: {
-			const value = recurse(node.value);
-			const args = node.args.map(recurse);
-			if (value === node.value && unchangedArray(node.args, args)) return node;
-			return preserveComments(node, ast.pipeExpr(value, node.name, args));
-		}
-	}
-}
-
-/**
- * Optimize an AST using constant folding, constant propagation, and dead code elimination.
- *
- * When `externalVariables` is provided, the optimizer can safely propagate variables
- * that are not in the set — since they cannot be overridden by `ExecutionContext.variables`.
- * Without this parameter, no variables are propagated (backward-compatible behavior).
- */
-export function optimize(node: ASTNode, externalVariables?: ReadonlySet<string>): ASTNode {
-	let propagated = fold(node);
-
-	// Constant propagation: iterate until no more substitutions are possible.
-	// Each round may create new literal assignments that enable further propagation.
-	if (externalVariables !== undefined) {
-		while (isProgram(propagated) && propagated.statements.length > 0) {
-			const substituted = propagateConstants(propagated, externalVariables);
-			if (substituted === null) break;
-			propagated = fold(substituted);
-		}
-	}
-
-	if (isProgram(propagated) && propagated.statements.length > 0) {
-		const dce = eliminateDeadCode(propagated);
-		// Unwrap single-statement Programs, consistent with how parse() works
-		if (dce.statements.length === 1) {
-			const stmt = dce.statements[0] as ASTNode;
-			// Merge Program's trailing comments into the single statement's trailing
-			if (dce.trailingComments && dce.trailingComments.length > 0) {
-				const existing = stmt.trailingComments
-					? [...stmt.trailingComments, ...dce.trailingComments]
-					: dce.trailingComments;
-				return { ...stmt, trailingComments: existing };
-			}
-			return stmt;
-		}
-		return dce;
-	}
-
-	return propagated;
-}
-
-/**
- * Constant-fold an AST node, evaluating pure expressions at compile time.
- * Returns the original node unchanged when no folding occurs (identity optimization).
- */
-function fold(node: ASTNode): ASTNode {
-	const recurse = fold;
-
-	switch (node.kind) {
-		case NodeKind.NumberLiteral:
-		case NodeKind.StringLiteral:
-		case NodeKind.BooleanLiteral:
-		case NodeKind.Identifier:
-		case NodeKind.Placeholder:
-			return node;
-
-		case NodeKind.Program: {
-			const optimizedStatements = node.statements.map(recurse);
-			if (unchangedArray(node.statements, optimizedStatements)) return node;
-			const result = ast.program(optimizedStatements);
-			if (node.trailingComments && node.trailingComments.length > 0) {
-				return { ...result, trailingComments: node.trailingComments };
-			}
-			return result;
-		}
-
-		case NodeKind.ArrayLiteral: {
-			const elements = node.elements.map(recurse);
-			if (unchangedArray(node.elements, elements)) return node;
-			return preserveComments(node, ast.array(elements));
-		}
-
-		case NodeKind.BinaryOp: {
-			const left = recurse(node.left);
-
-			if (node.operator === '&&') {
-				if (isBooleanLiteral(left) && !left.value) {
-					return preserveComments(node, ast.boolean(false));
-				}
-
-				const right = recurse(node.right);
-				if (isBooleanLiteral(left) && isBooleanLiteral(right)) {
-					return preserveComments(node, ast.boolean(right.value));
-				}
-				if (left === node.left && right === node.right) return node;
-				return preserveComments(node, ast.binaryOp(left, node.operator, right));
-			}
-
-			if (node.operator === '||') {
-				if (isBooleanLiteral(left) && left.value) {
-					return preserveComments(node, ast.boolean(true));
-				}
-
-				const right = recurse(node.right);
-				if (isBooleanLiteral(left) && isBooleanLiteral(right)) {
-					return preserveComments(node, ast.boolean(right.value));
-				}
-				if (left === node.left && right === node.right) return node;
-				return preserveComments(node, ast.binaryOp(left, node.operator, right));
-			}
-
-			const right = recurse(node.right);
-
-			// Both sides are number literals: fold arithmetic and comparison
-			if (isNumberLiteral(left) && isNumberLiteral(right)) {
-				const result = evaluateBinaryOperation(node.operator, left.value, right.value);
-				if (typeof result === 'number') return preserveComments(node, ast.number(result));
-				if (typeof result === 'boolean') return preserveComments(node, ast.boolean(result));
-			}
-
-			// Both sides are string literals
-			if (isStringLiteral(left) && isStringLiteral(right)) {
-				if (node.operator === '+')
-					return preserveComments(node, ast.string(left.value + right.value));
-				if (
-					node.operator === '<' ||
-					node.operator === '>' ||
-					node.operator === '<=' ||
-					node.operator === '>='
-				) {
-					const result = evaluateBinaryOperation(node.operator, left.value, right.value);
-					return preserveComments(node, ast.boolean(result as boolean));
-				}
-				if (node.operator === '==')
-					return preserveComments(node, ast.boolean(left.value === right.value));
-				if (node.operator === '!=')
-					return preserveComments(node, ast.boolean(left.value !== right.value));
-			}
-
-			// Both sides are boolean literals
-			if (isBooleanLiteral(left) && isBooleanLiteral(right)) {
-				if (node.operator === '==')
-					return preserveComments(node, ast.boolean(left.value === right.value));
-				if (node.operator === '!=')
-					return preserveComments(node, ast.boolean(left.value !== right.value));
-			}
-
-			// Cross-type literal pairs: == is false, != is true
-			if (isLiteral(left) && isLiteral(right)) {
-				// Different types (we've already handled same-type above)
-				if (left.kind !== right.kind) {
-					if (node.operator === '==') return preserveComments(node, ast.boolean(false));
-					if (node.operator === '!=') return preserveComments(node, ast.boolean(true));
-				}
-			}
-
-			if (left === node.left && right === node.right) return node;
-			return preserveComments(node, ast.binaryOp(left, node.operator, right));
-		}
-
-		case NodeKind.UnaryOp: {
-			const argument = recurse(node.argument);
-
-			if (node.operator === '-' && isNumberLiteral(argument)) {
-				return preserveComments(node, ast.number(-argument.value));
-			}
-
-			if (node.operator === '!' && isBooleanLiteral(argument)) {
-				return preserveComments(node, ast.boolean(!argument.value));
-			}
-
-			if (argument === node.argument) return node;
-			return preserveComments(node, ast.unaryOp(node.operator, argument));
-		}
-
-		case NodeKind.FunctionCall: {
-			const optimizedArgs = node.args.map(recurse);
-			if (unchangedArray(node.args, optimizedArgs)) return node;
-			return preserveComments(node, ast.functionCall(node.name, optimizedArgs));
-		}
-
-		case NodeKind.Assignment: {
-			const value = recurse(node.value);
-			if (value === node.value) return node;
-			return preserveComments(node, ast.assign(node.name, value));
-		}
-
-		case NodeKind.IfExpression: {
-			const condition = recurse(node.condition);
-
-			if (isBooleanLiteral(condition)) {
-				const result = condition.value ? recurse(node.consequent) : recurse(node.alternate);
-				return preserveComments(node, result);
-			}
-
-			const consequent = recurse(node.consequent);
-			const alternate = recurse(node.alternate);
-
-			if (
-				condition === node.condition &&
-				consequent === node.consequent &&
-				alternate === node.alternate
-			)
-				return node;
-			return preserveComments(node, ast.ifExpr(condition, consequent, alternate));
-		}
-
-		case NodeKind.ForExpression: {
-			const iterable = recurse(node.iterable);
-			const guard = node.guard ? recurse(node.guard) : null;
-			const initial = node.accumulator ? recurse(node.accumulator.initial) : null;
-			const body = recurse(node.body);
-
-			if (
-				iterable === node.iterable &&
-				guard === node.guard &&
-				(node.accumulator === null || initial === node.accumulator.initial) &&
-				body === node.body
-			)
-				return node;
-
-			const accumulator = node.accumulator
-				? { name: node.accumulator.name, initial: initial as ASTNode }
-				: null;
-			return preserveComments(node, ast.forExpr(node.variable, iterable, guard, accumulator, body));
-		}
-
-		case NodeKind.IndexAccess: {
-			const object = recurse(node.object);
-			const index = recurse(node.index);
-
-			// Fold array[number] at compile time
-			if (isArrayLiteral(object) && isNumberLiteral(index)) {
-				const idx = index.value;
-				if (Number.isInteger(idx)) {
-					const len = object.elements.length;
-					const resolved = idx < 0 ? len + idx : idx;
-					if (resolved >= 0 && resolved < len) {
-						return preserveComments(node, object.elements[resolved] as ASTNode);
-					}
-				}
-			}
-
-			// Fold string[number] at compile time
-			if (isStringLiteral(object) && isNumberLiteral(index)) {
-				try {
-					const char = resolveIndex(object.value, index.value);
-					return preserveComments(node, ast.string(char as string));
-				} catch {
-					// Out of bounds — leave unfoldable
-				}
-			}
-
-			if (object === node.object && index === node.index) return node;
-			return preserveComments(node, ast.indexAccess(object, index));
-		}
-
-		case NodeKind.RangeExpression: {
-			const start = recurse(node.start);
-			const end = recurse(node.end);
-
-			// Fold constant ranges at compile time (cap at 10000 elements)
-			if (isNumberLiteral(start) && isNumberLiteral(end)) {
-				try {
-					const limit = node.inclusive ? end.value + 1 : end.value;
-					const count = limit - start.value;
-					if (count >= 0 && count <= 10000) {
-						const values = buildRange(start.value, end.value, node.inclusive);
-						return preserveComments(node, ast.array(values.map(ast.number)));
-					}
-				} catch {
-					// Invalid range — leave unfoldable
-				}
-			}
-
-			if (start === node.start && end === node.end) return node;
-			return preserveComments(node, ast.rangeExpr(start, end, node.inclusive));
-		}
-
-		case NodeKind.PipeExpression: {
-			const value = recurse(node.value);
-			const optimizedArgs = node.args.map(recurse);
-			if (value === node.value && unchangedArray(node.args, optimizedArgs)) return node;
-			return preserveComments(node, ast.pipeExpr(value, node.name, optimizedArgs));
-		}
-	}
+	// Unwrap single-statement Programs, consistent with how parse() works
+	return statements.length > 1
+		? { ...program, statements }
+		: preserveComments(program, statements[0] as ASTNode);
 }

@@ -58,6 +58,9 @@ const sections: Array<{ title: string; items: Array<[string, string]> }> = [
 	{
 		title: 'Tips',
 		items: [
+			['statements', 'one per line, or separated by ;'],
+			['new lines', 'a line starting with - ( [ or ! is a new statement'],
+			['budget', 'programs here stop at 2 million steps'],
 			['no coercion', "types don't auto-convert; use STR() or NUM()"],
 			['strict booleans', '&&, ||, if, and ! require boolean operands'],
 			['pipe operator', '? marks where the piped value goes; at least one required'],

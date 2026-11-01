@@ -4,6 +4,7 @@ import * as ast from '../src/ast';
 import { evaluate, evaluateScope, evaluateWithScope } from '../src/interpreter';
 import { parse } from '../src/parser';
 import { defaultContext } from '../src/stdlib';
+import { EvaluationError } from '../src/errors';
 
 describe('Interpreter', () => {
 	test('execute number literal', () => {
@@ -192,13 +193,13 @@ describe('Multi-type expressions', () => {
 	});
 
 	test('heterogeneous array throws TypeError', () => {
-		expect(() => evaluate('[1, "two"]')).toThrow(TypeError);
+		expect(() => evaluate('[1, "two"]')).toThrow(EvaluationError);
 	});
 
 	test('type errors for invalid operations', () => {
-		expect(() => evaluate('"hello" - "world"')).toThrow(TypeError);
-		expect(() => evaluate('"hello" * 2')).toThrow(TypeError);
-		expect(() => evaluate('true + false')).toThrow(TypeError);
+		expect(() => evaluate('"hello" - "world"')).toThrow(EvaluationError);
+		expect(() => evaluate('"hello" * 2')).toThrow(EvaluationError);
+		expect(() => evaluate('true + false')).toThrow(EvaluationError);
 	});
 });
 
@@ -275,9 +276,9 @@ describe('Logical NOT operator', () => {
 	});
 
 	test('NOT requires boolean operand', () => {
-		expect(() => evaluate('!0')).toThrow(TypeError);
-		expect(() => evaluate('!5')).toThrow(TypeError);
-		expect(() => evaluate('!"hello"')).toThrow(TypeError);
+		expect(() => evaluate('!0')).toThrow(EvaluationError);
+		expect(() => evaluate('!5')).toThrow(EvaluationError);
+		expect(() => evaluate('!"hello"')).toThrow(EvaluationError);
 	});
 });
 
@@ -296,8 +297,8 @@ describe('If expression', () => {
 	});
 
 	test('if requires boolean condition', () => {
-		expect(() => evaluate('if 1 then 100 else 50')).toThrow(TypeError);
-		expect(() => evaluate('if 0 then 100 else 50')).toThrow(TypeError);
+		expect(() => evaluate('if 1 then 100 else 50')).toThrow(EvaluationError);
+		expect(() => evaluate('if 0 then 100 else 50')).toThrow(EvaluationError);
 	});
 
 	test('nested if expressions', () => {
@@ -337,16 +338,18 @@ describe('For expression', () => {
 	});
 
 	test('iterable must be array or string', () => {
-		expect(() => evaluate('for x in 5 then x')).toThrow(TypeError);
-		expect(() => evaluate('for x in true then x')).toThrow(TypeError);
+		expect(() => evaluate('for x in 5 then x')).toThrow(EvaluationError);
+		expect(() => evaluate('for x in true then x')).toThrow(EvaluationError);
 	});
 
 	test('guard must be boolean', () => {
-		expect(() => evaluate('for x in [1, 2] when x then x')).toThrow(TypeError);
+		expect(() => evaluate('for x in [1, 2] when x then x')).toThrow(EvaluationError);
 	});
 
 	test('result must be homogeneous', () => {
-		expect(() => evaluate('for x in [1, 2] then if x == 1 then "one" else 2')).toThrow(TypeError);
+		expect(() => evaluate('for x in [1, 2] then if x == 1 then "one" else 2')).toThrow(
+			EvaluationError,
+		);
 	});
 
 	test('loop variable scoping — restored after loop', () => {
@@ -463,7 +466,7 @@ describe('Bracket indexing', () => {
 	});
 
 	test('unicode string length reflects code points for indexing', () => {
-		expect(() => evaluate('"😀"[1]')).toThrow(RangeError);
+		expect(() => evaluate('"😀"[1]')).toThrow(EvaluationError);
 		expect(evaluate('"😀"[-1]')).toBe('😀');
 	});
 
@@ -481,22 +484,22 @@ describe('Bracket indexing', () => {
 	});
 
 	test('out of bounds throws RangeError', () => {
-		expect(() => evaluate('[1, 2, 3][5]')).toThrow(RangeError);
-		expect(() => evaluate('[1, 2, 3][-4]')).toThrow(RangeError);
-		expect(() => evaluate('"hi"[5]')).toThrow(RangeError);
+		expect(() => evaluate('[1, 2, 3][5]')).toThrow(EvaluationError);
+		expect(() => evaluate('[1, 2, 3][-4]')).toThrow(EvaluationError);
+		expect(() => evaluate('"hi"[5]')).toThrow(EvaluationError);
 	});
 
 	test('non-integer index throws TypeError', () => {
-		expect(() => evaluate('[1, 2, 3][1.5]')).toThrow(TypeError);
+		expect(() => evaluate('[1, 2, 3][1.5]')).toThrow(EvaluationError);
 	});
 
 	test('non-number index throws TypeError', () => {
-		expect(() => evaluate('[1, 2, 3]["x"]')).toThrow(TypeError);
+		expect(() => evaluate('[1, 2, 3]["x"]')).toThrow(EvaluationError);
 	});
 
 	test('indexing non-array/string throws TypeError', () => {
-		expect(() => evaluate('x = 5; x[0]')).toThrow(TypeError);
-		expect(() => evaluate('x = true; x[0]')).toThrow(TypeError);
+		expect(() => evaluate('x = 5; x[0]')).toThrow(EvaluationError);
+		expect(() => evaluate('x = true; x[0]')).toThrow(EvaluationError);
 	});
 
 	test('function call followed by indexing', () => {
@@ -530,19 +533,19 @@ describe('Range expressions', () => {
 	});
 
 	test('start > end throws RangeError', () => {
-		expect(() => evaluate('5..3')).toThrow(RangeError);
+		expect(() => evaluate('5..3')).toThrow(EvaluationError);
 	});
 
 	test('non-integer start throws TypeError', () => {
-		expect(() => evaluate('1.5..5')).toThrow(TypeError);
+		expect(() => evaluate('1.5..5')).toThrow(EvaluationError);
 	});
 
 	test('non-integer end throws TypeError', () => {
-		expect(() => evaluate('1..5.5')).toThrow(TypeError);
+		expect(() => evaluate('1..5.5')).toThrow(EvaluationError);
 	});
 
 	test('non-number throws TypeError', () => {
-		expect(() => evaluate('x = "a"; x..5')).toThrow(TypeError);
+		expect(() => evaluate('x = "a"; x..5')).toThrow(EvaluationError);
 	});
 
 	test('range with for comprehension', () => {

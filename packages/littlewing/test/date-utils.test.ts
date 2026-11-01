@@ -3,6 +3,7 @@ import { Temporal } from 'temporal-polyfill';
 import { evaluate } from '../src/interpreter';
 import { defaultContext } from '../src/stdlib';
 import type { RuntimeValue } from '../src/types';
+import { EvaluationError } from '../src/errors';
 
 /**
  * Helper to create a context with temporal variables
@@ -518,12 +519,16 @@ describe('Date Utils', () => {
 
 			test('mixed date+datetime rejects', () => {
 				const d = new Temporal.PlainDate(2024, 6, 15);
-				expect(() => evaluate('DIFFERENCE_IN_DAYS(d, dt)', dateCtx({ d, dt }))).toThrow(TypeError);
+				expect(() => evaluate('DIFFERENCE_IN_DAYS(d, dt)', dateCtx({ d, dt }))).toThrow(
+					EvaluationError,
+				);
 			});
 
 			test('mixed datetime+date rejects', () => {
 				const d = new Temporal.PlainDate(2024, 6, 15);
-				expect(() => evaluate('DIFFERENCE_IN_DAYS(dt, d)', dateCtx({ dt, d }))).toThrow(TypeError);
+				expect(() => evaluate('DIFFERENCE_IN_DAYS(dt, d)', dateCtx({ dt, d }))).toThrow(
+					EvaluationError,
+				);
 			});
 		});
 
