@@ -11,7 +11,7 @@ Work remaining before v3 ships. The engine overhaul is done, on the `v3` branch.
    - [x] Review the host API spec until the reviewer agrees
 3. [ ] Implement, one milestone at a time, each reviewed by an independent agent before the next starts:
    - [x] M0: Dependencies
-   - [ ] M1: `Decimal`, the number type, including `ln` and `exp` for `^`
+   - [x] M1: `Decimal`, the number type, including `ln` and `exp` for `^`
    - [ ] M2: Lexer, parser, diagnostics with recovery, and `generate`
    - [ ] M3: `t`, `define` and `defineType`
    - [ ] M4: The checker: inference, classes, records, input schema
@@ -290,7 +290,7 @@ A prototype in a scratch copy of the interpreter keeps safe integers as JS numbe
 - It adds about 1.5 KB min+gzip. A real version also needs rounding modes, formatting and the math functions.
 - `NaN` and infinities go away, with `0 / 0`, `SQRT(-1)` and overflow as errors. So does the rule for sorting `NaN`.
 - `+`, `-` and `*` are exact within 34 digits. `/` rounds, so `1 / 3 * 3` is `0.9999999999999999999999999999999999`, where doubles happen to give `1`.
-- Fractional exponents are correctly rounded, as `^` is in the language and the result must match everywhere, which double math does not guarantee. That needs decimal `ln` and `exp`, whose size and speed are not measured. `SQRT`, `SIN` and `LOG` are optional functions, and can go through doubles at about 15 digits.
+- Fractional exponents are correctly rounded, as `^` is in the language and the result must match everywhere, which double math does not guarantee. That needs decimal `ln` and `exp`. A power takes about 25 us, and `Decimal` adds 4.2 KB min+gzip. `SQRT`, `SIN` and `LOG` are optional functions, and can go through doubles at about 15 digits.
 - Numbers lose trailing zeros, so display needs a core `FIXED(x, 2)`, giving `"1.10"`.
 
 Not measured yet: the stdlib on decimals, step charges for the slow path, hostile programs, or a type table holding decimals. The prototype also reads literals through a double. The real lexer has to keep their digits, which changes `NumberLiteral`.

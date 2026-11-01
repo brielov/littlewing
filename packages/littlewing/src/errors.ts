@@ -21,13 +21,16 @@ export class ParseError extends Error {
  */
 export class EvaluationError extends Error {
 	override readonly name = 'EvaluationError';
+	/** A stable code, from Appendix B of the language spec. */
+	readonly code: string;
 	constructor(
 		message: string,
 		readonly start: number | undefined,
 		readonly end: number | undefined,
-		options?: ErrorOptions,
+		options?: ErrorOptions & { code?: string },
 	) {
 		super(message, options);
+		this.code = options?.code ?? 'host-error';
 	}
 }
 

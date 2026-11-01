@@ -8,6 +8,10 @@ export { extractAssignedVariables, extractInputVariables } from './analyzer.js';
 // Errors
 export { EvaluationError, ParseError, toLineColumn } from './errors.js';
 
+// Numbers
+export type { DecimalLike, RoundingMode } from './decimal.js';
+export { Decimal } from './decimal.js';
+
 // AST builders
 export * as ast from './ast.js';
 // AST types and type guards
