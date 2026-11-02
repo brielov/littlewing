@@ -40,19 +40,6 @@ async function readSourceFromHash(): Promise<string | null> {
 	}
 }
 
-// --- Dark mode ---
-
-const darkQuery = window.matchMedia('(prefers-color-scheme: dark)');
-
-function subscribeToDarkMode(callback: () => void): () => void {
-	darkQuery.addEventListener('change', callback);
-	return () => darkQuery.removeEventListener('change', callback);
-}
-
-function getIsDark(): boolean {
-	return darkQuery.matches;
-}
-
 // --- Desktop breakpoint (matches Tailwind md: = 768px) ---
 
 const desktopQuery = window.matchMedia('(min-width: 768px)');
@@ -70,20 +57,21 @@ type MobileView = 'editor' | 'results';
 
 export function App() {
 	const [source, setSource] = useState(INITIAL_SOURCE);
+	// The editor keeps `\n` line breaks, so a source from elsewhere is given them first
+	const replaceSource = useCallback((text: string) => setSource(text.replace(/\r\n?/g, '\n')), []);
 	const [ready, setReady] = useState(false);
 	const [mobileView, setMobileView] = useState<MobileView>('editor');
-	const isDark = useSyncExternalStore(subscribeToDarkMode, getIsDark);
 	const isDesktop = useSyncExternalStore(subscribeToDesktop, getIsDesktop);
 
 	// Restore source from URL hash on mount
 	useEffect(() => {
 		void readSourceFromHash().then((decoded) => {
 			if (decoded !== null) {
-				setSource(decoded);
+				replaceSource(decoded);
 			}
 			setReady(true);
 		});
-	}, []);
+	}, [replaceSource]);
 
 	// Sync source to URL hash (debounced to avoid thrashing during typing)
 	useEffect(() => {
@@ -112,8 +100,6 @@ export function App() {
 		if (diagnostics.length === 0) setSource(generate(program));
 	}, [source]);
 
-	const monacoTheme = isDark ? 'tomorrow-night' : 'tomorrow';
-
 	return (
 		<div className="flex h-full flex-col" style={{ backgroundColor: 'var(--color-bg)' }}>
 			<header
@@ -134,7 +120,7 @@ export function App() {
 					littlewing
 				</a>
 				<div className="flex items-center gap-3">
-					<ExamplesDialog onSelect={setSource} />
+					<ExamplesDialog onSelect={replaceSource} />
 					<button
 						type="button"
 						onClick={formatSource}
@@ -164,8 +150,8 @@ export function App() {
 						<Editor
 							value={source}
 							onChange={setSource}
-							theme={monacoTheme}
-							diagnostics={evaluation.diagnostics}
+							analyzed={evaluation.source}
+							problems={evaluation.diagnostics}
 							inputTypes={inputTypes}
 						/>
 					</div>
@@ -185,8 +171,8 @@ export function App() {
 							<Editor
 								value={source}
 								onChange={setSource}
-								theme={monacoTheme}
-								diagnostics={evaluation.diagnostics}
+								analyzed={evaluation.source}
+								problems={evaluation.diagnostics}
 								inputTypes={inputTypes}
 							/>
 						) : (

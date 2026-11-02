@@ -12,7 +12,7 @@
 		"fmt:check": "oxfmt --check",
 		"build:littlewing": "bun run --cwd packages/littlewing build",
 		"build:playground": "bun run --cwd packages/playground build",
-		"test": "bun run --cwd packages/littlewing test",
+		"test": "bun run --cwd packages/littlewing test && bun run --cwd packages/playground test",
 		"build": "bun run build:littlewing && bun run build:playground",
 		"test:package": "bun run --cwd packages/littlewing test:package"
 	},

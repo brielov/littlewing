@@ -1,6 +1,7 @@
 import { run, type syntax } from 'littlewing';
 import { useEffect, useRef, useState } from 'react';
-import { FUNCTIONS, LIMITS, type UseEvaluationReturn } from './use-evaluation.ts';
+import { FUNCTIONS, LIMITS } from './environment.ts';
+import type { UseEvaluationReturn } from './use-evaluation.ts';
 
 interface SidebarProps {
 	evaluation: UseEvaluationReturn;

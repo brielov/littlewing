@@ -10,22 +10,9 @@ import {
 	toLineColumn,
 	type TypeDescription,
 } from 'littlewing';
-import * as clock from 'littlewing/clock';
-import * as std from 'littlewing/std';
-import { date, datetime, temporalFunctions, time } from 'littlewing/temporal';
 import { useCallback, useDeferredValue, useMemo, useRef, useState } from 'react';
-
-/**
- * Evaluation runs on the main thread, on every keystroke and from shared links, so
- * it gets a budget small enough to keep the page responsive whatever is typed.
- * The library default is ten times this.
- */
-export const LIMITS = { maxSteps: 2_000_000 };
-
-/** Everything a program here can call, beyond the core functions. */
-export const FUNCTIONS = { ...std, ...temporalFunctions, ...clock };
-
-const TYPES = [date, time, datetime];
+import type { Problem } from './editor/index.ts';
+import { FUNCTIONS, LIMITS, TYPES } from './environment.ts';
 
 interface InputVariable {
 	name: string;
@@ -42,16 +29,6 @@ interface Timing {
 
 type Result = { ok: true; value: unknown } | { ok: false; error: string };
 
-export interface Diagnostic {
-	code: string;
-	message: string;
-	severity: 'error' | 'warning';
-	startLine: number;
-	startCol: number;
-	endLine: number;
-	endCol: number;
-}
-
 export interface UseEvaluationReturn {
 	/** The source all of this is about, which lags what is typed. */
 	source: string;
@@ -60,7 +37,8 @@ export interface UseEvaluationReturn {
 	overrides: ReadonlyMap<string, unknown>;
 	ast: syntax.Program | null;
 	timing: Timing | null;
-	diagnostics: readonly Diagnostic[];
+	/** Every problem found, in the source this is about. */
+	diagnostics: readonly Problem[];
 	setOverride: (name: string, value: unknown) => void;
 	clearOverride: (name: string) => void;
 }
@@ -113,44 +91,10 @@ function inputsOf(program: Program): InputVariable[] {
 	});
 }
 
-/**
- * Turn a source span into a diagnostic.
- */
-function spanToDiagnostic(
-	source: string,
-	code: string,
-	message: string,
-	severity: Diagnostic['severity'],
-	start: number,
-	end: number,
-): Diagnostic {
-	const rawStartOffset = Math.max(0, Math.min(start, source.length));
-	const rawStart = toLineColumn(source, rawStartOffset);
-	let markerStartOffset = rawStartOffset;
-	let markerEndOffset = Math.max(markerStartOffset, Math.min(end, source.length));
-
-	// Monaco markers render best with a non-empty span.
-	if (markerEndOffset === markerStartOffset && source.length > 0) {
-		if (markerStartOffset < source.length) {
-			markerEndOffset = markerStartOffset + 1;
-		} else {
-			markerStartOffset = source.length - 1;
-			markerEndOffset = source.length;
-		}
-	}
-
-	const markerStart = toLineColumn(source, markerStartOffset);
-	const markerEnd = toLineColumn(source, markerEndOffset);
-
-	return {
-		code,
-		message: `${message} (line ${rawStart.line}, col ${rawStart.column})`,
-		severity,
-		startLine: markerStart.line,
-		startCol: markerStart.column,
-		endLine: markerEnd.line,
-		endCol: markerEnd.column,
-	};
+/** Where a problem is, for a message shown away from the source. */
+function located(source: string, problem: Problem): string {
+	const { line, column } = toLineColumn(source, problem.from);
+	return `${problem.message} (line ${line}, col ${column})`;
 }
 
 /** What went wrong in host code, which is here the library's own functions. */
@@ -158,9 +102,9 @@ function withCause(code: string, message: string, cause: unknown): string {
 	return code === 'host-error' && cause instanceof Error ? `${message}: ${cause.message}` : message;
 }
 
-function toDiagnostic(source: string, diagnostic: CompileDiagnostic): Diagnostic {
+function toProblem(diagnostic: CompileDiagnostic): Problem {
 	const { cause, code, end, message, severity, start } = diagnostic;
-	return spanToDiagnostic(source, code, withCause(code, message, cause), severity, start, end);
+	return { code, message: withCause(code, message, cause), severity, from: start, to: end };
 }
 
 interface Compilation {
@@ -171,8 +115,8 @@ interface Compilation {
 }
 
 type CompileOutcome =
-	| { ok: true; value: Compilation | null; diagnostics: readonly Diagnostic[] }
-	| { ok: false; error: string; diagnostics: readonly Diagnostic[] };
+	| { ok: true; value: Compilation | null; diagnostics: readonly Problem[] }
+	| { ok: false; error: string; diagnostics: readonly Problem[] };
 
 function compileSource(source: string): CompileOutcome {
 	if (source.trim() === '') return { ok: true, value: null, diagnostics: [] };
@@ -181,16 +125,22 @@ function compileSource(source: string): CompileOutcome {
 	const result = compile(source, { functions: FUNCTIONS, types: TYPES, limits: LIMITS });
 	const compileMs = performance.now() - start;
 
-	const reported = result.diagnostics.map((diagnostic) => toDiagnostic(source, diagnostic));
+	const reported = result.diagnostics.map(toProblem);
 	// Running out of budget is about the whole program, and no place in it
 	const diagnostics = reported.filter((diagnostic) => diagnostic.code !== 'limit-exceeded');
 	if (!result.ok) {
 		const first = reported.find((diagnostic) => diagnostic.severity === 'error');
-		return { ok: false, error: first?.message ?? 'The program does not compile', diagnostics };
+		const error = first === undefined ? 'The program does not compile' : located(source, first);
+		return { ok: false, error, diagnostics };
 	}
 
 	const { program } = result;
-	const value = { program, ast: parse(source).program, inputVariables: inputsOf(program), compileMs };
+	const value = {
+		program,
+		ast: parse(source).program,
+		inputVariables: inputsOf(program),
+		compileMs,
+	};
 	return { ok: true, value, diagnostics };
 }
 
@@ -283,8 +233,8 @@ export function useEvaluation(source: string): UseEvaluationReturn {
 			if (from === 0 && end === 0) {
 				return { ...finished, result: { ok: false as const, error: text }, timing, diagnostics };
 			}
-			const failure = spanToDiagnostic(deferredSource, code, text, 'error', from, end);
-			const result: Result = { ok: false, error: failure.message };
+			const failure: Problem = { code, message: text, severity: 'error', from, to: end };
+			const result: Result = { ok: false, error: located(deferredSource, failure) };
 			return { ...finished, result, timing, diagnostics: [...diagnostics, failure] };
 		}
 	}, [compilation, deferredSource, overrides]);

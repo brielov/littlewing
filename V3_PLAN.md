@@ -369,11 +369,15 @@ Done in M0: `temporal-polyfill` and `temporal-spec` 1.0, the easy updates, TypeS
 
 ## Playground
 
-- [ ] Compare CodeMirror 6 with Monaco. Monaco appears to load from a public CDN at runtime, separately from its `package.json` version, which is only used for types. Measure size, load time and mobile behaviour first.
-- [ ] Run evaluation in a Web Worker, so that typing never blocks the page. Dates need custom serialization to cross into it.
-- [ ] Embed mode, so that docs examples are runnable
+The owner's choices: CodeMirror 6, docs inside the playground, the Tomorrow and Tomorrow Night colors, and Maple Mono. Each step is reviewed and committed on its own.
+
+- [x] P1: CodeMirror 6 in place of Monaco, which loaded from a public CDN at runtime. Highlighting runs on the library's own lexer, and all diagnostics are shown, with quick fixes, unused code faded and signature help that reads tokens, not text. The editor's logic is pure and tested in `packages/playground/test`.
+- [ ] P2: Language features from analysis: completion of names and record fields in context, hover types for every name, go to definition, references, rename, highlighting of a name's uses, formatting
+- [ ] P3: Evaluation in a Web Worker, so that typing never blocks the page (dates need custom serialization to cross into it), and a results panel that keeps inputs while the source is broken, with a list of problems
+- [ ] P4: A Learn section with runnable examples, and a function reference generated from `describeFunction` and `coreFunctions`
+- [ ] P5: Open source: issue and PR templates, the GitHub description, topics and homepage, README visuals
 - [x] Use the library's function signatures instead of `function-metadata.ts`, which needs `doc` on every definition, and parameter names back in `std` and `temporal`, as the shared type constants dropped them
-- [ ] Measure load time, and whether both `.woff` and `.woff2` fonts need shipping
+- [ ] Measure load time, split the 800 KB bundle, and decide whether both `.woff` and `.woff2` fonts need shipping
 
 ## Open source
 
@@ -406,7 +410,7 @@ From the overhaul, still untested:
 - [ ] `describeFunction` has no limit across parameters, which only a host's own definition can reach
 - [ ] Windows and macOS CI runners
 - [ ] The polyfill path in CI: `lts/*` is likely Node 26, whose native `Temporal` `temporal-polyfill` hands back, so `smoke.mjs` no longer runs on the polyfill there
-- [ ] The playground in a real browser: Monaco markers, the quick fix, time inputs, HMR, mobile and Firefox
+- [ ] The playground in a real browser: checked in Chrome on desktop for the editor (diagnostics, quick fix, signature help, hover, completion); not yet time inputs, mobile, Firefox or Safari
 - [ ] Node 18 to 24
 - [ ] TypeScript 5.0 to 5.8
 - [ ] The types in `define.d.ts` need TypeScript 5.4 with `skipLibCheck: false`. Inference works from 5.0 with `skipLibCheck: true`.
