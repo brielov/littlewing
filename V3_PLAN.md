@@ -21,7 +21,7 @@ Work remaining before v3 ships. The engine overhaul is done, on the `v3` branch.
    - [x] Swap: delete the old pipeline, export the new API, and port the consumer tests and playground to it, in one commit as the lint hook covers them all
    - [x] M8: The conformance suite and fuzzing, including solving order
    - [x] M9: Playground, docs and packaging
-4. [ ] Release v3.0.0, following AGENTS.md
+4. [x] Release v3.0.0, following AGENTS.md: published to npm on 2026-11-02, with CI passing on Linux, macOS and Windows and the package on Node 20, 22 and 24
 
 Hold all of it for one v3 release: with 66 npm downloads in the last month, breaking changes are cheap now. The cost is that v2 keeps its known wrong results, such as `8 / -2 * 4`, until then.
 
@@ -384,7 +384,7 @@ The owner's choices: CodeMirror 6, docs inside the playground, the Tomorrow and 
 Broken today:
 
 - [x] Fix the GitHub description, which still said "arithmetic expression language"
-- [ ] Deploy the new playground: https://littlewing.vercel.app serves the 2.x one, the address the old metadata named gave a 404. The README links it, so the v3 playground has to be live when v3 is
+- [x] Deploy the new playground: https://littlewing.vercel.app serves v3 since the release, deployed from `master`
 - [x] Remove the stale bot, which closes issues after 44 days
 - [x] Stop pointing README readers at CLAUDE.md for development docs
 
@@ -408,7 +408,7 @@ From the overhaul, still untested:
 - [ ] Memory grows with the length of the source: 10.6 MB compiled at 2.4 GB. HOST_API tells hosts to cap it
 - [ ] A short formula can leave a large `Program`, as each call keeps the types of its own arguments, at about 1 KB per signature node per call: 3 KB of calls of a function with 1,000 record fields retains 442 MB. HOST_API tells hosts about it
 - [ ] `describeFunction` has no limit across parameters, which only a host's own definition can reach
-- [ ] Windows and macOS CI runners
+- [x] Windows and macOS CI runners
 - [ ] The polyfill path in CI: `lts/*` is likely Node 26, whose native `Temporal` `temporal-polyfill` hands back, so `smoke.mjs` no longer runs on the polyfill there
 - [ ] The playground in a real browser: checked in Chrome on desktop for the editor (diagnostics, quick fix, signature help, hover, completion); not yet time inputs, mobile, Firefox or Safari
 - [x] Node 20 to 24, which CI checks the package on (18 is no longer supported)
