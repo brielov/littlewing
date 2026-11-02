@@ -23,7 +23,7 @@ total = subtotal * (1 - discount) * (1 + tax)
 
 A program is a sequence of statements. Each one binds a name or computes a value, and the last one is the result. Names are bound once. Values never change. There is no `null`, no user-defined function, and no implicit conversion. Numbers are decimal, so `0.1 + 0.2 == 0.3`.
 
-Every program goes through the same stages: lex, parse, desugar, check, optimize, evaluate. The first five happen once, at compile time, and report every problem they find. Evaluation can fail only for reasons no check can rule out.
+Every program goes through the same stages: lex, parse, desugar, check, optimize, evaluate. The first five happen once, at compile time, and report the problems they find, which an implementation may cap at a number of its choosing. Evaluation can fail only for reasons no check can rule out.
 
 ## 2. Conformance
 
@@ -760,7 +760,7 @@ A constant failure ([section 8.2](#82-constant-failures)) is reported with its r
 | `not-an-integer`   | An index or range bound that is not an integer                               |
 | `invalid-range`    | A range whose start exceeds its end, or with an element that is not a number |
 | `missing-value`    | An index or key that is missing outside the path of a `??`                   |
-| `invalid-argument` | A core function rejected an argument                                         |
+| `invalid-argument` | A function rejected an argument                                              |
 | `host-error`       | A host function or operation failed                                          |
 | `limit-exceeded`   | The evaluation budget ran out                                                |
 

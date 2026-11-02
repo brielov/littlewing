@@ -77,6 +77,8 @@ interface Diagnostic {
 
 `toLineColumn(source, offset)` converts an offset for display. A host that treats warnings as errors checks `severity` itself.
 
+Each stage reports at most 100 errors and 100 warnings, after which it stops looking: a hostile source could otherwise turn every character into a diagnostic. A real program never comes near that.
+
 ### Programs
 
 ```ts
@@ -387,7 +389,7 @@ interface ParseResult {
 }
 ```
 
-`parse(source)` reads a program as `compile` does, and stops at nothing: `diagnostics` holds every syntax problem it finds, in source order, and `program` every statement it could read, with spans and comments. A statement the parser cannot read is left out with its comments, and reading resumes at the next one, so a tool such as an editor has a tree to work with while the source is broken. A statement with an error the parser reads past, such as an invalid number or escape, stays in the tree, so a tree with diagnostics is not one to write back as source. A source with no statements gives a program with none, which keeps its comments. `parse` throws `TypeError` for a source that is not a string, and nothing else.
+`parse(source)` reads a program as `compile` does, and stops at nothing: `diagnostics` holds every syntax problem it finds, up to the 100 of [Diagnostics](#diagnostics), in source order, and `program` every statement it could read, with spans and comments. A statement the parser cannot read is left out with its comments, and reading resumes at the next one, so a tool such as an editor has a tree to work with while the source is broken. A statement with an error the parser reads past, such as an invalid number or escape, stays in the tree, so a tree with diagnostics is not one to write back as source. A source with no statements gives a program with none, which keeps its comments. `parse` throws `TypeError` for a source that is not a string, and nothing else.
 
 `generate(program)` returns source text, which parses back to an equal tree apart from offsets, unless the text passes a limit of the language: it can add parentheses at the nesting limit, and writing a name in NFC can lengthen it. No syntax tree can be evaluated, since the only route to execution is `compile`.
 

@@ -4,6 +4,8 @@
 
 3.0 replaces the pipeline. Every program is now compiled and type checked before it runs, numbers are exact decimals, and the API is new. This guide covers what has to change.
 
+3.0 needs Node 20 or later, as Node 18 has reached its end of life. Dates need `Temporal`: Node 20 to 24 get it from `temporal-polyfill`, loaded before `littlewing/temporal`.
+
 A stored formula may need changes too. Compiling it with 3.0 finds what no longer parses or type checks, and its warnings need reading as well. It cannot find a formula that now means something else, such as one whose host overrode an `=`, or one that only fails on some inputs. See [Programs that now mean something else](#programs-that-now-mean-something-else).
 
 ### The API

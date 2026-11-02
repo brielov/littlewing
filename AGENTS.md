@@ -104,7 +104,3 @@ Example: `v2.3.0` tag failed before publish, so the correct recovery was to fix 
 
 - CI: `.github/workflows/ci.yml`
 - Release: `.github/workflows/release.yml`
-
-### Current caveat
-
-GitHub Actions currently emits a non-blocking warning that `actions/checkout@v4` and `actions/setup-node@v4` are on the Node 20 deprecation path. This does not block releases today, but the workflows should be updated before GitHub flips the default runtime.

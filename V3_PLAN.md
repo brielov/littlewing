@@ -411,7 +411,7 @@ From the overhaul, still untested:
 - [ ] Windows and macOS CI runners
 - [ ] The polyfill path in CI: `lts/*` is likely Node 26, whose native `Temporal` `temporal-polyfill` hands back, so `smoke.mjs` no longer runs on the polyfill there
 - [ ] The playground in a real browser: checked in Chrome on desktop for the editor (diagnostics, quick fix, signature help, hover, completion); not yet time inputs, mobile, Firefox or Safari
-- [ ] Node 18 to 24
+- [x] Node 20 to 24, which CI checks the package on (18 is no longer supported)
 - [ ] TypeScript 5.0 to 5.8
 - [ ] The types in `define.d.ts` need TypeScript 5.4 with `skipLibCheck: false`. Inference works from 5.0 with `skipLibCheck: true`.
 - [ ] Undecided overloaded calls are all retried after each rule of section 6.5, which is quadratic, and charged. About 43 KB of nothing but such calls, or 2,000 calls, passes the default compile budget.
