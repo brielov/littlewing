@@ -1,7 +1,9 @@
 /// <reference lib="webworker" />
-import 'temporal-polyfill/global';
-import { analyze } from './analyze.ts';
 import type { Message, Request, Response } from './protocol.ts';
+
+// The polyfill loads only where Temporal is missing, before the library reads dates
+if (typeof globalThis.Temporal === 'undefined') await import('temporal-polyfill/global');
+const { analyze } = await import('./analyze.ts');
 
 const post = (message: Message) => self.postMessage(message);
 

@@ -26,7 +26,7 @@ import { theme } from './theme.ts';
 
 export { showProblems } from './diagnostics.ts';
 export { formatDocument } from './names.ts';
-export { setAnalysis, type Analysis } from './state.ts';
+export { setAnalysis, syntaxField, tokenBefore, type Analysis } from './state.ts';
 
 /**
  * In a string or comment, a typed `"` is just that rather than opening a pair, which is what

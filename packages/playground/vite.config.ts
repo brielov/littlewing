@@ -7,6 +7,8 @@ const source = resolve(import.meta.dirname, '../littlewing/src');
 
 export default defineConfig({
 	plugins: [react(), ...tailwindcss()],
+	// The evaluation worker is a module, which loads the Temporal polyfill only where it is missing
+	worker: { format: 'es' },
 	resolve: {
 		alias: [
 			{ find: /^littlewing$/, replacement: `${source}/index.ts` },

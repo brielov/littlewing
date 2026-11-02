@@ -374,10 +374,10 @@ The owner's choices: CodeMirror 6, docs inside the playground, the Tomorrow and 
 - [x] P1: CodeMirror 6 in place of Monaco, which loaded from a public CDN at runtime. Highlighting runs on the library's own lexer, and all diagnostics are shown, with quick fixes, unused code faded and signature help that reads tokens, not text. The editor's logic is pure and tested in `packages/playground/test`.
 - [x] P2: Language features from analysis: completion of names and record fields in context, hover types for every name, go to definition, references, rename, highlighting of a name's uses, formatting
 - [x] P3: Evaluation in a Web Worker, so that typing never blocks the page (dates need custom serialization to cross into it), and a results panel that keeps inputs while the source is broken, with a list of problems
-- [ ] P4: A Learn section with runnable examples, and a function reference generated from `describeFunction` and `coreFunctions`
+- [x] P4: A Learn section with runnable examples, and a function reference generated from `describeFunction` and `coreFunctions`
 - [ ] P5: Open source: issue and PR templates, the GitHub description, topics and homepage, README visuals
 - [x] Use the library's function signatures instead of `function-metadata.ts`, which needs `doc` on every definition, and parameter names back in `std` and `temporal`, as the shared type constants dropped them
-- [ ] Measure load time, split the 800 KB bundle, and decide whether both `.woff` and `.woff2` fonts need shipping
+- [ ] Measure load time, and decide whether both `.woff` and `.woff2` fonts need shipping. The guide and reference load on demand, and the Temporal polyfill only where Temporal is missing; the editor and library are about 710 KB, 230 KB gzipped
 
 ## Open source
 

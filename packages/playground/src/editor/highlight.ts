@@ -6,16 +6,14 @@ import {
 	ViewPlugin,
 	type ViewUpdate,
 } from '@codemirror/view';
-import type { Style } from '../language/tokens.ts';
+import { spanClass, type Style } from '../language/tokens.ts';
 import { syntaxField } from './state.ts';
 
 const marks = new Map<string, Decoration>();
 
-/** The mark for a span: its style, and for a bracket, which of three colors or none. */
+/** The mark for a span, shared by every span drawn the same. */
 function mark(style: Style, depth: number | undefined): Decoration {
-	const bracket =
-		depth === undefined ? '' : depth < 0 ? ' tok-bracket-unpaired' : ` tok-bracket-${depth % 3}`;
-	const className = `tok-${style}${bracket}`;
+	const className = spanClass({ style, depth });
 	let decoration = marks.get(className);
 	if (decoration === undefined) {
 		decoration = Decoration.mark({ class: className });

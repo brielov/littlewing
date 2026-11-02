@@ -335,3 +335,9 @@ export function highlight(source: string, tokens: readonly Token[]): Span[] {
 	for (const { span } of open) spans[span] = { ...spans[span]!, depth: -1 };
 	return spans;
 }
+
+/** The classes a span is drawn with: its style, and for a bracket, which of three colors or none. */
+export function spanClass({ style, depth }: Pick<Span, 'style' | 'depth'>): string {
+	if (depth === undefined) return `tok-${style}`;
+	return `tok-${style} ${depth < 0 ? 'tok-bracket-unpaired' : `tok-bracket-${depth % 3}`}`;
+}

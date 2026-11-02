@@ -4,6 +4,8 @@ interface ErrorBoundaryProps {
 	children: ReactNode;
 	/** A new value starts over, so that editing the source clears a failure. */
 	resetKey: string;
+	/** What to say in place of what failed. */
+	message?: string;
 }
 
 interface ErrorBoundaryState {
@@ -26,14 +28,9 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
 	}
 
 	override render(): ReactNode {
-		return this.state.failed ? <Failed /> : this.props.children;
+		if (!this.state.failed) return this.props.children;
+		const message =
+			this.props.message ?? 'This panel could not show the program. Edit the source to try again.';
+		return <p className="p-4 text-xs text-(--color-error)">{message}</p>;
 	}
-}
-
-function Failed() {
-	return (
-		<p className="p-4 text-xs" style={{ color: 'var(--color-error)' }}>
-			This panel could not show the program. Edit the source to try again.
-		</p>
-	);
 }
