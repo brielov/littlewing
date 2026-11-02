@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Playground
+    url: https://littlewing.vercel.app
+    about: Try a formula, see its types and every problem it has, and share it by its address
+  - name: Language guide
+    url: https://github.com/brielov/littlewing/blob/master/LANGUAGE.md
+    about: How formulas read, with every example run by the tests
+  - name: Security
+    url: https://github.com/brielov/littlewing/blob/master/SECURITY.md
+    about: Report a vulnerability privately, not in an issue

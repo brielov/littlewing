@@ -1,45 +1,13 @@
-## Description
+## What and why
 
-<!-- Briefly describe what this PR does -->
-
-## Type of Change
-
-<!-- Check the relevant option -->
-
-- [ ] 🐛 Bug fix
-- [ ] ✨ New feature
-- [ ] 💥 Breaking change
-- [ ] 📝 Documentation
-- [ ] ♻️ Refactoring
-- [ ] ⚡ Performance
-- [ ] ✅ Tests
-- [ ] 🔧 Build/CI
-
-## Related Issues
-
-<!-- Link related issues: Fixes #123, Closes #456 -->
-
-## Changes
-
-<!-- List key changes -->
-
--
--
-
-## Testing
-
-<!-- How did you test this? -->
-
-- [ ] Tests added/updated
-- [ ] All tests passing
+<!-- What this changes, and the problem it solves. Link the issue: Fixes #123 -->
 
 ## Checklist
 
-- [ ] Code follows project style
-- [ ] Self-reviewed
-- [ ] Documentation updated (if needed)
-- [ ] No breaking changes (or documented)
+- [ ] `bun run test` passes, with tests for what changed
+- [ ] `bun run fmt:check` and `bun run lint` pass
+- [ ] A change to what a formula means updates `SPEC.md` and adds conformance cases in `packages/littlewing/conformance`
+- [ ] A change to the API updates `HOST_API.md`, and is checked with `bun run build && bun run test:package`
+- [ ] A change to what users read updates `README.md` or `LANGUAGE.md`, whose examples the tests run
 
-## Screenshots/Notes
-
-<!-- Optional: Add screenshots or additional context -->
+<!-- A formula stored with 3.x keeps its meaning across 3.x. Say so here if this could change one. -->

@@ -1,5 +1,9 @@
 # littlewing
 
+[![npm](https://img.shields.io/npm/v/littlewing)](https://www.npmjs.com/package/littlewing)
+[![CI](https://github.com/brielov/littlewing/actions/workflows/ci.yml/badge.svg)](https://github.com/brielov/littlewing/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/npm/l/littlewing)](https://github.com/brielov/littlewing/blob/master/LICENSE)
+
 Let your users write formulas, without `eval` and without letting them hang your app.
 
 littlewing is a small typed language for the formulas people put in spreadsheets, pricing rules and form fields. A program can only compute: it has no access to anything you do not hand it, and every run has a budget that stops it. Numbers are exact decimals, so `0.1 + 0.2` is `0.3`. And it infers what a formula needs, so a form can be built from it.
@@ -47,7 +51,7 @@ tax = subtotal * (rates[country] ?? 0)
 // => "Total: 107.95"
 ```
 
-[LANGUAGE.md](https://github.com/brielov/littlewing/blob/master/LANGUAGE.md) is a guide for people writing formulas. [SPEC.md](https://github.com/brielov/littlewing/blob/master/SPEC.md) is the definition.
+[LANGUAGE.md](https://github.com/brielov/littlewing/blob/master/LANGUAGE.md) is a guide for people writing formulas. [SPEC.md](https://github.com/brielov/littlewing/blob/master/SPEC.md) is the definition. The [playground](https://littlewing.vercel.app) runs a formula as you type it, with its types, the value of every name and every problem, and has the guide and every function in it.
 
 ## Using it
 
@@ -200,6 +204,7 @@ Every failure of a program is an `EvaluationError`, with a stable `code`, and `s
 
 ## Reference
 
+- [The playground](https://littlewing.vercel.app): write formulas, and share them by their address
 - [LANGUAGE.md](https://github.com/brielov/littlewing/blob/master/LANGUAGE.md): the guide for people writing formulas
 - [HOST_API.md](https://github.com/brielov/littlewing/blob/master/HOST_API.md): the whole host API
 - [SPEC.md](https://github.com/brielov/littlewing/blob/master/SPEC.md): the language, normatively

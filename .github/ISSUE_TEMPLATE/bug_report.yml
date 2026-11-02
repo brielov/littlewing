@@ -1,124 +1,67 @@
-name: 🐛 Bug Report
-description: Report a bug or unexpected behavior
-title: '[Bug]: '
-labels: ['bug', 'needs-triage']
+name: Bug report
+description: A formula that gives the wrong result, a wrong error, or none at all, or the API misbehaving
+labels: ['bug']
 body:
   - type: markdown
     attributes:
       value: |
-        Thanks for taking the time to report this issue! Please fill out the information below to help us understand and resolve the problem.
-
-  - type: checkboxes
-    id: prerequisites
-    attributes:
-      label: Prerequisites
-      description: Please confirm the following before submitting
-      options:
-        - label: I have searched existing issues to ensure this bug hasn't been reported
-          required: true
-        - label: I have checked the documentation
-          required: true
-        - label: I am using the latest version
-          required: false
-
-  - type: input
-    id: version
-    attributes:
-      label: Package Version
-      description: What version of the package are you using?
-      placeholder: e.g., 1.2.3
-    validations:
-      required: true
+        Thanks for reporting this. A formula and what you expected are usually all it takes to find the cause.
+        A playground link holds the formula and its inputs: write it at https://littlewing.vercel.app and copy the address.
+        For a security problem, such as a formula that escapes its budget or reaches the host, do not open an issue: see SECURITY.md.
 
   - type: textarea
-    id: description
+    id: formula
     attributes:
-      label: Bug Description
-      description: A clear and concise description of what the bug is
-      placeholder: What went wrong?
-    validations:
-      required: true
-
-  - type: textarea
-    id: reproduction
-    attributes:
-      label: Steps to Reproduce
-      description: Detailed steps to reproduce the behavior
+      label: The formula
+      description: The smallest source that shows the problem, or a playground link
       placeholder: |
-        1. Import '...'
-        2. Call function with '...'
-        3. See error
+        price = 100
+        price * 1.21
+      render: text
     validations:
       required: true
 
   - type: textarea
     id: expected
     attributes:
-      label: Expected Behavior
-      description: What did you expect to happen?
-      placeholder: What should have happened instead?
+      label: What you expected
+      description: The value or error you expected, and why, with a section of the spec or guide if one says so
     validations:
       required: true
 
   - type: textarea
     id: actual
     attributes:
-      label: Actual Behavior
-      description: What actually happened?
-      placeholder: Include error messages, screenshots, or logs
+      label: What happened
+      description: The value, the diagnostics with their codes, or the error and its stack
     validations:
       required: true
 
   - type: textarea
-    id: code
+    id: host
     attributes:
-      label: Code Sample
-      description: Minimal code to reproduce the issue
+      label: How you run it
+      description: The calls and options, and any functions or types you define with `define` and `defineType`
       placeholder: |
-        ```typescript
-        // Your code here
-        ```
+        const result = compile(source, { functions: { ...std } });
+        evaluate(result.program, { variables: { price: 100 }, numbers: 'decimal' });
       render: typescript
     validations:
       required: false
 
   - type: input
-    id: reproduction-link
+    id: version
     attributes:
-      label: Reproduction Link
-      description: Link to a minimal reproduction (CodeSandbox, StackBlitz, GitHub repo, etc.)
-      placeholder: https://codesandbox.io/s/...
+      label: littlewing version
+      placeholder: 3.0.0
     validations:
-      required: false
+      required: true
 
-  - type: textarea
-    id: environment
+  - type: input
+    id: runtime
     attributes:
-      label: Environment
-      description: Please provide your environment details
-      placeholder: |
-        - OS: [e.g., macOS 14.0, Windows 11, Ubuntu 22.04]
-        - Node version: [e.g., 20.10.0]
-        - Package manager: [e.g., npm 10.2.3, yarn 4.0.2, pnpm 8.14.0]
-        - TypeScript version (if applicable): [e.g., 5.3.3]
-        - Browser (if applicable): [e.g., Chrome 120, Safari 17]
+      label: Runtime
+      description: Node, Bun, Deno or a browser, with its version
+      placeholder: Node 22.11
     validations:
-      required: false
-
-  - type: textarea
-    id: additional
-    attributes:
-      label: Additional Context
-      description: Any other context, screenshots, or information about the problem
-      placeholder: Add any other relevant details here
-    validations:
-      required: false
-
-  - type: textarea
-    id: solution
-    attributes:
-      label: Possible Solution
-      description: If you have suggestions on how to fix this, please share
-      placeholder: Optional - your ideas for fixing this issue
-    validations:
-      required: false
+      required: true

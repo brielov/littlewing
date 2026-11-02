@@ -375,7 +375,7 @@ The owner's choices: CodeMirror 6, docs inside the playground, the Tomorrow and 
 - [x] P2: Language features from analysis: completion of names and record fields in context, hover types for every name, go to definition, references, rename, highlighting of a name's uses, formatting
 - [x] P3: Evaluation in a Web Worker, so that typing never blocks the page (dates need custom serialization to cross into it), and a results panel that keeps inputs while the source is broken, with a list of problems
 - [x] P4: A Learn section with runnable examples, and a function reference generated from `describeFunction` and `coreFunctions`
-- [ ] P5: Open source: issue and PR templates, the GitHub description, topics and homepage, README visuals
+- [x] P5: Open source: issue and PR templates, the GitHub description, topics and homepage, README visuals
 - [x] Use the library's function signatures instead of `function-metadata.ts`, which needs `doc` on every definition, and parameter names back in `std` and `temporal`, as the shared type constants dropped them
 - [ ] Measure load time, and decide whether both `.woff` and `.woff2` fonts need shipping. The guide and reference load on demand, and the Temporal polyfill only where Temporal is missing; the editor and library are about 710 KB, 230 KB gzipped
 
@@ -383,8 +383,8 @@ The owner's choices: CodeMirror 6, docs inside the playground, the Tomorrow and 
 
 Broken today:
 
-- [ ] Fix the GitHub description, which still says "arithmetic expression language"
-- [ ] Deploy the playground, whose address on Vercel gives a 404, and link it from the README
+- [x] Fix the GitHub description, which still said "arithmetic expression language"
+- [ ] Deploy the new playground: https://littlewing.vercel.app serves the 2.x one, the address the old metadata named gave a 404. The README links it, so the v3 playground has to be live when v3 is
 - [x] Remove the stale bot, which closes issues after 44 days
 - [x] Stop pointing README readers at CLAUDE.md for development docs
 
