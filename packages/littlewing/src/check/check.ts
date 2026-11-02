@@ -279,7 +279,10 @@ class Checker {
 
 		const definition = this.options.functions.get(node.name);
 		if (definition === undefined) {
-			solver.report('unknown-function', `Unknown function ${node.name.slice(0, 40)}`, node);
+			// The name alone, which in a pipe comes well after the start of the call
+			const start = node.stepStart ?? node.start;
+			const name = { start, end: start + node.name.length };
+			solver.report('unknown-function', `Unknown function ${node.name.slice(0, 40)}`, name);
 			return ERROR;
 		}
 

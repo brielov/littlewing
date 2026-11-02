@@ -1,12 +1,32 @@
 import type { Monaco } from '@monaco-editor/react';
-import { type RuntimeValue, defaultContext, typeOf } from 'littlewing';
 import type { CancellationToken, IDisposable, Position, editor, languages } from 'monaco-editor';
 import { FUNCTION_SIGNATURES, formatSignature } from './function-metadata.ts';
+import { FUNCTIONS } from './use-evaluation.ts';
 import tomorrowNightTheme from './themes/tomorrow-night.json';
 import tomorrowTheme from './themes/tomorrow.json';
 
 const KEYWORDS = ['if', 'then', 'else', 'for', 'in', 'when', 'into'];
-const BUILTINS = Object.keys(defaultContext.functions ?? {});
+const CORE = [
+	'STR',
+	'NUM',
+	'LEN',
+	'SLICE',
+	'CONTAINS',
+	'INDEX_OF',
+	'UPPER',
+	'LOWER',
+	'TRIM',
+	'SPLIT',
+	'REPLACE',
+	'SORT',
+	'SORT_BY',
+	'JOIN',
+	'FLOOR',
+	'CEIL',
+	'ROUND',
+	'FIXED',
+];
+const BUILTINS = [...CORE, ...Object.keys(FUNCTIONS)];
 
 /**
  * Compute the Levenshtein edit distance between two strings.
@@ -41,30 +61,6 @@ function levenshteinDistance(a: string, b: string): number {
 }
 
 /**
- * Format a RuntimeValue for display in hover tooltips.
- */
-function formatValue(value: RuntimeValue): string {
-	try {
-		return formatNested(value);
-	} catch {
-		return '(too deeply nested to display)';
-	}
-}
-
-function formatNested(value: RuntimeValue): string {
-	if (typeof value === 'string') return `"${value}"`;
-	if (typeof value === 'number' || typeof value === 'boolean') return String(value);
-	if (Array.isArray(value)) {
-		if (value.length > 5) {
-			const head = value.slice(0, 5).map(formatNested).join(', ');
-			return `[${head}, ... (${value.length} items)]`;
-		}
-		return `[${value.map(formatNested).join(', ')}]`;
-	}
-	return String(value);
-}
-
-/**
  * Shared language state persisted through HMR so existing providers can
  * read updates from newer module instances.
  */
@@ -74,15 +70,11 @@ interface PlaygroundLanguageState {
 }
 
 interface HoverState {
-	runtimeScope: Record<string, RuntimeValue> | null;
-	assignedVariables: readonly string[];
+	inputTypes: ReadonlyMap<string, string>;
 }
 
 const languageState: PlaygroundLanguageState = import.meta.hot?.data?.languageState ?? {
-	hoverState: {
-		runtimeScope: null,
-		assignedVariables: [],
-	},
+	hoverState: { inputTypes: new Map() },
 	providerDisposables: [],
 };
 
@@ -356,16 +348,10 @@ export function registerLittlewingLanguage(monaco: Monaco): void {
 					};
 				}
 
-				// Variable hover
-				const { runtimeScope } = languageState.hoverState;
-				if (runtimeScope && Object.hasOwn(runtimeScope, word.word)) {
-					const value = runtimeScope[word.word] as RuntimeValue;
-					const type = typeOf(value);
-					const preview = formatValue(value);
-					return {
-						contents: [{ value: `\`\`\`\n${word.word}: ${type} = ${preview}\n\`\`\`` }],
-						range,
-					};
+				// Input hover
+				const type = languageState.hoverState.inputTypes.get(word.word);
+				if (type !== undefined) {
+					return { contents: [{ value: `\`\`\`\n${word.word}: ${type}\n\`\`\`` }], range };
 				}
 
 				return null;
@@ -385,41 +371,14 @@ export function registerLittlewingLanguage(monaco: Monaco): void {
 				const actions: languages.CodeAction[] = [];
 
 				for (const marker of context.markers) {
-					const msg = marker.message;
-
-					let prefix: string;
-					let candidates: string[];
-
-					if (msg.startsWith('Undefined variable: ')) {
-						prefix = 'Undefined variable: ';
-						const names = new Set<string>();
-						const { runtimeScope, assignedVariables } = languageState.hoverState;
-						if (runtimeScope) {
-							for (const key of Object.keys(runtimeScope)) names.add(key);
-						}
-						for (const name of assignedVariables) {
-							names.add(name);
-						}
-						candidates = [...names];
-					} else if (msg.startsWith('Undefined function: ')) {
-						prefix = 'Undefined function: ';
-						candidates = BUILTINS;
-					} else {
-						continue;
-					}
-
-					// Extract the undefined name: text between prefix and " (line ..." suffix
-					const suffixIndex = msg.indexOf(' (line ', prefix.length);
-					if (suffixIndex < 0) continue;
-					const name = msg.slice(prefix.length, suffixIndex);
+					// The diagnostic marks exactly the name
+					if (marker.code !== 'unknown-function') continue;
+					const name = model.getValueInRange(marker);
 					if (name.length === 0) continue;
-
-					// Only offer a replacement if the marker covers exactly the name
-					if (model.getValueInRange(marker) !== name) continue;
 
 					// Score candidates by Levenshtein distance
 					const scored: { candidate: string; distance: number }[] = [];
-					for (const candidate of candidates) {
+					for (const candidate of BUILTINS) {
 						const distance = levenshteinDistance(name, candidate);
 						if (distance > 0 && distance <= 3 && distance < name.length) {
 							scored.push({ candidate, distance });

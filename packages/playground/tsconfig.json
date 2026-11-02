@@ -17,7 +17,8 @@
 		"noUncheckedIndexedAccess": true,
 		"noImplicitOverride": true,
 		"paths": {
-			"littlewing": ["../littlewing/src/index.ts"]
+			"littlewing": ["../littlewing/src/index.ts"],
+			"littlewing/*": ["../littlewing/src/*.ts"]
 		}
 	},
 	"include": ["src/**/*", "vite.config.ts"]

@@ -34,7 +34,7 @@ import { isKeyword } from './syntax/lexer.js';
 import { parseProgram } from './syntax/parser.js';
 
 /** The default budget of compiling, and of evaluating. */
-export const DEFAULT_MAX_STEPS = 20_000_000;
+const DEFAULT_MAX_STEPS = 20_000_000;
 
 const IDENTIFIER = /^[\p{XID_Start}_]\p{XID_Continue}*$/u;
 const MAX_NAME_LENGTH = 1024;

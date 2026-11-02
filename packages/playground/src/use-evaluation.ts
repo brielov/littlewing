@@ -1,49 +1,51 @@
 import {
-	type ASTNode,
+	type Diagnostic as CompileDiagnostic,
 	EvaluationError,
-	type ExecutionLimits,
-	LimitExceededError,
-	ParseError,
-	type RuntimeValue,
-	defaultContext,
+	compile,
 	evaluate,
-	evaluateWithScope,
-	extractAssignedVariables,
-	extractInputVariables,
-	isAssignment,
-	isProgram,
-	optimize,
 	parse,
+	type InputDescription,
+	type Program,
+	type syntax,
 	toLineColumn,
-	typeOf,
+	type TypeDescription,
 } from 'littlewing';
-import { useCallback, useDeferredValue, useMemo, useState } from 'react';
+import * as clock from 'littlewing/clock';
+import * as std from 'littlewing/std';
+import { date, datetime, temporalFunctions, time } from 'littlewing/temporal';
+import { useCallback, useDeferredValue, useMemo, useRef, useState } from 'react';
 
 /**
  * Evaluation runs on the main thread, on every keystroke and from shared links, so
  * it gets a budget small enough to keep the page responsive whatever is typed.
  * The library default is ten times this.
  */
-const maxSteps = 2_000_000;
-export const LIMITS: ExecutionLimits = { maxSteps };
+export const LIMITS = { maxSteps: 2_000_000 };
+
+/** Everything a program here can call, beyond the core functions. */
+export const FUNCTIONS = { ...std, ...temporalFunctions, ...clock };
+
+const TYPES = [date, time, datetime];
 
 interface InputVariable {
 	name: string;
 	type: string;
-	defaultValue: RuntimeValue;
+	required: boolean;
+	defaultValue: unknown;
 }
 
 interface Timing {
-	parseMs: number;
-	optimizeMs: number;
+	compileMs: number;
 	evaluateMs: number;
 	totalMs: number;
 }
 
-type Result = { ok: true; value: RuntimeValue } | { ok: false; error: string };
+type Result = { ok: true; value: unknown } | { ok: false; error: string };
 
 export interface Diagnostic {
+	code: string;
 	message: string;
+	severity: 'error' | 'warning';
 	startLine: number;
 	startCol: number;
 	endLine: number;
@@ -51,101 +53,77 @@ export interface Diagnostic {
 }
 
 export interface UseEvaluationReturn {
+	/** The source all of this is about, which lags what is typed. */
+	source: string;
 	result: Result | null;
-	inputVariables: InputVariable[];
-	overrides: Map<string, RuntimeValue>;
-	scope: Record<string, RuntimeValue> | null;
-	assignedVariables: readonly string[];
-	ast: ASTNode | null;
+	inputVariables: readonly InputVariable[];
+	overrides: ReadonlyMap<string, unknown>;
+	ast: syntax.Program | null;
 	timing: Timing | null;
 	diagnostics: readonly Diagnostic[];
-	setOverride: (name: string, value: RuntimeValue) => void;
+	setOverride: (name: string, value: unknown) => void;
 	clearOverride: (name: string) => void;
 }
 
-interface CompilationResult {
-	optimizedAst: ASTNode;
-	ast: ASTNode;
-	inputVariables: InputVariable[];
-	assignedVariables: string[];
-	parseMs: number;
-	optimizeMs: number;
-}
-
-function resolveInputVariables(ast: ASTNode): InputVariable[] {
-	const inputVarNames = new Set(extractInputVariables(ast));
-	if (inputVarNames.size === 0) return [];
-
-	const statements = isProgram(ast) ? ast.statements : [ast];
-	const seen = new Set<string>();
-	const inputVariables: InputVariable[] = [];
-	// The defaults share one budget, or a long program could multiply it
-	const limits = { maxSteps: Math.floor(maxSteps / inputVarNames.size) };
-
-	for (const statement of statements) {
-		if (
-			!isAssignment(statement) ||
-			!inputVarNames.has(statement.name) ||
-			seen.has(statement.name)
-		) {
-			continue;
-		}
-
-		seen.add(statement.name);
-
-		let defaultValue: RuntimeValue;
-		try {
-			defaultValue = evaluate(statement.value, { ...defaultContext, limits });
-		} catch (err) {
-			// Too heavy for its share to become an input, though the program may still run
-			if (err instanceof EvaluationError && err.cause instanceof LimitExceededError) continue;
-			throw err;
-		}
-
-		inputVariables.push({
-			name: statement.name,
-			type: typeOf(defaultValue),
-			defaultValue,
-		});
+/** The name a type goes by in the sidebar, which picks the control that edits it. */
+function typeName(type: TypeDescription): string {
+	switch (type.kind) {
+		case 'abstract':
+			return type.name;
+		case 'generic':
+			return 'any';
+		default:
+			return type.kind;
 	}
-
-	return inputVariables;
 }
 
-function compile(src: string): CompilationResult | null {
-	if (src.trim() === '') return null;
+/** A value to start a required input from, so that a program runs as soon as it is typed. */
+function startingValue(type: string): unknown {
+	switch (type) {
+		case 'number':
+			return 0;
+		case 'string':
+			return '';
+		case 'boolean':
+			return false;
+		case 'array':
+			return [];
+		case 'date':
+			return Temporal.Now.plainDateISO();
+		case 'time':
+			return Temporal.Now.plainTimeISO();
+		case 'datetime':
+			return Temporal.Now.plainDateTimeISO();
+		default:
+			return undefined;
+	}
+}
 
-	const parseStart = performance.now();
-	const ast = parse(src);
-	const parseMs = performance.now() - parseStart;
+function defaultOf(input: InputDescription, type: string): unknown {
+	if (input.default !== undefined) {
+		return type === 'number' ? Number(input.default) : input.default;
+	}
+	return input.required ? startingValue(type) : undefined;
+}
 
-	const inputVariables = resolveInputVariables(ast);
-	const assignedVariables = extractAssignedVariables(ast);
-
-	const optimizeStart = performance.now();
-	const optimizedAst = optimize(ast, {
-		externalVariables: new Set(inputVariables.map((variable) => variable.name)),
-		preserveScope: true,
+function inputsOf(program: Program): InputVariable[] {
+	return Object.entries(program.inputs).map(([name, input]) => {
+		const type = typeName(input.type);
+		return { name, type, required: input.required, defaultValue: defaultOf(input, type) };
 	});
-	const optimizeMs = performance.now() - optimizeStart;
-
-	return { optimizedAst, ast, inputVariables, assignedVariables, parseMs, optimizeMs };
-}
-
-interface EvaluationResult {
-	result: Result;
-	scope: Record<string, RuntimeValue>;
-	evaluateMs: number;
-}
-
-function formatErrorMessage(message: string, line: number, column: number): string {
-	return `${message} (line ${line}, col ${column})`;
 }
 
 /**
- * Turn an error's source span into a diagnostic.
+ * Turn a source span into a diagnostic.
  */
-function spanToDiagnostic(source: string, message: string, start: number, end: number): Diagnostic {
+function spanToDiagnostic(
+	source: string,
+	code: string,
+	message: string,
+	severity: Diagnostic['severity'],
+	start: number,
+	end: number,
+): Diagnostic {
 	const rawStartOffset = Math.max(0, Math.min(start, source.length));
 	const rawStart = toLineColumn(source, rawStartOffset);
 	let markerStartOffset = rawStartOffset;
@@ -165,7 +143,9 @@ function spanToDiagnostic(source: string, message: string, start: number, end: n
 	const markerEnd = toLineColumn(source, markerEndOffset);
 
 	return {
-		message: formatErrorMessage(message, rawStart.line, rawStart.column),
+		code,
+		message: `${message} (line ${rawStart.line}, col ${rawStart.column})`,
+		severity,
 		startLine: markerStart.line,
 		startCol: markerStart.column,
 		endLine: markerEnd.line,
@@ -173,153 +153,141 @@ function spanToDiagnostic(source: string, message: string, start: number, end: n
 	};
 }
 
-/**
- * Find a function's name within the call or pipe an error spans, as that is what a
- * quick fix replaces.
- */
-function findFunctionName(
-	source: string,
-	name: string,
-	start: number,
-	end: number,
-): [number, number] {
-	const text = source.slice(start, end);
-	// A call fails before its arguments run, so a span starting with the name is it
-	if (new RegExp(`^${name}\\s*\\(`).test(text)) return [start, start + name.length];
-	const offset = text.indexOf(name, Math.max(text.lastIndexOf('|>'), 0));
-	return offset === -1 ? [start, end] : [start + offset, start + offset + name.length];
+/** What went wrong in host code, which is here the library's own functions. */
+function withCause(code: string, message: string, cause: unknown): string {
+	return code === 'host-error' && cause instanceof Error ? `${message}: ${cause.message}` : message;
 }
 
-/**
- * Get a diagnostic for an error that knows where in the source it happened.
- */
-function errorToDiagnostic(source: string, err: unknown): Diagnostic | null {
-	if (err instanceof ParseError || err instanceof EvaluationError) {
-		const { end, message, start } = err;
-		if (start === undefined || end === undefined) return null;
-
-		const undefinedFunction = 'Undefined function: ';
-		if (message.startsWith(undefinedFunction)) {
-			const name = message.slice(undefinedFunction.length);
-			return spanToDiagnostic(source, message, ...findFunctionName(source, name, start, end));
-		}
-		return spanToDiagnostic(source, message, start, end);
-	}
-	return null;
+function toDiagnostic(source: string, diagnostic: CompileDiagnostic): Diagnostic {
+	const { cause, code, end, message, severity, start } = diagnostic;
+	return spanToDiagnostic(source, code, withCause(code, message, cause), severity, start, end);
 }
 
-function run(optimizedAst: ASTNode, overrides: Map<string, RuntimeValue>): EvaluationResult {
-	const overrideVariables: Record<string, RuntimeValue> = {};
-	for (const [name, value] of overrides) {
-		overrideVariables[name] = value;
+interface Compilation {
+	program: Program;
+	ast: syntax.Program;
+	inputVariables: InputVariable[];
+	compileMs: number;
+}
+
+type CompileOutcome =
+	| { ok: true; value: Compilation | null; diagnostics: readonly Diagnostic[] }
+	| { ok: false; error: string; diagnostics: readonly Diagnostic[] };
+
+function compileSource(source: string): CompileOutcome {
+	if (source.trim() === '') return { ok: true, value: null, diagnostics: [] };
+
+	const start = performance.now();
+	const result = compile(source, { functions: FUNCTIONS, types: TYPES, limits: LIMITS });
+	const compileMs = performance.now() - start;
+
+	const reported = result.diagnostics.map((diagnostic) => toDiagnostic(source, diagnostic));
+	// Running out of budget is about the whole program, and no place in it
+	const diagnostics = reported.filter((diagnostic) => diagnostic.code !== 'limit-exceeded');
+	if (!result.ok) {
+		const first = reported.find((diagnostic) => diagnostic.severity === 'error');
+		return { ok: false, error: first?.message ?? 'The program does not compile', diagnostics };
 	}
 
-	const mergedContext = {
-		...defaultContext,
-		variables: overrideVariables,
-		limits: LIMITS,
-	};
-
-	const evaluateStart = performance.now();
-	const { value, scope } = evaluateWithScope(optimizedAst, mergedContext);
-	const evaluateMs = performance.now() - evaluateStart;
-
-	return { result: { ok: true, value }, scope, evaluateMs };
+	const { program } = result;
+	const value = { program, ast: parse(source), inputVariables: inputsOf(program), compileMs };
+	return { ok: true, value, diagnostics };
 }
+
+/** What the program runs on: what was typed, or else what an input starts from. */
+function variablesFor(
+	inputs: readonly InputVariable[],
+	overrides: ReadonlyMap<string, unknown>,
+): Record<string, unknown> {
+	const variables = Object.create(null) as Record<string, unknown>;
+	for (const { name, required, defaultValue } of inputs) {
+		const value = overrides.get(name) ?? (required ? defaultValue : undefined);
+		if (value !== undefined) variables[name] = value;
+	}
+	return variables;
+}
+
+/** A value typed for an input, which only holds while the input keeps that type. */
+interface Override {
+	readonly type: string | undefined;
+	readonly value: unknown;
+}
+
+/** The values that still fit, as a source edit can change what an input is. */
+function currentOverrides(
+	inputs: readonly InputVariable[],
+	stored: ReadonlyMap<string, Override>,
+): Map<string, unknown> {
+	const current = new Map<string, unknown>();
+	for (const { name, type } of inputs) {
+		const override = stored.get(name);
+		if (override?.type === type) current.set(name, override.value);
+	}
+	return current;
+}
+
+const NO_INPUTS: readonly InputVariable[] = [];
 
 export function useEvaluation(source: string): UseEvaluationReturn {
-	const [overrides, setOverrides] = useState<Map<string, RuntimeValue>>(() => new Map());
+	const [stored, setStored] = useState<ReadonlyMap<string, Override>>(() => new Map());
 	const deferredSource = useDeferredValue(source);
+	const inputsRef = useRef<readonly InputVariable[]>([]);
 
-	const setOverride = useCallback((name: string, value: RuntimeValue) => {
-		setOverrides((prev) => {
-			const next = new Map(prev);
-			next.set(name, value);
-			return next;
-		});
+	const setOverride = useCallback((name: string, value: unknown) => {
+		const type = inputsRef.current.find((input) => input.name === name)?.type;
+		setStored((prev) => new Map(prev).set(name, { type, value }));
 	}, []);
 
 	const clearOverride = useCallback((name: string) => {
-		setOverrides((prev) => {
+		setStored((prev) => {
 			const next = new Map(prev);
 			next.delete(name);
 			return next;
 		});
 	}, []);
 
-	// Phase 1: compile (parse + optimize) — only re-runs when source changes
-	const compilation = useMemo(() => {
-		try {
-			return { ok: true as const, value: compile(deferredSource), diagnostics: [] as Diagnostic[] };
-		} catch (err) {
-			const message = err instanceof Error ? err.message : String(err);
-			const diagnostic = errorToDiagnostic(deferredSource, err);
-			return {
-				ok: false as const,
-				error: diagnostic ? diagnostic.message : message,
-				diagnostics: diagnostic ? [diagnostic] : [],
-			};
-		}
-	}, [deferredSource]);
+	// Phase 1: compile, which only re-runs when the source changes
+	const compilation = useMemo(() => compileSource(deferredSource), [deferredSource]);
+	const inputs = compilation.ok ? (compilation.value?.inputVariables ?? NO_INPUTS) : NO_INPUTS;
+	inputsRef.current = inputs;
+	const overrides = useMemo(() => currentOverrides(inputs, stored), [inputs, stored]);
 
-	// Phase 2: evaluate — re-runs when compilation or overrides change
+	// Phase 2: evaluate, which re-runs when the compilation or the overrides change
 	const output = useMemo(() => {
+		const { diagnostics } = compilation;
+		const nothing = { inputVariables: [] as InputVariable[], ast: null, timing: null, diagnostics };
 		if (!compilation.ok) {
-			return {
-				result: { ok: false as const, error: compilation.error } as Result,
-				inputVariables: [] as InputVariable[],
-				scope: null,
-				assignedVariables: [],
-				ast: null,
-				timing: null,
-				diagnostics: compilation.diagnostics,
-			};
+			return { ...nothing, result: { ok: false as const, error: compilation.error } as Result };
 		}
+		if (compilation.value === null) return { ...nothing, result: null };
 
-		if (compilation.value === null) {
-			return {
-				result: null,
-				inputVariables: [] as InputVariable[],
-				scope: null,
-				assignedVariables: [],
-				ast: null,
-				timing: null,
-				diagnostics: [],
-			};
-		}
-
-		const { optimizedAst, ast, inputVariables, assignedVariables, parseMs, optimizeMs } =
-			compilation.value;
-
+		const { program, ast, inputVariables, compileMs } = compilation.value;
+		const finished = { inputVariables, ast };
+		const start = performance.now();
 		try {
-			const { result, scope, evaluateMs } = run(optimizedAst, overrides);
-			const totalMs = parseMs + optimizeMs + evaluateMs;
-			return {
-				result,
-				inputVariables,
-				scope,
-				assignedVariables,
-				ast,
-				timing: { parseMs, optimizeMs, evaluateMs, totalMs },
-				diagnostics: [],
-			};
+			const variables = variablesFor(inputVariables, overrides);
+			const value = evaluate(program, { variables, limits: LIMITS, numbers: 'decimal' });
+			const evaluateMs = performance.now() - start;
+			const timing = { compileMs, evaluateMs, totalMs: compileMs + evaluateMs };
+			return { ...finished, result: { ok: true as const, value } as Result, timing, diagnostics };
 		} catch (err) {
 			const message = err instanceof Error ? err.message : String(err);
-			const diagnostic = errorToDiagnostic(deferredSource, err);
-			return {
-				result: {
-					ok: false as const,
-					error: diagnostic ? diagnostic.message : message,
-				} as Result,
-				inputVariables,
-				scope: null,
-				assignedVariables,
-				ast,
-				timing: { parseMs, optimizeMs, evaluateMs: 0, totalMs: parseMs + optimizeMs },
-				diagnostics: diagnostic ? [diagnostic] : [],
-			};
+			const timing = { compileMs, evaluateMs: 0, totalMs: compileMs };
+			if (!(err instanceof EvaluationError)) {
+				const result: Result = { ok: false, error: message };
+				return { ...finished, result, timing, diagnostics };
+			}
+			// Offsets of 0 mean the failure is not in the source, as with a missing input
+			const { cause, code, end, start: from } = err;
+			const text = withCause(code, message, cause);
+			if (from === 0 && end === 0) {
+				return { ...finished, result: { ok: false as const, error: text }, timing, diagnostics };
+			}
+			const failure = spanToDiagnostic(deferredSource, code, text, 'error', from, end);
+			const result: Result = { ok: false, error: failure.message };
+			return { ...finished, result, timing, diagnostics: [...diagnostics, failure] };
 		}
 	}, [compilation, deferredSource, overrides]);
 
-	return { ...output, overrides, setOverride, clearOverride };
+	return { ...output, source: deferredSource, overrides, setOverride, clearOverride };
 }

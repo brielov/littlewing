@@ -1,15 +1,17 @@
 import { generate, parse } from 'littlewing';
-import { useCallback, useEffect, useState, useSyncExternalStore } from 'react';
+import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 import { Editor } from './editor.tsx';
+import { ErrorBoundary } from './error-boundary.tsx';
 import { ExamplesDialog } from './examples-dialog.tsx';
 import { HelpDialog } from './help-dialog.tsx';
 import { Sidebar } from './sidebar.tsx';
 import { useEvaluation } from './use-evaluation.ts';
 
 const INITIAL_SOURCE = `// littlewing playground
-price = 100
-tax_rate = 0.08
-discount = 15
+// ?= declares an input, with a default: try changing them in the sidebar
+price ?= 100
+tax_rate ?= 0.08
+discount ?= 15
 
 subtotal = price - discount
 tax = ROUND(subtotal * tax_rate)
@@ -113,6 +115,10 @@ export function App() {
 	}, [source, ready]);
 
 	const evaluation = useEvaluation(source);
+	const inputTypes = useMemo(
+		() => new Map(evaluation.inputVariables.map((input) => [input.name, input.type])),
+		[evaluation.inputVariables],
+	);
 
 	const formatSource = useCallback(() => {
 		try {
@@ -176,15 +182,16 @@ export function App() {
 							onChange={setSource}
 							theme={monacoTheme}
 							diagnostics={evaluation.diagnostics}
-							scope={evaluation.scope}
-							assignedVariables={evaluation.assignedVariables}
+							inputTypes={inputTypes}
 						/>
 					</div>
 					<div
 						className="flex min-h-0 flex-[3_1_0%] border-l"
 						style={{ borderColor: 'var(--color-border)' }}
 					>
-						<Sidebar evaluation={evaluation} />
+						<ErrorBoundary resetKey={evaluation.source}>
+							<Sidebar evaluation={evaluation} />
+						</ErrorBoundary>
 					</div>
 				</main>
 			) : (
@@ -196,11 +203,12 @@ export function App() {
 								onChange={setSource}
 								theme={monacoTheme}
 								diagnostics={evaluation.diagnostics}
-								scope={evaluation.scope}
-								assignedVariables={evaluation.assignedVariables}
+								inputTypes={inputTypes}
 							/>
 						) : (
-							<Sidebar evaluation={evaluation} />
+							<ErrorBoundary resetKey={evaluation.source}>
+								<Sidebar evaluation={evaluation} />
+							</ErrorBoundary>
 						)}
 					</main>
 					<nav

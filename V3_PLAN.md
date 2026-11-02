@@ -18,8 +18,9 @@ Work remaining before v3 ships. The engine overhaul is done, on the `v3` branch.
    - [x] M5: The optimizer, and the interpreter on typed programs
    - [x] M6: `compile`, `evaluate`, `run`, and crossing the boundary
    - [x] M7: Core functions, `littlewing/std`, `littlewing/temporal`, `littlewing/clock`
-   - [ ] Swap: delete the old pipeline, export the new API, and port the consumer tests and playground to it, in one commit as the lint hook covers them all
+   - [x] Swap: delete the old pipeline, export the new API, and port the consumer tests and playground to it, in one commit as the lint hook covers them all
    - [ ] M8: The conformance suite and fuzzing, including solving order
+     - Old coverage nothing replaces yet, in git history: the random-program property of `optimizer-contract.test.ts`, that folding preserves value, failure and host calls; `UNIQUE` against a quadratic scan on random arrays, and values that print alike, from `stdlib.test.ts`; order, once-only evaluation and failure spans of pipes with host functions, from `pipe.test.ts`; datetime variants of each date function, from `date-utils`, `time` and `datetime-full`, now with declared `inputs`
    - [ ] M9: Playground, docs and packaging
 4. [ ] Release v3.0.0, following AGENTS.md
 
@@ -401,6 +402,8 @@ To build:
 From the overhaul, still untested:
 
 - [ ] Windows and macOS CI runners
+- [ ] The polyfill path in CI: `lts/*` is likely Node 26, whose native `Temporal` `temporal-polyfill` hands back, so `smoke.mjs` no longer runs on the polyfill there
+- [ ] The playground in a real browser: Monaco markers, the quick fix, time inputs, HMR and mobile
 - [ ] Node 18 to 24
 - [ ] TypeScript 5.0 to 5.8
 - [ ] The playground in a real browser, including Firefox

@@ -18,10 +18,9 @@ export class ParseError extends Error {
 }
 
 /**
- * Error thrown when evaluation fails. Offsets locate the failing expression in
- * the source, when the AST came from the parser. The original error is `cause`:
- * a `TypeError` or `RangeError` from the language, a `LimitExceededError`, or
- * whatever a host function threw.
+ * Every failure of a program being evaluated. Offsets locate the failing expression,
+ * and are 0 for what happens before the program runs or after it ends. For a
+ * `host-error`, `cause` is what host code threw.
  */
 export class EvaluationError extends Error {
 	override readonly name = 'EvaluationError';
@@ -29,9 +28,9 @@ export class EvaluationError extends Error {
 	readonly code: string;
 	constructor(
 		message: string,
-		readonly start: number | undefined,
-		readonly end: number | undefined,
-		options?: ErrorOptions & { code?: string },
+		readonly start: number,
+		readonly end: number,
+		options?: { readonly cause?: unknown; readonly code?: string },
 	) {
 		super(message, options);
 		this.code = options?.code ?? 'host-error';

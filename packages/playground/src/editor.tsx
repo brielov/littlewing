@@ -1,5 +1,4 @@
 import MonacoEditor, { type BeforeMount, type OnMount } from '@monaco-editor/react';
-import type { RuntimeValue } from 'littlewing';
 import type monaco from 'monaco-editor';
 import type { editor as MonacoEditorNs } from 'monaco-editor';
 import { useEffect, useRef } from 'react';
@@ -15,8 +14,7 @@ interface EditorProps {
 	onChange: (value: string) => void;
 	theme: 'tomorrow' | 'tomorrow-night';
 	diagnostics?: readonly Diagnostic[];
-	scope?: Record<string, RuntimeValue> | null;
-	assignedVariables?: readonly string[];
+	inputTypes?: ReadonlyMap<string, string>;
 }
 
 /**
@@ -41,28 +39,26 @@ if (import.meta.hot) {
 	});
 }
 
+const NO_INPUTS: ReadonlyMap<string, string> = new Map();
+
 export function Editor({
 	value,
 	onChange,
 	theme,
 	diagnostics = [],
-	scope = null,
-	assignedVariables = [],
+	inputTypes = NO_INPUTS,
 }: EditorProps) {
 	const monacoRef = useRef<typeof monaco | null>(null);
 	const editorRef = useRef<MonacoEditorNs.IStandaloneCodeEditor | null>(null);
 
-	// Store diagnostics and scope in refs so that the `onMount` callback
+	// Store diagnostics and input types in refs so that the `onMount` callback
 	// (which may be captured by @monaco-editor/react from an earlier render)
 	// always reads the latest values.
 	const diagnosticsRef = useRef(diagnostics);
 	diagnosticsRef.current = diagnostics;
 
-	const scopeRef = useRef(scope);
-	scopeRef.current = scope;
-
-	const assignedVariablesRef = useRef(assignedVariables);
-	assignedVariablesRef.current = assignedVariables;
+	const inputTypesRef = useRef(inputTypes);
+	inputTypesRef.current = inputTypes;
 
 	const applyDiagnostics = () => {
 		const m = monacoRef.current;
@@ -74,7 +70,8 @@ export function Editor({
 
 		const current = diagnosticsRef.current;
 		const markers: MonacoEditorNs.IMarkerData[] = current.map((d) => ({
-			severity: m.MarkerSeverity.Error,
+			severity: d.severity === 'error' ? m.MarkerSeverity.Error : m.MarkerSeverity.Warning,
+			code: d.code,
 			message: d.message,
 			startLineNumber: d.startLine,
 			startColumn: d.startCol,
@@ -92,10 +89,7 @@ export function Editor({
 
 	const handleMount: OnMount = (editor) => {
 		editorRef.current = editor;
-		setLanguageAnalysis({
-			runtimeScope: scopeRef.current,
-			assignedVariables: assignedVariablesRef.current,
-		});
+		setLanguageAnalysis({ inputTypes: inputTypesRef.current });
 		applyDiagnostics();
 		editor.focus();
 	};
@@ -104,11 +98,8 @@ export function Editor({
 	useEffect(() => {
 		const m = monacoRef.current;
 		if (m) ensureInitialized(m);
-		setLanguageAnalysis({
-			runtimeScope: scope,
-			assignedVariables,
-		});
-	}, [assignedVariables, scope]);
+		setLanguageAnalysis({ inputTypes });
+	}, [inputTypes]);
 
 	useEffect(() => {
 		applyDiagnostics();

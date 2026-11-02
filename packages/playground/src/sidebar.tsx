@@ -1,14 +1,13 @@
-import { type ASTNode, NodeKind, type RuntimeValue, defaultContext, evaluate } from 'littlewing';
+import { run, type syntax } from 'littlewing';
 import { useEffect, useRef, useState } from 'react';
-import { LIMITS, type UseEvaluationReturn } from './use-evaluation.ts';
+import { FUNCTIONS, LIMITS, type UseEvaluationReturn } from './use-evaluation.ts';
 
 interface SidebarProps {
 	evaluation: UseEvaluationReturn;
 }
 
 export function Sidebar({ evaluation }: SidebarProps) {
-	const { result, inputVariables, overrides, scope, ast, timing, setOverride, clearOverride } =
-		evaluation;
+	const { result, inputVariables, overrides, ast, timing, setOverride, clearOverride } = evaluation;
 
 	return (
 		<div
@@ -24,7 +23,6 @@ export function Sidebar({ evaluation }: SidebarProps) {
 				clearOverride={clearOverride}
 			/>
 			<OutputSection result={result} />
-			<ScopeSection scope={scope} />
 			<PerformanceSection timing={timing} />
 			<AstSection ast={ast} />
 		</div>
@@ -35,8 +33,8 @@ export function Sidebar({ evaluation }: SidebarProps) {
 
 interface VariablesSectionProps {
 	inputVariables: UseEvaluationReturn['inputVariables'];
-	overrides: Map<string, RuntimeValue>;
-	setOverride: (name: string, value: RuntimeValue) => void;
+	overrides: ReadonlyMap<string, unknown>;
+	setOverride: (name: string, value: unknown) => void;
 	clearOverride: (name: string) => void;
 }
 
@@ -75,9 +73,9 @@ function VariablesSection({
 interface VariableRowProps {
 	name: string;
 	type: string;
-	defaultValue: RuntimeValue;
-	override: RuntimeValue | undefined;
-	setOverride: (name: string, value: RuntimeValue) => void;
+	defaultValue: unknown;
+	override: unknown;
+	setOverride: (name: string, value: unknown) => void;
 	clearOverride: (name: string) => void;
 }
 
@@ -123,6 +121,7 @@ function VariableRow({
 				type={type}
 				currentValue={currentValue}
 				setOverride={setOverride}
+				clearOverride={clearOverride}
 			/>
 		</div>
 	);
@@ -146,11 +145,19 @@ interface VariableInputProps {
 	inputId: string;
 	name: string;
 	type: string;
-	currentValue: RuntimeValue;
-	setOverride: (name: string, value: RuntimeValue) => void;
+	currentValue: unknown;
+	setOverride: (name: string, value: unknown) => void;
+	clearOverride: (name: string) => void;
 }
 
-function VariableInput({ inputId, name, type, currentValue, setOverride }: VariableInputProps) {
+function VariableInput({
+	inputId,
+	name,
+	type,
+	currentValue,
+	setOverride,
+	clearOverride,
+}: VariableInputProps) {
 	const inputStyle = {
 		backgroundColor: 'var(--color-bg-secondary)',
 		color: 'var(--color-fg)',
@@ -164,7 +171,7 @@ function VariableInput({ inputId, name, type, currentValue, setOverride }: Varia
 				<NumberInput
 					inputId={inputId}
 					name={name}
-					currentValue={currentValue as number}
+					currentValue={currentValue as number | undefined}
 					setOverride={setOverride}
 					inputStyle={inputStyle}
 				/>
@@ -177,7 +184,7 @@ function VariableInput({ inputId, name, type, currentValue, setOverride }: Varia
 					type="text"
 					className="rounded px-2 py-1 text-xs"
 					style={inputStyle}
-					value={String(currentValue)}
+					value={textOf(currentValue)}
 					onChange={(e) => setOverride(name, e.target.value)}
 				/>
 			);
@@ -192,7 +199,7 @@ function VariableInput({ inputId, name, type, currentValue, setOverride }: Varia
 					style={inputStyle}
 					aria-label={`Toggle ${name}`}
 				>
-					{String(currentValue)}
+					{currentValue === undefined ? 'default' : textOf(currentValue)}
 				</button>
 			);
 
@@ -203,7 +210,7 @@ function VariableInput({ inputId, name, type, currentValue, setOverride }: Varia
 					type="date"
 					className="rounded px-2 py-1 text-xs"
 					style={inputStyle}
-					value={String(currentValue)}
+					value={textOf(currentValue)}
 					onChange={(e) => {
 						if (e.target.value) {
 							setOverride(name, Temporal.PlainDate.from(e.target.value));
@@ -220,7 +227,7 @@ function VariableInput({ inputId, name, type, currentValue, setOverride }: Varia
 					className="rounded px-2 py-1 text-xs"
 					step="1"
 					style={inputStyle}
-					value={String(currentValue)}
+					value={textOf(currentValue)}
 					onChange={(e) => {
 						if (e.target.value) {
 							setOverride(name, Temporal.PlainTime.from(e.target.value));
@@ -237,7 +244,7 @@ function VariableInput({ inputId, name, type, currentValue, setOverride }: Varia
 					className="rounded px-2 py-1 text-xs"
 					step="1"
 					style={inputStyle}
-					value={String(currentValue)}
+					value={textOf(currentValue)}
 					onChange={(e) => {
 						if (e.target.value) {
 							setOverride(name, Temporal.PlainDateTime.from(e.target.value));
@@ -247,12 +254,16 @@ function VariableInput({ inputId, name, type, currentValue, setOverride }: Varia
 			);
 
 		case 'array':
+		case 'record':
+		case 'any':
 			return (
 				<ExpressionInput
 					inputId={inputId}
 					name={name}
+					type={type}
 					currentValue={currentValue}
 					setOverride={setOverride}
+					clearOverride={clearOverride}
 				/>
 			);
 
@@ -280,15 +291,15 @@ function NumberInput({
 }: {
 	inputId: string;
 	name: string;
-	currentValue: number;
-	setOverride: (name: string, value: RuntimeValue) => void;
+	currentValue: number | undefined;
+	setOverride: (name: string, value: unknown) => void;
 	inputStyle: React.CSSProperties;
 }) {
 	const ref = useRef<HTMLInputElement>(null);
 
 	useEffect(() => {
 		if (ref.current && ref.current !== document.activeElement) {
-			ref.current.value = String(currentValue);
+			ref.current.value = currentValue === undefined ? '' : String(currentValue);
 		}
 	}, [currentValue]);
 
@@ -311,29 +322,61 @@ function NumberInput({
 	);
 }
 
+/** The text of a value that has one: a number, string, boolean, date or time. */
+function textOf(value: unknown): string {
+	return value === undefined ? '' : String(value as string);
+}
+
+/** Whether what an expression gave is a value of a type, as far as the sidebar can tell. */
+function fits(type: string, value: unknown): boolean {
+	if (type === 'array') return Array.isArray(value);
+	if (type === 'record') return typeof value === 'object' && !Array.isArray(value);
+	return true;
+}
+
 function ExpressionInput({
 	inputId,
 	name,
+	type,
 	currentValue,
 	setOverride,
+	clearOverride,
 }: {
 	inputId: string;
 	name: string;
-	currentValue: RuntimeValue;
-	setOverride: (name: string, value: RuntimeValue) => void;
+	type: string;
+	currentValue: unknown;
+	setOverride: (name: string, value: unknown) => void;
+	clearOverride: (name: string) => void;
 }) {
-	const [text, setText] = useState(() => formatValue(currentValue));
+	// With no value yet, the program's own default applies, which may not be a constant.
+	// What is shown of a value is not always source, so once a value comes from the text
+	// typed here, that text stays, and only a value from elsewhere replaces it.
+	const shownFor = (value: unknown): string => (value === undefined ? '' : formatValue(value));
+	const [text, setText] = useState(() => shownFor(currentValue));
 	const [error, setError] = useState(false);
+	const applied = useRef({ value: currentValue, text });
 
 	useEffect(() => {
-		setText(formatValue(currentValue));
+		if (currentValue === applied.current.value) return;
+		const shown = shownFor(currentValue);
+		applied.current = { value: currentValue, text: shown };
+		setText(shown);
 		setError(false);
 	}, [currentValue]);
 
 	function tryEvaluate(value: string): boolean {
+		if (value === '') {
+			applied.current = { value: undefined, text: '' };
+			clearOverride(name);
+			setError(false);
+			return true;
+		}
 		try {
-			const result = evaluate(value, { ...defaultContext, limits: LIMITS });
-			if (Array.isArray(result)) {
+			const options = { functions: FUNCTIONS, limits: LIMITS, numbers: 'decimal' } as const;
+			const result = run(value, options);
+			if (fits(type, result)) {
+				applied.current = { value: result, text: value };
 				setOverride(name, result);
 				setError(false);
 				return true;
@@ -356,12 +399,13 @@ function ExpressionInput({
 				fontFamily: '"Maple Mono", monospace',
 			}}
 			value={text}
+			placeholder="an expression, or the default"
 			onChange={(e) => {
 				setText(e.target.value);
 				tryEvaluate(e.target.value);
 			}}
 			onBlur={() => {
-				if (!tryEvaluate(text)) {
+				if (text !== applied.current.text && !tryEvaluate(text)) {
 					setError(true);
 				}
 			}}
@@ -400,56 +444,13 @@ function OutputSection({ result }: { result: UseEvaluationReturn['result'] }) {
 	);
 }
 
-// --- Scope Section ---
-
-function ScopeSection({ scope }: { scope: Record<string, RuntimeValue> | null }) {
-	if (scope === null) return null;
-
-	const entries = Object.entries(scope);
-	if (entries.length === 0) return null;
-
-	return (
-		<section style={{ borderBottom: '1px solid var(--color-border)' }}>
-			<SectionHeader>Scope</SectionHeader>
-			<div className="px-4 pb-4">
-				<table className="w-full text-xs" style={{ tableLayout: 'fixed' }}>
-					<tbody>
-						{entries.map(([name, value]) => (
-							<tr key={name}>
-								<td
-									className="py-0.5"
-									style={{
-										color: 'var(--color-fg-muted)',
-										fontFamily: '"Maple Mono", monospace',
-										width: '40%',
-									}}
-								>
-									{name}
-								</td>
-								<td
-									className="truncate py-0.5 text-right"
-									style={{ fontFamily: '"Maple Mono", monospace' }}
-									title={formatValue(value)}
-								>
-									{formatValue(value)}
-								</td>
-							</tr>
-						))}
-					</tbody>
-				</table>
-			</div>
-		</section>
-	);
-}
-
 // --- Performance Section ---
 
 function PerformanceSection({ timing }: { timing: UseEvaluationReturn['timing'] }) {
 	if (timing === null) return null;
 
 	const rows: Array<[string, number]> = [
-		['Parse', timing.parseMs],
-		['Optimize', timing.optimizeMs],
+		['Compile', timing.compileMs],
 		['Evaluate', timing.evaluateMs],
 		['Total', timing.totalMs],
 	];
@@ -479,7 +480,7 @@ function PerformanceSection({ timing }: { timing: UseEvaluationReturn['timing'] 
 
 // --- AST Section ---
 
-function AstSection({ ast }: { ast: ASTNode | null }) {
+function AstSection({ ast }: { ast: syntax.Program | null }) {
 	if (ast === null) return null;
 
 	return (
@@ -502,65 +503,85 @@ interface AstEntry {
 	children?: AstEntry[];
 }
 
-function buildAstEntries(node: ASTNode): AstEntry {
+function labelled(label: string, node: syntax.Expression): AstEntry {
+	return { label, children: [buildAstEntries(node)] };
+}
+
+function statementEntry(statement: syntax.Statement): AstEntry {
+	if (statement.kind !== 'binding') return buildAstEntries(statement);
+	return {
+		label: statement.input ? 'Input' : 'Binding',
+		value: statement.name,
+		children: [buildAstEntries(statement.value)],
+	};
+}
+
+function memberEntry(member: syntax.RecordMember): AstEntry {
+	return member.kind === 'field'
+		? { label: 'Field', value: member.name, children: [buildAstEntries(member.value)] }
+		: { label: 'Spread', children: [buildAstEntries(member.value)] };
+}
+
+function buildAstEntries(node: syntax.Expression): AstEntry {
 	const recurse = buildAstEntries;
 
 	switch (node.kind) {
-		case NodeKind.Program:
-			return { label: 'Program', children: node.statements.map(recurse) };
-		case NodeKind.NumberLiteral:
-			return { label: 'NumberLiteral', value: String(node.value) };
-		case NodeKind.StringLiteral:
-			return { label: 'StringLiteral', value: `"${node.value}"` };
-		case NodeKind.BooleanLiteral:
-			return { label: 'BooleanLiteral', value: String(node.value) };
-		case NodeKind.ArrayLiteral:
-			return { label: 'ArrayLiteral', children: node.elements.map(recurse) };
-		case NodeKind.Identifier:
-			return { label: 'Identifier', value: node.name };
-		case NodeKind.BinaryOp:
+		case 'number':
+			return { label: 'Number', value: node.text };
+		case 'string':
+			return { label: 'String', value: `"${node.value}"` };
+		case 'template':
 			return {
-				label: 'BinaryOp',
-				value: node.operator,
-				children: [
-					{ label: 'left', children: [recurse(node.left)] },
-					{ label: 'right', children: [recurse(node.right)] },
-				],
+				label: 'Template',
+				children: node.parts.map((part) =>
+					typeof part === 'string' ? { label: 'Text', value: `"${part}"` } : recurse(part),
+				),
 			};
-		case NodeKind.UnaryOp:
+		case 'boolean':
+			return { label: 'Boolean', value: String(node.value) };
+		case 'name':
+			return { label: 'Name', value: node.name };
+		case 'array':
+			return { label: 'Array', children: node.elements.map(recurse) };
+		case 'record':
+			return { label: 'Record', children: node.members.map(memberEntry) };
+		case 'member':
+			return { label: 'Member', value: node.name, children: [recurse(node.object)] };
+		case 'binary':
 			return {
-				label: 'UnaryOp',
+				label: 'Binary',
 				value: node.operator,
-				children: [recurse(node.argument)],
+				children: [labelled('left', node.left), labelled('right', node.right)],
 			};
-		case NodeKind.FunctionCall:
+		case 'unary':
+			return { label: 'Unary', value: node.operator, children: [recurse(node.argument)] };
+		case 'fallback':
 			return {
-				label: 'FunctionCall',
+				label: 'Fallback',
+				children: [labelled('path', node.path), labelled('fallback', node.fallback)],
+			};
+		case 'call':
+			return {
+				label: 'Call',
 				value: node.name,
 				children: node.args.length > 0 ? node.args.map(recurse) : undefined,
 			};
-		case NodeKind.Assignment:
+		case 'if':
 			return {
-				label: 'Assignment',
-				value: node.name,
-				children: [recurse(node.value)],
-			};
-		case NodeKind.IfExpression:
-			return {
-				label: 'IfExpression',
+				label: 'If',
 				children: [
-					{ label: 'condition', children: [recurse(node.condition)] },
-					{ label: 'consequent', children: [recurse(node.consequent)] },
-					{ label: 'alternate', children: [recurse(node.alternate)] },
+					labelled('condition', node.condition),
+					labelled('consequent', node.consequent),
+					labelled('alternate', node.alternate),
 				],
 			};
-		case NodeKind.ForExpression:
+		case 'for':
 			return {
-				label: 'ForExpression',
+				label: 'For',
 				value: node.variable,
 				children: [
-					{ label: 'iterable', children: [recurse(node.iterable)] },
-					...(node.guard ? [{ label: 'guard', children: [recurse(node.guard)] }] : []),
+					labelled('iterable', node.iterable),
+					...(node.guard ? [labelled('guard', node.guard)] : []),
 					...(node.accumulator
 						? [
 								{
@@ -570,42 +591,33 @@ function buildAstEntries(node: ASTNode): AstEntry {
 								},
 							]
 						: []),
-					{ label: 'body', children: [recurse(node.body)] },
+					labelled('body', node.body),
 				],
 			};
-		case NodeKind.IndexAccess:
+		case 'index':
 			return {
-				label: 'IndexAccess',
-				children: [
-					{ label: 'object', children: [recurse(node.object)] },
-					{ label: 'index', children: [recurse(node.index)] },
-				],
+				label: 'Index',
+				children: [labelled('object', node.object), labelled('index', node.index)],
 			};
-		case NodeKind.RangeExpression:
+		case 'range':
 			return {
-				label: 'RangeExpression',
+				label: 'Range',
 				value: node.inclusive ? '..=' : '..',
-				children: [
-					{ label: 'from', children: [recurse(node.from)] },
-					{ label: 'to', children: [recurse(node.to)] },
-				],
+				children: [labelled('from', node.from), labelled('to', node.to)],
 			};
-		case NodeKind.PipeExpression:
+		case 'pipe':
 			return {
-				label: 'PipeExpression',
+				label: 'Pipe',
 				value: node.name,
-				children: [
-					{ label: 'value', children: [recurse(node.value)] },
-					...(node.args.length > 0 ? node.args.map(recurse) : []),
-				],
+				children: [labelled('value', node.value), ...(node.args ?? []).map(recurse)],
 			};
-		case NodeKind.Placeholder:
+		case 'placeholder':
 			return { label: 'Placeholder', value: '?' };
 	}
 }
 
-function AstNode({ node }: { node: ASTNode }) {
-	const entry = buildAstEntries(node);
+function AstNode({ node }: { node: syntax.Program }) {
+	const entry = { label: 'Program', children: node.statements.map(statementEntry) };
 	return <AstEntryNode entry={entry} />;
 }
 
@@ -680,7 +692,7 @@ function SectionHeader({ children }: { children: React.ReactNode }) {
  * Format a value for display. A program can nest arrays deeper than the call stack
  * can walk, which must not take the page down with it.
  */
-function formatValue(value: RuntimeValue): string {
+function formatValue(value: unknown): string {
 	try {
 		return formatNested(value);
 	} catch {
@@ -688,12 +700,17 @@ function formatValue(value: RuntimeValue): string {
 	}
 }
 
-function formatNested(value: RuntimeValue): string {
+function formatNested(value: unknown): string {
 	if (Array.isArray(value)) {
 		return `[${value.map(formatNested).join(', ')}]`;
 	}
 	if (typeof value === 'string') {
 		return `"${value}"`;
+	}
+	// A record has no prototype, so it has no text of its own
+	if (typeof value === 'object' && value !== null && Object.getPrototypeOf(value) === null) {
+		const fields = Object.entries(value).map(([name, field]) => `${name}: ${formatNested(field)}`);
+		return fields.length === 0 ? '{}' : `{ ${fields.join(', ')} }`;
 	}
 	return String(value);
 }

@@ -207,6 +207,22 @@ describe('compile', () => {
 		expect(warnings('x = [1]\nif c then x[0] else 0')).not.toContain('may-fail');
 	});
 
+	test('an unknown function is marked by its name, wherever it is', () => {
+		const span = (source: string): (readonly [number, number])[] =>
+			compile(source)
+				.diagnostics.filter((diagnostic) => diagnostic.code === 'unknown-function')
+				.map(({ start, end }) => [start, end] as const);
+		expect(span('FOO(1)')).toEqual([[0, 3]]);
+		expect(span('x |> FOO')).toEqual([[5, 8]]);
+		expect(span('FOO |> FOO')).toEqual([[7, 10]]);
+		expect(span('FOOBAR |> FOO')).toEqual([[10, 13]]);
+		expect(span('a |> FOO(b |> FOO, ?)')).toEqual([
+			[5, 8],
+			[14, 17],
+		]);
+		expect(span('1 |> FOO("|>", ?)')).toEqual([[5, 8]]);
+	});
+
 	test('a constant condition warns', () => {
 		expect(warnings('if 1 > 2 then 1 else 2')).toContain('constant-condition');
 		expect(warnings('for x in a when true then x')).toContain('constant-condition');

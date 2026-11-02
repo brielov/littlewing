@@ -1,12 +1,13 @@
 import { describe, expect, test } from 'bun:test';
 import { ParseError } from '../src/errors';
 import { toLineColumn } from '../src/errors';
-import { parse } from '../src/parser';
+import { parse } from '../src/syntax/parser';
 
 describe('ParseError', () => {
 	test('parse errors are instanceof ParseError', () => {
 		try {
 			parse('if x');
+			expect.unreachable('should have thrown');
 		} catch (err) {
 			expect(err).toBeInstanceOf(ParseError);
 			expect(err).toBeInstanceOf(Error);
@@ -49,7 +50,7 @@ describe('ParseError', () => {
 		} catch (err) {
 			expect(err).toBeInstanceOf(ParseError);
 			const pe = err as ParseError;
-			expect(pe.message).toBe('Expected closing parenthesis');
+			expect(pe.code).toBe('unexpected-token');
 			expect(pe.start).toBe(6);
 		}
 	});
@@ -64,7 +65,7 @@ describe('ParseError', () => {
 		} catch (err) {
 			expect(err).toBeInstanceOf(ParseError);
 			const pe = err as ParseError;
-			expect(pe.message).toBe('Expected "then" in if expression');
+			expect(pe.code).toBe('unexpected-token');
 			expect(pe.start).toBe(8);
 			expect(pe.end).toBe(9);
 		}
@@ -77,7 +78,7 @@ describe('ParseError', () => {
 		} catch (err) {
 			expect(err).toBeInstanceOf(ParseError);
 			const pe = err as ParseError;
-			expect(pe.message).toBe('Expected "else" in if expression');
+			expect(pe.code).toBe('unexpected-token');
 		}
 	});
 
@@ -115,7 +116,7 @@ describe('ParseError', () => {
 		} catch (err) {
 			expect(err).toBeInstanceOf(ParseError);
 			const pe = err as ParseError;
-			expect(pe.message).toBe('Invalid assignment target');
+			expect(pe.code).toBe('unexpected-token');
 		}
 	});
 });
