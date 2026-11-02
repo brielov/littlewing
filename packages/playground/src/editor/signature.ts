@@ -3,7 +3,7 @@ import { keymap, showTooltip, type Tooltip } from '@codemirror/view';
 import { callAt, type CallSite } from '../language/calls.ts';
 import { FUNCTION_DESCRIPTIONS } from '../language/catalog.ts';
 import { functionInfo } from './info.ts';
-import { lexedField } from './state.ts';
+import { syntaxField } from './state.ts';
 
 interface SignatureState {
 	/** The call the cursor is in, by where its name starts and which argument. */
@@ -18,7 +18,7 @@ const dismiss = StateEffect.define<null>();
 function callOf(state: EditorState): CallSite | undefined {
 	const { main } = state.selection;
 	if (!main.empty) return undefined;
-	const { tokens } = state.field(lexedField);
+	const { tokens } = state.field(syntaxField);
 	const call = callAt(tokens, main.head, (from, to) => state.sliceDoc(from, to));
 	return call !== undefined && FUNCTION_DESCRIPTIONS.has(call.name) ? call : undefined;
 }

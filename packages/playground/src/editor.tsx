@@ -1,5 +1,6 @@
 import { EditorState } from '@codemirror/state';
 import { EditorView } from '@codemirror/view';
+import type { TypeDescription } from 'littlewing';
 import { useEffect, useRef } from 'react';
 import { littlewing, type Problem, setAnalysis, showProblems } from './editor/index.ts';
 
@@ -10,28 +11,35 @@ interface EditorProps {
 	/** The source the problems and input types are about, which lags `value`. */
 	analyzed: string;
 	problems: readonly Problem[];
-	inputTypes: ReadonlyMap<string, string>;
+	types: ReadonlyMap<string, TypeDescription>;
+	/** Whether `types` are of the analyzed source. */
+	typesCurrent: boolean;
 }
 
 interface Analyzed {
 	readonly source: string;
 	readonly problems: readonly Problem[];
-	readonly inputTypes: ReadonlyMap<string, string>;
+	readonly types: ReadonlyMap<string, TypeDescription>;
+	readonly typesCurrent: boolean;
 }
 
 /** Show what was found about a source, if it is what the editor holds. */
 function apply(view: EditorView, analyzed: Analyzed): void {
 	if (view.state.doc.toString() !== analyzed.source) return;
-	showProblems(view, analyzed.problems, setAnalysis.of({ inputTypes: analyzed.inputTypes }));
+	showProblems(
+		view,
+		analyzed.problems,
+		setAnalysis.of({ types: analyzed.types, current: analyzed.typesCurrent }),
+	);
 }
 
-export function Editor({ value, onChange, analyzed, problems, inputTypes }: EditorProps) {
+export function Editor({ value, onChange, analyzed, problems, types, typesCurrent }: EditorProps) {
 	const parent = useRef<HTMLDivElement>(null);
 	const view = useRef<EditorView | null>(null);
 	const changed = useRef(onChange);
 	changed.current = onChange;
-	const latest = useRef<Analyzed>({ source: analyzed, problems, inputTypes });
-	latest.current = { source: analyzed, problems, inputTypes };
+	const latest = useRef<Analyzed>({ source: analyzed, problems, types, typesCurrent });
+	latest.current = { source: analyzed, problems, types, typesCurrent };
 
 	useEffect(() => {
 		const editor = new EditorView({
@@ -70,8 +78,9 @@ export function Editor({ value, onChange, analyzed, problems, inputTypes }: Edit
 	}, [value]);
 
 	useEffect(() => {
-		if (view.current !== null) apply(view.current, { source: analyzed, problems, inputTypes });
-	}, [analyzed, problems, inputTypes]);
+		if (view.current !== null)
+			apply(view.current, { source: analyzed, problems, types, typesCurrent });
+	}, [analyzed, problems, types, typesCurrent]);
 
 	return <div ref={parent} className="h-full min-w-0 flex-1 overflow-hidden" />;
 }

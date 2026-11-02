@@ -7,7 +7,7 @@ import {
 	type ViewUpdate,
 } from '@codemirror/view';
 import type { Style } from '../language/tokens.ts';
-import { lexedField } from './state.ts';
+import { syntaxField } from './state.ts';
 
 const marks = new Map<string, Decoration>();
 
@@ -26,7 +26,7 @@ function mark(style: Style, depth: number | undefined): Decoration {
 
 /** Colors for what is on screen, from the spans the whole document was lexed into. */
 function decorate(view: EditorView): DecorationSet {
-	const { spans } = view.state.field(lexedField);
+	const { spans } = view.state.field(syntaxField);
 	const builder = new RangeSetBuilder<Decoration>();
 	// A span across two visible ranges is added once
 	let next = 0;

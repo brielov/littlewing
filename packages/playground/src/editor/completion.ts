@@ -7,7 +7,18 @@ import {
 } from '@codemirror/autocomplete';
 import { FUNCTION_DESCRIPTIONS, signatureText } from '../language/catalog.ts';
 import { TokenKind } from '../language/tokens.ts';
-import { inText, lexedField, tokenBefore } from './state.ts';
+import type { EditorState } from '@codemirror/state';
+import { typeBefore, typeText } from '../language/types.ts';
+import type { TypeDescription } from 'littlewing';
+import {
+	brokenLoops,
+	inText,
+	namesOf,
+	nameType,
+	symbolType,
+	syntaxField,
+	tokenBefore,
+} from './state.ts';
 
 const KEYWORDS = ['if', 'then', 'else', 'for', 'in', 'when', 'into', 'true', 'false'];
 
@@ -38,27 +49,84 @@ const steps: Completion[] = [...FUNCTION_DESCRIPTIONS].map(([name, description],
 });
 
 const WORD = /[\p{XID_Continue}]*$/u;
+const NAME = /^[\p{XID_Start}_][\p{XID_Continue}]*$/u;
+
+/** Whether `position` is in one of `spans`. */
+function within(spans: readonly { from: number; to: number }[], position: number): boolean {
+	return spans.some(({ from, to }) => from <= position && position <= to);
+}
+
+/**
+ * The names that can be read at `position`: top-level bindings before its
+ * statement, inputs, and the names of loops around it, not the word being typed.
+ */
+function names(state: EditorState, position: number): Completion[] {
+	const { symbols } = namesOf(state);
+	const seen = new Set<string>();
+	const options: Completion[] = [];
+	const offer = (name: string, type: TypeDescription | undefined) => {
+		if (seen.has(name)) return;
+		seen.add(name);
+		options.push({
+			label: name,
+			type: 'variable',
+			detail: type === undefined ? '' : typeText(type),
+			// Above functions and keywords, as a program reads its own names most
+			boost: 1,
+		});
+	};
+	for (const symbol of symbols) {
+		const { kind, definition, references, scope, statement } = symbol;
+		const occurrences = definition ? [definition, ...references] : references;
+		// The word being typed parses as a name too, and is no suggestion
+		if (occurrences.every((o) => o.from <= position && position <= o.to)) continue;
+		// A binding is read only after it, and not in its own statement
+		if (statement !== undefined && position <= statement.to) continue;
+		if ((kind === 'loop' || kind === 'accumulator') && !within(scope ?? [], position)) continue;
+		offer(symbol.name, symbolType(state, symbol));
+	}
+	// The loops of a statement the parser could not read, as one being typed
+	for (const loop of brokenLoops(state, position)) {
+		const token = { kind: TokenKind.Identifier, ...loop.definition, startsLine: false } as const;
+		offer(loop.name, loop.kind === 'loop' ? nameType(state, token) : undefined);
+	}
+	return options;
+}
+
+/** The fields of what the `.` just before `from` follows, from the types compiling found. */
+function fields(state: EditorState, from: number): Completion[] {
+	const { tokens } = state.field(syntaxField);
+	const read = (start: number, end: number) => state.sliceDoc(start, end);
+	const type = typeBefore(tokens, from, read, (token) => nameType(state, token));
+	if (type?.kind !== 'record') return [];
+	return Object.entries(type.fields)
+		.filter(([name]) => NAME.test(name))
+		.map(([name, field]) => ({
+			label: name,
+			type: 'property',
+			detail: `${field.required ? '' : '?'}${typeText(field.type)}`,
+		}));
+}
 
 function complete(context: CompletionContext): CompletionResult | null {
 	const { state, pos, explicit } = context;
-	const { tokens } = state.field(lexedField);
+	const { tokens } = state.field(syntaxField);
 	const word = context.matchBefore(WORD);
 	const from = word?.from ?? pos;
-	if (from === pos && !explicit) return null;
+	if (inText(tokens, pos)) return null;
+	const previous = tokenBefore(tokens, from);
+	const dotted = previous?.kind === TokenKind.Dot;
+	if (from === pos && !explicit && !dotted) return null;
 	// A name never starts with a digit, so this is a number
 	if (word !== null && /^\p{Nd}/u.test(word.text)) return null;
 
-	if (inText(tokens, pos)) return null;
-	// After a `.` goes a field, which compiling has to say
-	const previous = tokenBefore(tokens, from);
-	if (previous?.kind === TokenKind.Dot) return null;
-
-	const piped = previous?.kind === TokenKind.Pipe;
-	return {
-		from,
-		options: piped ? steps : [...keywords, ...calls],
-		validFor: /^[\p{XID_Continue}]*$/u,
-	};
+	const validFor = /^[\p{XID_Continue}]*$/u;
+	if (dotted) {
+		const options = fields(state, from);
+		return options.length === 0 ? null : { from, options, validFor };
+	}
+	if (previous?.kind === TokenKind.Pipe) return { from, options: steps, validFor };
+	return { from, options: [...names(state, pos), ...keywords, ...calls], validFor };
 }
 
 export const completion = autocompletion({ override: [complete], icons: false });

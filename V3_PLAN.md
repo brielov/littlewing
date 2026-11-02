@@ -372,7 +372,7 @@ Done in M0: `temporal-polyfill` and `temporal-spec` 1.0, the easy updates, TypeS
 The owner's choices: CodeMirror 6, docs inside the playground, the Tomorrow and Tomorrow Night colors, and Maple Mono. Each step is reviewed and committed on its own.
 
 - [x] P1: CodeMirror 6 in place of Monaco, which loaded from a public CDN at runtime. Highlighting runs on the library's own lexer, and all diagnostics are shown, with quick fixes, unused code faded and signature help that reads tokens, not text. The editor's logic is pure and tested in `packages/playground/test`.
-- [ ] P2: Language features from analysis: completion of names and record fields in context, hover types for every name, go to definition, references, rename, highlighting of a name's uses, formatting
+- [x] P2: Language features from analysis: completion of names and record fields in context, hover types for every name, go to definition, references, rename, highlighting of a name's uses, formatting
 - [ ] P3: Evaluation in a Web Worker, so that typing never blocks the page (dates need custom serialization to cross into it), and a results panel that keeps inputs while the source is broken, with a list of problems
 - [ ] P4: A Learn section with runnable examples, and a function reference generated from `describeFunction` and `coreFunctions`
 - [ ] P5: Open source: issue and PR templates, the GitHub description, topics and homepage, README visuals

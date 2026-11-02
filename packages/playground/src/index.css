@@ -25,6 +25,8 @@
 	--editor-line-number: #237893;
 	--editor-line-number-active: #0b216f;
 	--editor-bracket-match: #b9b9b9;
+	--editor-reference: rgb(87 87 87 / 0.25);
+	--editor-reference-definition: rgb(14 99 156 / 0.25);
 	--bracket-1: #0431fa;
 	--bracket-2: #319331;
 	--bracket-3: #7b3814;
@@ -52,6 +54,8 @@
 		--editor-line-number: #858585;
 		--editor-line-number-active: #c6c6c6;
 		--editor-bracket-match: #888888;
+		--editor-reference: rgb(87 87 87 / 0.72);
+		--editor-reference-definition: rgb(0 73 114 / 0.72);
 		--bracket-1: #ffd700;
 		--bracket-2: #da70d6;
 		--bracket-3: #179fff;

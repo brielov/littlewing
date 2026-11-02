@@ -3,6 +3,7 @@ import {
 	EvaluationError,
 	compile,
 	evaluate,
+	generate,
 	parse,
 	type InputDescription,
 	type Program,
@@ -12,6 +13,7 @@ import {
 } from 'littlewing';
 import { useCallback, useDeferredValue, useMemo, useRef, useState } from 'react';
 import type { Problem } from './editor/index.ts';
+import { namesTypes } from './language/types.ts';
 import { FUNCTIONS, LIMITS, TYPES } from './environment.ts';
 
 interface InputVariable {
@@ -39,6 +41,10 @@ export interface UseEvaluationReturn {
 	timing: Timing | null;
 	/** Every problem found, in the source this is about. */
 	diagnostics: readonly Problem[];
+	/** The type of each top-level name, kept from the last source whose types could be found. */
+	types: ReadonlyMap<string, TypeDescription>;
+	/** Whether `types` are of `source`, rather than of an earlier one. */
+	typesCurrent: boolean;
 	setOverride: (name: string, value: unknown) => void;
 	clearOverride: (name: string) => void;
 }
@@ -178,6 +184,22 @@ function currentOverrides(
 
 const NO_INPUTS: readonly InputVariable[] = [];
 
+/**
+ * The type of each top-level name, from the statements the parser could read, so
+ * that a line being typed does not hide the types of all the others.
+ */
+function typesOf(source: string): Map<string, TypeDescription> | undefined {
+	const { program, diagnostics } = parse(source);
+	const names = new Set<string>();
+	for (const statement of program.statements) {
+		if (statement.kind === 'binding') names.add(statement.name);
+	}
+	const options = { functions: FUNCTIONS, types: TYPES, limits: LIMITS };
+	// Only statements left out need writing out without them
+	const readable = diagnostics.length === 0 ? source : generate(program);
+	return namesTypes(readable, [...names], options);
+}
+
 export function useEvaluation(source: string): UseEvaluationReturn {
 	const [stored, setStored] = useState<ReadonlyMap<string, Override>>(() => new Map());
 	const deferredSource = useDeferredValue(source);
@@ -239,5 +261,21 @@ export function useEvaluation(source: string): UseEvaluationReturn {
 		}
 	}, [compilation, deferredSource, overrides]);
 
-	return { ...output, source: deferredSource, overrides, setOverride, clearOverride };
+	// Types outlast a source that does not compile, which is most of them while typing
+	const known = useRef<ReadonlyMap<string, TypeDescription>>(new Map());
+	const { types, typesCurrent } = useMemo(() => {
+		const found = typesOf(deferredSource);
+		if (found !== undefined) known.current = found;
+		return { types: known.current, typesCurrent: found !== undefined };
+	}, [deferredSource]);
+
+	return {
+		...output,
+		source: deferredSource,
+		types,
+		typesCurrent,
+		overrides,
+		setOverride,
+		clearOverride,
+	};
 }

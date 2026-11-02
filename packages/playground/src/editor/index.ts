@@ -19,8 +19,9 @@ import {
 import { completion } from './completion.ts';
 import { highlighting } from './highlight.ts';
 import { hover } from './hover.ts';
+import { nameKeymap, names } from './names.ts';
 import { signatureHelp } from './signature.ts';
-import { analysisField, inText, lexedField } from './state.ts';
+import { analysisField, inText, syntaxField } from './state.ts';
 import { theme } from './theme.ts';
 
 export { showProblems, type Problem } from './diagnostics.ts';
@@ -35,7 +36,7 @@ const quoteInString = Prec.high(
 	EditorView.inputHandler.of((view, from, to, text) => {
 		if (text !== '"' || from !== to || view.state.selection.ranges.length > 1) return false;
 		if (view.state.sliceDoc(from, from + 1) === '"') return false;
-		if (!inText(view.state.field(lexedField).tokens, from)) return false;
+		if (!inText(view.state.field(syntaxField).tokens, from)) return false;
 		view.dispatch({
 			changes: { from, insert: '"' },
 			selection: { anchor: from + 1 },
@@ -48,11 +49,12 @@ const quoteInString = Prec.high(
 /** Everything the editor knows about littlewing, and how it looks. */
 export function littlewing(): Extension {
 	return [
-		lexedField,
+		syntaxField,
 		analysisField,
 		highlighting,
 		hover,
 		signatureHelp,
+		names,
 		completion,
 		EditorState.languageData.of(() => [
 			{ commentTokens: { line: '//' }, closeBrackets: { brackets: ['(', '[', '{', '"'] } },
@@ -74,6 +76,7 @@ export function littlewing(): Extension {
 		highlightActiveLine(),
 		highlightSelectionMatches(),
 		keymap.of([
+			...nameKeymap,
 			...closeBracketsKeymap,
 			...defaultKeymap,
 			...searchKeymap,

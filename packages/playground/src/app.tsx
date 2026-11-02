@@ -1,5 +1,5 @@
 import { generate, parse } from 'littlewing';
-import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from 'react';
+import { useCallback, useEffect, useState, useSyncExternalStore } from 'react';
 import { Editor } from './editor.tsx';
 import { ErrorBoundary } from './error-boundary.tsx';
 import { INITIAL_SOURCE } from './examples.ts';
@@ -89,10 +89,6 @@ export function App() {
 	}, [source, ready]);
 
 	const evaluation = useEvaluation(source);
-	const inputTypes = useMemo(
-		() => new Map(evaluation.inputVariables.map((input) => [input.name, input.type])),
-		[evaluation.inputVariables],
-	);
 
 	const formatSource = useCallback(() => {
 		const { program, diagnostics } = parse(source);
@@ -152,7 +148,8 @@ export function App() {
 							onChange={setSource}
 							analyzed={evaluation.source}
 							problems={evaluation.diagnostics}
-							inputTypes={inputTypes}
+							types={evaluation.types}
+							typesCurrent={evaluation.typesCurrent}
 						/>
 					</div>
 					<div
@@ -173,7 +170,8 @@ export function App() {
 								onChange={setSource}
 								analyzed={evaluation.source}
 								problems={evaluation.diagnostics}
-								inputTypes={inputTypes}
+								types={evaluation.types}
+								typesCurrent={evaluation.typesCurrent}
 							/>
 						) : (
 							<ErrorBoundary resetKey={evaluation.source}>

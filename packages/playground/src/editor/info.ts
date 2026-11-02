@@ -1,5 +1,7 @@
-import type { FunctionDescription } from 'littlewing';
+import type { FunctionDescription, TypeDescription } from 'littlewing';
 import { parameterText, signatureText } from '../language/catalog.ts';
+import type { NameSymbol, SymbolKind } from '../language/scope.ts';
+import { typeText } from '../language/types.ts';
 
 /** A function as a tooltip shows it: each way to call it, then what it does. */
 export function functionInfo(
@@ -40,13 +42,29 @@ export function functionInfo(
 	return root;
 }
 
-/** A name with its type, as `price: number`. */
-export function typedInfo(name: string, type: string): HTMLElement {
+const KINDS: Record<SymbolKind, string> = {
+	binding: 'binding',
+	input: 'input with a default',
+	free: 'input',
+	loop: 'loop variable',
+	accumulator: 'accumulator',
+};
+
+/** A name with what it is and its type, as `price: number`, under `input`. */
+export function nameInfo(
+	symbol: NameSymbol,
+	type: TypeDescription | undefined,
+	current: boolean,
+): HTMLElement {
 	const root = document.createElement('div');
 	root.className = 'lw-info';
 	const line = document.createElement('code');
 	line.className = 'lw-signature';
-	line.textContent = `${name}: ${type}`;
-	root.append(line);
+	line.textContent = type === undefined ? symbol.name : `${symbol.name}: ${typeText(type)}`;
+	const kind = document.createElement('p');
+	// A type error elsewhere leaves the types of the last program that had them
+	const stale = type !== undefined && !current ? ', as last known' : '';
+	kind.textContent = `${KINDS[symbol.kind]}${stale}`;
+	root.append(line, kind);
 	return root;
 }

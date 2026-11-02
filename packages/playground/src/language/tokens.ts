@@ -15,7 +15,7 @@ import {
 	type Token as LexerToken,
 } from '../../../littlewing/src/syntax/lexer.ts';
 
-export { TokenKind };
+export { isWord, TokenKind };
 
 /** A token as the lexer gives it, with comments as tokens of their own. */
 export interface Token {
