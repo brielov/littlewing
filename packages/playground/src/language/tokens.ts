@@ -151,7 +151,23 @@ export interface Span {
 	readonly from: number;
 	readonly to: number;
 	readonly style: Style;
+	/**
+	 * For a bracket, how deeply it is nested, counting every kind of bracket, or -1
+	 * for one without its pair, which picks its color as bracket pairs are colored.
+	 */
+	readonly depth?: number;
 }
+
+const OPENERS = new Set<TokenKind | 'comment'>([
+	TokenKind.LParen,
+	TokenKind.LBracket,
+	TokenKind.LBrace,
+]);
+const PAIRS = new Map<TokenKind | 'comment', TokenKind>([
+	[TokenKind.RParen, TokenKind.LParen],
+	[TokenKind.RBracket, TokenKind.LBracket],
+	[TokenKind.RBrace, TokenKind.LBrace],
+]);
 
 const OPERATORS = new Set<TokenKind | 'comment'>([
 	TokenKind.Plus,
@@ -250,6 +266,8 @@ export function highlight(source: string, tokens: readonly Token[]): Span[] {
 	// Comments sit between tokens, and say nothing of what is around them
 	const code = tokens.filter((token) => token.kind !== 'comment');
 	let index = 0;
+	// Brackets open so far, with where each one's span is
+	const open: { kind: TokenKind | 'comment'; span: number }[] = [];
 
 	for (const token of tokens) {
 		const { kind, from, to } = token;
@@ -274,9 +292,18 @@ export function highlight(source: string, tokens: readonly Token[]): Span[] {
 			stringSpans(source, token, spans);
 		} else if (OPERATORS.has(kind)) {
 			spans.push({ from, to, style: 'operator' });
+		} else if (OPENERS.has(kind)) {
+			open.push({ kind, span: spans.length });
+			spans.push({ from, to, style: 'punctuation', depth: open.length - 1 });
+		} else if (PAIRS.has(kind)) {
+			const paired = open.at(-1)?.kind === PAIRS.get(kind);
+			if (paired) open.pop();
+			spans.push({ from, to, style: 'punctuation', depth: paired ? open.length : -1 });
 		} else if (!KEYWORDS.has(kind)) {
 			spans.push({ from, to, style: 'punctuation' });
 		}
 	}
+	// A bracket never closed has no pair either
+	for (const { span } of open) spans[span] = { ...spans[span]!, depth: -1 };
 	return spans;
 }

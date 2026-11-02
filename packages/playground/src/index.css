@@ -15,13 +15,20 @@
 	--color-warning: #f5871f;
 	--color-selection: #d6d6d6;
 
-	--syntax-red: #c82829;
 	--syntax-orange: #f5871f;
-	--syntax-yellow: #c99e00;
 	--syntax-green: #718c00;
-	--syntax-aqua: #3e999f;
 	--syntax-blue: #4271ae;
 	--syntax-purple: #8959a8;
+
+	/* The editor around the text */
+	--editor-cursor: #aeafad;
+	--editor-line-number: #237893;
+	--editor-line-number-active: #0b216f;
+	--editor-bracket-match: #b9b9b9;
+	--bracket-1: #0431fa;
+	--bracket-2: #319331;
+	--bracket-3: #7b3814;
+	--bracket-unpaired: rgb(255 18 18 / 0.8);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -37,13 +44,17 @@
 		--color-warning: #de935f;
 		--color-selection: #373b41;
 
-		--syntax-red: #cc6666;
 		--syntax-orange: #de935f;
-		--syntax-yellow: #f0c674;
 		--syntax-green: #b5bd68;
-		--syntax-aqua: #8abeb7;
 		--syntax-blue: #81a2be;
 		--syntax-purple: #b294bb;
+
+		--editor-line-number: #858585;
+		--editor-line-number-active: #c6c6c6;
+		--editor-bracket-match: #888888;
+		--bracket-1: #ffd700;
+		--bracket-2: #da70d6;
+		--bracket-3: #179fff;
 	}
 }
 
@@ -86,33 +97,37 @@ input[type='datetime-local']::-webkit-calendar-picker-indicator {
 	outline-offset: -1.5px;
 }
 
-/* Littlewing source, in the Tomorrow palette */
+/*
+ * Littlewing source, colored as the Tomorrow and Tomorrow Night themes color the
+ * token kinds a littlewing editor has: names, numbers and operators take the text
+ * color, and brackets are colored by depth.
+ */
 .tok-comment {
 	color: var(--color-fg-muted);
-	font-style: italic;
 }
 .tok-keyword {
 	color: var(--syntax-purple);
 }
-.tok-operator {
-	color: var(--syntax-aqua);
-}
-.tok-number,
-.tok-boolean,
-.tok-escape {
+.tok-boolean {
 	color: var(--syntax-orange);
 }
-.tok-string {
+.tok-string,
+.tok-escape,
+.tok-interpolation {
 	color: var(--syntax-green);
-}
-.tok-interpolation,
-.tok-definition,
-.tok-property {
-	color: var(--syntax-red);
 }
 .tok-function {
 	color: var(--syntax-blue);
 }
-.tok-input {
-	color: var(--syntax-yellow);
+.tok-bracket-0 {
+	color: var(--bracket-1);
+}
+.tok-bracket-1 {
+	color: var(--bracket-2);
+}
+.tok-bracket-2 {
+	color: var(--bracket-3);
+}
+.tok-bracket-unpaired {
+	color: var(--bracket-unpaired);
 }

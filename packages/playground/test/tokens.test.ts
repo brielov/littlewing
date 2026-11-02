@@ -110,6 +110,29 @@ describe('highlight', () => {
 	});
 });
 
+describe('brackets', () => {
+	/** The depth of each bracket in `source`, or -1 for one without its pair. */
+	function depths(source: string): (number | undefined)[] {
+		return highlight(source, lex(source))
+			.filter(({ depth }) => depth !== undefined)
+			.map(({ depth }) => depth);
+	}
+
+	test('are numbered by nesting, across kinds', () => {
+		expect(depths('F([{a: (1)}], [2])')).toEqual([0, 1, 2, 3, 3, 2, 1, 1, 1, 0]);
+	});
+
+	test('without a pair are marked', () => {
+		expect(depths('(]')).toEqual([-1, -1]);
+		expect(depths('[1)')).toEqual([-1, -1]);
+		expect(depths('(1))')).toEqual([0, 0, -1]);
+	});
+
+	test('in strings are text, and in interpolations code', () => {
+		expect(depths('"(#{ (1) }"')).toEqual([0, 0]);
+	});
+});
+
 describe('strings', () => {
 	test('only escapes the lexer accepts', () => {
 		expect(styles(String.raw`"\q\u{110000}\u{D800}"`)).toEqual([

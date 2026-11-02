@@ -17,24 +17,26 @@ export const theme = EditorView.theme({
 		lineHeight: '22px',
 		fontVariantLigatures: 'contextual',
 	},
-	'.cm-content': { padding: '16px 0', caretColor: 'var(--color-fg)' },
-	'.cm-cursor, .cm-dropCursor': { borderLeftColor: 'var(--color-fg)', borderLeftWidth: '2px' },
+	'.cm-content': { padding: '16px 0', caretColor: 'var(--editor-cursor)' },
+	'.cm-cursor, .cm-dropCursor': { borderLeftColor: 'var(--editor-cursor)', borderLeftWidth: '2px' },
 	'&.cm-focused > .cm-scroller > .cm-selectionLayer .cm-selectionBackground, .cm-selectionBackground, .cm-content ::selection':
 		{ backgroundColor: 'var(--color-selection)' },
 	'.cm-activeLine': { backgroundColor: 'var(--color-bg-secondary)' },
 	'.cm-gutters': {
 		backgroundColor: 'var(--color-bg)',
-		color: 'var(--color-fg-muted)',
+		color: 'var(--editor-line-number)',
 		border: 'none',
 	},
 	'.cm-lineNumbers .cm-gutterElement': { padding: '0 12px 0 16px', minWidth: '24px' },
-	'.cm-activeLineGutter': { backgroundColor: 'transparent', color: 'var(--color-fg)' },
-	'.cm-matchingBracket, &.cm-focused .cm-matchingBracket': {
+	'.cm-activeLineGutter': {
 		backgroundColor: 'transparent',
-		outline: '1px solid var(--color-fg-muted)',
-		borderRadius: '2px',
+		color: 'var(--editor-line-number-active)',
 	},
-	'.cm-nonmatchingBracket': { color: 'var(--color-error)' },
+	'.cm-matchingBracket, &.cm-focused .cm-matchingBracket': {
+		backgroundColor: 'rgb(0 100 0 / 0.1)',
+		outline: '1px solid var(--editor-bracket-match)',
+	},
+	'.cm-nonmatchingBracket': { backgroundColor: 'transparent' },
 	'.cm-selectionMatch': {
 		backgroundColor: 'color-mix(in srgb, var(--color-selection) 60%, transparent)',
 	},
