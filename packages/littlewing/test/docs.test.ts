@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'bun:test';
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
+import { pathToFileURL } from 'node:url';
 import { join } from 'node:path';
 import * as clock from '../src/clock.js';
 import { compile, evaluate } from '../src/compile.js';
@@ -60,7 +61,8 @@ interface Checked {
  * Text printed is a claim too, and a comment in a `console.log` is what it prints.
  */
 function checked(block: string): Checked {
-	const source = join(root, 'packages', 'littlewing', 'src');
+	// A URL, as a Windows path in an import would have its backslashes read as escapes
+	const source = pathToFileURL(join(root, 'packages', 'littlewing', 'src')).href;
 	let claims = 0;
 	const lines = block
 		.replace(/from 'littlewing'/g, `from '${source}/index.ts'`)
