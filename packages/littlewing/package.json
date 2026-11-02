@@ -1,6 +1,6 @@
 {
 	"name": "littlewing",
-	"version": "2.3.2",
+	"version": "3.0.0",
 	"description": "A small typed language for the formulas your users write: safe by construction, exact decimals, inferred inputs, and a step budget.",
 	"keywords": [
 		"calculator",
