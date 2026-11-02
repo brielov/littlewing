@@ -1,11 +1,12 @@
 import type {
+	AbstractDefinition,
 	AbstractType,
 	FunctionDefinition,
-	Optional,
 	Signature,
 	Type as HostType,
 	TypeNode,
 } from '../define.js';
+import { isOptional, walkType } from '../define.js';
 import type { Diagnostic } from '../diagnostics.js';
 import { charge } from '../limits.js';
 import type {
@@ -53,6 +54,11 @@ export interface CheckOptions {
 	readonly inputs?: Readonly<Record<string, HostType>>;
 }
 
+export interface InputType {
+	readonly type: Type;
+	readonly required: boolean;
+}
+
 export interface CheckResult {
 	readonly program: Program;
 	readonly diagnostics: readonly Diagnostic[];
@@ -62,6 +68,11 @@ export interface CheckResult {
 	readonly calls: ReadonlyMap<Call, Signature>;
 	/** The default of each `?=`, which a later stage can write down if it is a constant. */
 	readonly defaults: ReadonlyMap<string, Expression>;
+	/** The type of each input, for reading them. */
+	readonly inputTypes: ReadonlyMap<string, InputType>;
+	/** Every abstract type in reach, which a generic value can belong to. */
+	readonly abstracts: readonly AbstractDefinition[];
+	readonly outputType: Type;
 	readonly inputs: InputSchema;
 	readonly output: TypeDescription;
 }
@@ -88,10 +99,6 @@ interface Input {
 	readonly node: Node;
 }
 
-function isOptional(type: HostType | Optional): type is Optional {
-	return type.kind === 'optional';
-}
-
 class Checker {
 	readonly solver: Solver = new Solver();
 	readonly types: Map<Expression, Type> = new Map();
@@ -104,40 +111,22 @@ class Checker {
 
 	constructor(private readonly options: CheckOptions) {}
 
-	private collectAbstracts(type: HostType | Optional, seen: Set<object>): void {
-		charge(1);
-		const shape = (isOptional(type) ? type.type : type) as TypeNode;
-		if (seen.has(shape)) return;
-		seen.add(shape);
-		switch (shape.kind) {
-			case 'abstract':
-				this.solver.abstract(shape.definition);
-				break;
-			case 'array':
-				this.collectAbstracts(shape.element, seen);
-				break;
-			case 'uniform':
-				this.collectAbstracts(shape.value, seen);
-				break;
-			case 'record':
-				for (const field of Object.values(shape.fields)) this.collectAbstracts(field, seen);
-				break;
-			default:
-		}
-	}
-
 	/** Every abstract type in reach counts toward what a class allows. */
 	knownTypes(): void {
 		const { functions, types, inputs } = this.options;
 		const seen = new Set<object>();
+		const collect = (node: TypeNode): void => {
+			charge(1);
+			if (node.kind === 'abstract') this.solver.abstract(node.definition);
+		};
 		for (const type of types ?? []) this.solver.abstract(type.definition);
 		for (const definition of functions.values()) {
 			for (const signature of definition.overloads) {
-				for (const arg of signature.args) this.collectAbstracts(arg, seen);
-				this.collectAbstracts(signature.returns, seen);
+				for (const arg of signature.args) walkType(arg, seen, collect);
+				walkType(signature.returns, seen, collect);
 			}
 		}
-		for (const type of Object.values(inputs ?? {})) this.collectAbstracts(type, seen);
+		for (const type of Object.values(inputs ?? {})) walkType(type, seen, collect);
 	}
 
 	private note(node: Expression, type: Type): Type {
@@ -757,6 +746,9 @@ export function check(program: Program, options: CheckOptions): CheckResult {
 		types: checker.types,
 		calls: solver.resolved,
 		defaults: checker.defaults,
+		inputTypes: checker.inputs,
+		abstracts: [...solver.abstracts.keys()],
+		outputType: output,
 		inputs: failed ? (Object.create(null) as InputSchema) : checker.schema(describer),
 		output: failed ? { kind: 'generic', id: -1 } : describer.describe(output),
 	};

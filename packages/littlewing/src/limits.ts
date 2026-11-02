@@ -43,6 +43,11 @@ export function setBudget(steps: number): number {
 	return previous;
 }
 
+/** Steps left, for a nested evaluation to run on. */
+export function remainingSteps(): number {
+	return remaining;
+}
+
 /**
  * Spend `steps` from the running evaluation's budget. Outside an evaluation the
  * budget is infinite, so library functions can be called directly.
@@ -64,6 +69,23 @@ export function step(owner: { current: unknown }, node: unknown): void {
 		owner.current = node;
 		throw new LimitExceededError('Evaluation exceeded its step limit');
 	}
+}
+
+/**
+ * Spend `steps` that belong to `node`, on behalf of `owner`, as `step` does.
+ */
+export function stepBy(owner: { current: unknown }, node: unknown, steps: number): void {
+	remaining -= steps;
+	if (remaining < 0) {
+		owner.current = node;
+		throw new LimitExceededError('Evaluation exceeded its step limit');
+	}
+}
+
+/** Use up the running budget, even one that is disabled, as a `cost` of `Infinity` does. */
+export function exhaust(): never {
+	remaining = -1;
+	throw new LimitExceededError('Evaluation exceeded its step limit');
 }
 
 /**

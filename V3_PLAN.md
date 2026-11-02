@@ -15,8 +15,8 @@ Work remaining before v3 ships. The engine overhaul is done, on the `v3` branch.
    - [x] M2: Lexer, parser, diagnostics with recovery, and `generate`
    - [x] M3: `t`, `define` and `defineType`
    - [x] M4: Desugaring and the checker: inference, classes, records, input schema
-   - [ ] M5: The optimizer, and the interpreter on typed programs
-   - [ ] M6: `compile`, `evaluate`, `run`, and crossing the boundary
+   - [x] M5: The optimizer, and the interpreter on typed programs
+   - [x] M6: `compile`, `evaluate`, `run`, and crossing the boundary
    - [ ] M7: Core functions, `littlewing/std`, `littlewing/temporal`, `littlewing/clock`
    - [ ] M8: The conformance suite and fuzzing, including solving order
    - [ ] M9: Playground, docs and packaging

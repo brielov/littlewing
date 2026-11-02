@@ -84,6 +84,11 @@ const KEYWORDS = new Map<string, TokenKind>([
 	['match', TokenKind.Reserved],
 ]);
 
+/** Whether a word is a keyword or reserved, so that a program cannot use it as a name. */
+export function isKeyword(word: string): boolean {
+	return KEYWORDS.has(word);
+}
+
 const MAX_KEYWORD_LENGTH = 5;
 
 /** Most names cannot be keywords, which spares slicing and hashing them. */

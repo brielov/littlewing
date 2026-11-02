@@ -9,6 +9,8 @@ export interface Diagnostic {
 	/** Offsets into the source, in UTF-16 code units. */
 	readonly start: number;
 	readonly end: number;
+	/** What host code threw, for a constant failure. */
+	readonly cause?: unknown;
 }
 
 export function errorAt(code: string, message: string, start: number, end: number): Diagnostic {

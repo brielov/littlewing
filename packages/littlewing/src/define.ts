@@ -151,6 +151,28 @@ export interface TypeBuilders {
 	optional<T extends Type>(type: T): Optional<T>;
 }
 
+/** Whether a parameter or field is `t.optional`. */
+export function isOptional(type: Type | Optional): type is Optional {
+	return type.kind === 'optional';
+}
+
+/** Visit a type and every type inside it, once each. */
+export function walkType(
+	type: Type | Optional,
+	seen: Set<object>,
+	visit: (node: TypeNode) => void,
+): void {
+	const node = (isOptional(type) ? type.type : type) as TypeNode;
+	if (seen.has(node)) return;
+	seen.add(node);
+	visit(node);
+	if (node.kind === 'array') walkType(node.element, seen, visit);
+	else if (node.kind === 'uniform') walkType(node.value, seen, visit);
+	else if (node.kind === 'record') {
+		for (const field of Object.values(node.fields)) walkType(field, seen, visit);
+	}
+}
+
 /** Everything `t` and `defineType` made, so nothing else passes for a type. */
 const madeTypes = new WeakSet<object>();
 

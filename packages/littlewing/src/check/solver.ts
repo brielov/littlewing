@@ -11,13 +11,13 @@ import { charge } from '../limits.js';
 import type { Call, Expression, Node } from '../syntax/ast.js';
 import type { FieldType, Type } from './types.js';
 import {
-	ADDABLE,
 	AbstractTypeRef,
 	ARRAY_CLASSES,
 	ArrayType,
 	BOOLEAN,
 	BOOLEAN_CLASSES,
 	CLASS_BITS,
+	classesOfDefinition,
 	closedRecord,
 	EQUATABLE,
 	ERROR,
@@ -26,7 +26,6 @@ import {
 	NUMBER,
 	NUMBER_CLASSES,
 	openRecord,
-	ORDERED,
 	printType,
 	prune,
 	pruneMeeting,
@@ -35,10 +34,8 @@ import {
 	RECORD_CLASSES,
 	RecordType,
 	Row,
-	SHOWABLE,
 	STRING,
 	STRING_CLASSES,
-	SUBTRACTABLE,
 	TypeVariable,
 } from './types.js';
 
@@ -117,7 +114,7 @@ export class Solver {
 	readonly equatableRecords: { readonly record: RecordType; readonly node: Node }[] = [];
 	/** Set if unification gave up on a type too deep to walk. */
 	tooDeep: Node | undefined;
-	private readonly abstracts = new Map<AbstractDefinition, AbstractTypeRef>();
+	readonly abstracts: Map<AbstractDefinition, AbstractTypeRef> = new Map();
 	private readonly admitted = new Map<number, readonly Type[]>();
 	private nextId: number = 0;
 
@@ -149,15 +146,7 @@ export class Solver {
 	abstract(definition: AbstractDefinition): AbstractTypeRef {
 		let reference = this.abstracts.get(definition);
 		if (reference === undefined) {
-			const operation = (name: keyof AbstractDefinition, bit: number): number =>
-				Reflect.get(definition, name) === undefined ? 0 : bit;
-			const classes =
-				operation('add', ADDABLE) |
-				operation('subtract', SUBTRACTABLE) |
-				operation('compare', ORDERED) |
-				operation('equals', EQUATABLE) |
-				operation('show', SHOWABLE);
-			reference = new AbstractTypeRef(definition, classes);
+			reference = new AbstractTypeRef(definition, classesOfDefinition(definition));
 			this.abstracts.set(definition, reference);
 			this.admitted.clear();
 		}

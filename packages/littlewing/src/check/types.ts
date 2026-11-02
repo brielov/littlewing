@@ -32,6 +32,19 @@ export const BOOLEAN_CLASSES: number = EQUATABLE | SHOWABLE | CONVERTIBLE;
 export const ARRAY_CLASSES: number = ADDABLE | EQUATABLE | SIZED | INDEXABLE;
 export const RECORD_CLASSES: number = EQUATABLE | INDEXABLE;
 
+/** The classes an abstract type belongs to, from the operations it provides. */
+export function classesOfDefinition(definition: AbstractDefinition): number {
+	const provides = (name: keyof AbstractDefinition, bit: number): number =>
+		Reflect.get(definition, name) === undefined ? 0 : bit;
+	return (
+		provides('add', ADDABLE) |
+		provides('subtract', SUBTRACTABLE) |
+		provides('compare', ORDERED) |
+		provides('equals', EQUATABLE) |
+		provides('show', SHOWABLE)
+	);
+}
+
 export function classNames(mask: number): TypeClass[] {
 	return CLASS_NAMES.filter((name) => (mask & CLASS_BITS[name]) !== 0);
 }
@@ -221,6 +234,14 @@ export function forEachField(
 	for (const [name, field] of pruneRow(record.row).fields) {
 		if (!record.fields.has(name)) visit(name, field);
 	}
+}
+
+/** The type of a field a record names, itself or in its row. */
+export function fieldType(record: RecordType, name: string): Type | undefined {
+	const field =
+		record.fields.get(name) ??
+		(record.row === undefined ? undefined : pruneRow(record.row).fields.get(name));
+	return field?.type;
 }
 
 function printFields(type: RecordType, depth: number): string {

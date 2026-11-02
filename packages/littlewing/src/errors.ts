@@ -1,3 +1,5 @@
+import type { Diagnostic } from './diagnostics.js';
+
 /**
  * Error thrown when parsing fails. Carries UTF-16 offsets into the source string
  * so callers can display precise error locations.
@@ -33,6 +35,16 @@ export class EvaluationError extends Error {
 	) {
 		super(message, options);
 		this.code = options?.code ?? 'host-error';
+	}
+}
+
+/**
+ * Thrown by `run` for a program that does not compile.
+ */
+export class CompileError extends Error {
+	override readonly name = 'CompileError';
+	constructor(readonly diagnostics: readonly Diagnostic[]) {
+		super(diagnostics[0]?.message ?? 'The program does not compile');
 	}
 }
 
