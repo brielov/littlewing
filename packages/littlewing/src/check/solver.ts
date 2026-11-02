@@ -100,6 +100,15 @@ function isBroken(type: Type): boolean {
 	return type === ERROR || (type instanceof RecordType && type.failed);
 }
 
+/**
+ * Steps a node of a signature costs each time it is instantiated. A record field that
+ * is itself a record allocates several objects and maps, and whatever is built here
+ * then goes through the type measure and the schema too, so at much less a formula of
+ * ordinary calls could run the compiler out of memory inside its budget, which on Node
+ * cannot even be caught.
+ */
+const INSTANTIATE_STEPS = 32;
+
 export class Solver {
 	readonly errors: Diagnostic[] = [];
 	readonly warnings: Diagnostic[] = [];
@@ -115,6 +124,8 @@ export class Solver {
 	/** Set if unification gave up on a type too deep to walk. */
 	tooDeep: Node | undefined;
 	readonly abstracts: Map<AbstractDefinition, AbstractTypeRef> = new Map();
+	/** One set of parameters per signature, as a call can be tried again and again. */
+	private readonly trials = new Map<Signature, readonly Type[]>();
 	private readonly admitted = new Map<number, readonly Type[]>();
 	private nextId: number = 0;
 
@@ -725,10 +736,10 @@ export class Solver {
 		}
 
 		if (c instanceof ArrayType || c === STRING) {
-			this.unify(index, NUMBER, node);
+			this.unify(NUMBER, index, node);
 			this.unify(element, c === STRING ? STRING : (c as ArrayType).element, node);
 		} else if (c instanceof RecordType) {
-			this.unify(index, STRING, node);
+			this.unify(STRING, index, node);
 			this.makeUniform(c, element, node);
 		}
 	}
@@ -751,6 +762,7 @@ export class Solver {
 		trial = false,
 		returned = false,
 	): Type {
+		charge(INSTANTIATE_STEPS);
 		const shape = (isOptional(type) ? type.type : type) as TypeNode;
 		switch (shape.kind) {
 			case 'number':
@@ -864,13 +876,24 @@ export class Solver {
 		return false;
 	}
 
+	/** The parameters of a signature to try arguments on, which trying leaves unchanged. */
+	private trialOf(signature: Signature): readonly Type[] {
+		let params = this.trials.get(signature);
+		if (params === undefined) {
+			const scope = new Map<string, TypeVariable>();
+			params = signature.args.map((param) => this.instantiate(param, scope, true));
+			this.trials.set(signature, params);
+		}
+		return params;
+	}
+
 	private fitsOverload(call: WaitingCall, signature: Signature): boolean {
 		charge(signature.args.length + 1);
-		const scope = new Map<string, TypeVariable>();
+		const params = this.trialOf(signature);
 		const bound = new Map<TypeVariable, Type>();
 		return call.args.every((arg, i) => {
 			const param = signature.args[i] as HostType | Optional;
-			const fits = this.compatible(this.instantiate(param, scope, true), arg, bound, 0);
+			const fits = this.compatible(params[i] as Type, arg, bound, 0);
 			return fits && !this.outsideList(param, this.literalOf(call, i));
 		});
 	}
@@ -894,7 +917,7 @@ export class Solver {
 		call.args.forEach((arg, i) => {
 			const param = signature.args[i] as HostType | Optional;
 			const node = call.argNodes[i] as Node;
-			this.unify(arg, this.instantiate(param, scope), node);
+			this.unify(this.instantiate(param, scope), arg, node);
 			const literal = this.literalOf(call, i);
 			if (this.outsideList(param, literal)) {
 				this.mismatch('This is not one of the accepted strings', literal);

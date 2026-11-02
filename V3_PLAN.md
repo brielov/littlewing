@@ -9,7 +9,7 @@ Work remaining before v3 ships. The engine overhaul is done, on the `v3` branch.
    - [x] Write the language spec, `SPEC.md`
    - [x] Write the host API spec, `HOST_API.md`
    - [x] Review the host API spec until the reviewer agrees
-3. [ ] Implement, one milestone at a time, each reviewed by an independent agent before the next starts:
+3. [x] Implement, one milestone at a time, each reviewed by an independent agent before the next starts:
    - [x] M0: Dependencies
    - [x] M1: `Decimal`, the number type, including `ln` and `exp` for `^`
    - [x] M2: Lexer, parser, diagnostics with recovery, and `generate`
@@ -20,7 +20,7 @@ Work remaining before v3 ships. The engine overhaul is done, on the `v3` branch.
    - [x] M7: Core functions, `littlewing/std`, `littlewing/temporal`, `littlewing/clock`
    - [x] Swap: delete the old pipeline, export the new API, and port the consumer tests and playground to it, in one commit as the lint hook covers them all
    - [x] M8: The conformance suite and fuzzing, including solving order
-   - [ ] M9: Playground, docs and packaging
+   - [x] M9: Playground, docs and packaging
 4. [ ] Release v3.0.0, following AGENTS.md
 
 Hold all of it for one v3 release: with 66 npm downloads in the last month, breaking changes are cheap now. The cost is that v2 keeps its known wrong results, such as `8 / -2 * 4`, until then.
@@ -348,12 +348,12 @@ evaluate(result.program, { variables }); // throws runtime errors only
 
 Not measured yet: the checker's size, and what `compile` costs per formula.
 
-- [ ] `compile()` as public API, replacing the hidden `WeakMap`, `evaluate(source)` and the "AST must not change" caveat.
-- [ ] `check` as a stage of `compile`. It absorbs the analyzer.
-- [ ] String node kinds instead of the numeric `NodeKind`, for readable ASTs that stay stable as JSON between versions. Dispatch on kind is no longer hot.
-- [ ] Function signatures in the library, moved from the playground's `function-metadata.ts`.
-- [ ] Drop `visit`. `forEachChild` and `mapChildren` cover it and nothing internal uses it.
-- [ ] Parser error recovery, to report several syntax errors at once. This is now required, as `compile` reports everything it finds.
+- [x] `compile()` as public API, replacing the hidden `WeakMap`, `evaluate(source)` and the "AST must not change" caveat.
+- [x] `check` as a stage of `compile`. It absorbs the analyzer.
+- [x] String node kinds instead of the numeric `NodeKind`, for readable ASTs that stay stable as JSON between versions. Dispatch on kind is no longer hot.
+- [x] Function signatures in the library, moved from the playground's `function-metadata.ts`.
+- [x] Drop `visit`. `forEachChild` and `mapChildren` cover it and nothing internal uses it.
+- [x] Parser error recovery, to report several syntax errors at once. This is now required, as `compile` reports everything it finds.
 
 ## v4, some day
 
@@ -372,7 +372,7 @@ Done in M0: `temporal-polyfill` and `temporal-spec` 1.0, the easy updates, TypeS
 - [ ] Compare CodeMirror 6 with Monaco. Monaco appears to load from a public CDN at runtime, separately from its `package.json` version, which is only used for types. Measure size, load time and mobile behaviour first.
 - [ ] Run evaluation in a Web Worker, so that typing never blocks the page. Dates need custom serialization to cross into it.
 - [ ] Embed mode, so that docs examples are runnable
-- [ ] Use the library's function signatures instead of `function-metadata.ts`, which needs `doc` on every definition, and parameter names back in `std` and `temporal`, as the shared type constants dropped them
+- [x] Use the library's function signatures instead of `function-metadata.ts`, which needs `doc` on every definition, and parameter names back in `std` and `temporal`, as the shared type constants dropped them
 - [ ] Measure load time, and whether both `.woff` and `.woff2` fonts need shipping
 
 ## Open source
@@ -380,35 +380,36 @@ Done in M0: `temporal-polyfill` and `temporal-spec` 1.0, the easy updates, TypeS
 Broken today:
 
 - [ ] Fix the GitHub description, which still says "arithmetic expression language"
-- [ ] Link the playground from the README, which never mentions it
-- [ ] Remove the stale bot, which closes issues after 44 days
-- [ ] Stop pointing README readers at CLAUDE.md for development docs
+- [ ] Deploy the playground, whose address on Vercel gives a 404, and link it from the README
+- [x] Remove the stale bot, which closes issues after 44 days
+- [x] Stop pointing README readers at CLAUDE.md for development docs
 
 To build:
 
-- [ ] Reposition around the problem: let users write formulas, without `eval` and without letting them hang your app
-- [ ] New README opening: a 30-second example, a playground link and a demo
+- [x] Reposition around the problem: let users write formulas, without `eval` and without letting them hang your app
+- [x] New README opening: a 30-second example
 - [ ] Recipes: pricing rules, a formula field in a form, a generated form if inference lands
 - [ ] Editor integration for CodeMirror or Monaco
 - [ ] A threat model page
 - [ ] A comparison with other libraries, verified by running them
 - [ ] Reproducible benchmarks in the repo
-- [ ] Update the npm description and keywords, and consider publishing to JSR
+- [x] Update the npm description and keywords
+- [ ] Consider publishing to JSR
 - [ ] A launch post: the attacks found while hardening it make a good story
 
 ## Known gaps
 
 From the overhaul, still untested:
 
+- [ ] Memory grows with the length of the source: 10.6 MB compiled at 2.4 GB. HOST_API tells hosts to cap it
+- [ ] A short formula can leave a large `Program`, as each call keeps the types of its own arguments, at about 1 KB per signature node per call: 3 KB of calls of a function with 1,000 record fields retains 442 MB. HOST_API tells hosts about it
+- [ ] `describeFunction` has no limit across parameters, which only a host's own definition can reach
 - [ ] Windows and macOS CI runners
 - [ ] The polyfill path in CI: `lts/*` is likely Node 26, whose native `Temporal` `temporal-polyfill` hands back, so `smoke.mjs` no longer runs on the polyfill there
-- [ ] The playground in a real browser: Monaco markers, the quick fix, time inputs, HMR and mobile
+- [ ] The playground in a real browser: Monaco markers, the quick fix, time inputs, HMR, mobile and Firefox
 - [ ] Node 18 to 24
 - [ ] TypeScript 5.0 to 5.8
-- [ ] The playground in a real browser, including Firefox
 - [ ] The types in `define.d.ts` need TypeScript 5.4 with `skipLibCheck: false`. Inference works from 5.0 with `skipLibCheck: true`.
-- [ ] Undecided overloaded calls are all retried after each rule of section 6.5, which is quadratic, and charged. About 60 KB of nothing but such calls passes the default compile budget.
+- [ ] Undecided overloaded calls are all retried after each rule of section 6.5, which is quadratic, and charged. About 43 KB of nothing but such calls, or 2,000 calls, passes the default compile budget.
 - [ ] A program at the limits needs about 700 KB of stack to parse, which default stacks have. On less, parsing reports `limit-exceeded`.
 - [ ] NFC on names of up to 1024 code points is linear in the source but slow, at up to 3 s per MB on Bun, so `compile` has to charge for it.
-- [ ] `optimize` on a 1024-term chain needs more than 600 KB of stack. Default stacks are fine, and running out has to become a diagnostic, as `compile` must not throw on a program.
-- [ ] `evaluate(parse(src))` is less than half the speed of `evaluate(src)` for one-off use. `compile()` removes this.

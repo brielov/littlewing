@@ -31,6 +31,9 @@ function program(source: string, options: CompileOptions = {}): Program {
 	return result.program;
 }
 
+/** What one call of a host function costs to compile, whose signature has 102 nodes. */
+const CALL_STEPS = 4580;
+
 /** The fewest steps a nested evaluation takes, found by bisection. */
 function stepsOf(body: (maxSteps: number) => void): number {
 	let low = 0;
@@ -806,6 +809,55 @@ describe('budgets', () => {
 		const record = `r = { ${fields} }`;
 		const bare = stepsToFold(record);
 		expect(stepsToFold(`${record}\nq = [r]`) - bare).toBeGreaterThanOrEqual(6000);
+	});
+
+	describe('signatures', () => {
+		// Fields that are records themselves, which is what costs: a number allocates nothing
+		const fields = Object.fromEntries(
+			Array.from({ length: 100 }, (_, i) => [`f${i}`, t.openRecord({})]),
+		);
+		const record = t.record(fields);
+		const F = define({ args: [record], returns: t.number(), run: () => 1 });
+		const G = define({
+			overloads: [
+				{ args: [record], returns: t.number() },
+				{ args: [t.array(record)], returns: t.number() },
+			],
+			run: () => 1,
+		});
+		const functions = { F, G };
+
+		/** The compile budget a program takes, found by bisection. */
+		const stepsToCompile = (source: string): number =>
+			stepsOf((maxSteps) => {
+				const result = compile(source, { functions, limits: { maxSteps } });
+				if (!result.ok) throw new CompileError(result.diagnostics);
+			});
+
+		test('a call pays for what its signature allocates, each time', () => {
+			const call = stepsToCompile('F(a)\nF(b)\n1') - stepsToCompile('F(a)\n1');
+			expect(call).toBe(CALL_STEPS);
+		});
+
+		test('trying an overload builds its parameters once, however often it is tried', () => {
+			const once = stepsToCompile('G(a)\nG(b)\n1') - stepsToCompile('G(a)\n1');
+			const again = stepsToCompile('G(a)\nG(b)\nG(c)\n1') - stepsToCompile('G(a)\nG(b)\n1');
+			// A second build of the parameters would cost two signatures at 32 steps a node
+			expect(again - once).toBeLessThan(1000);
+		});
+	});
+
+	test('a type pays to be written out', () => {
+		const a = t.record({ x: t.record({ y: t.record({ z: t.number() }) }) });
+		const steps = (source: string): number =>
+			stepsOf((maxSteps) => {
+				const result = compile(source, { inputs: { a }, limits: { maxSteps } });
+				if (!result.ok) throw new CompileError(result.diagnostics);
+			});
+		const read = steps('a.x.y.z');
+		const none = steps('1');
+		// Four types, at 8 steps each, on top of the rest of the program
+		expect(read - none).toBe(75);
 	});
 
 	test('comparing records pays for reading their keys', () => {

@@ -175,6 +175,70 @@ export function walkType(
 	}
 }
 
+/** One parameter of a function, for tooling. */
+export interface ParameterDescription {
+	readonly name: string;
+	readonly type: string;
+	readonly optional: boolean;
+}
+
+/** One way to call a function, for tooling. */
+export interface OverloadDescription {
+	readonly args: readonly ParameterDescription[];
+	readonly returns: string;
+}
+
+/** What a function takes and gives, written out for people, for tooling. */
+export interface FunctionDescription {
+	readonly doc: string | undefined;
+	readonly overloads: readonly OverloadDescription[];
+}
+
+function fieldText(name: string, field: Type | Optional): string {
+	return isOptional(field) ? `${name}?: ${typeText(field.type)}` : `${name}: ${typeText(field)}`;
+}
+
+function typeText(type: Type): string {
+	const node = type as TypeNode;
+	switch (node.kind) {
+		case 'array':
+			return `array<${typeText(node.element)}>`;
+		case 'uniform':
+			return `{ [key]: ${typeText(node.value)} }`;
+		case 'record': {
+			const fields = Object.entries(node.fields).map(([name, field]) => fieldText(name, field));
+			const parts = [...fields, ...(node.open ? ['...'] : [])];
+			return parts.length === 0 ? '{}' : `{ ${parts.join(', ')} }`;
+		}
+		case 'var':
+			return node.typeClass ?? node.variable;
+		case 'oneOf':
+			return node.values.map((value) => JSON.stringify(value)).join(' | ');
+		case 'abstract':
+			return node.definition.name;
+		default:
+			return node.kind;
+	}
+}
+
+function describeParameter(param: Type | Optional, index: number): ParameterDescription {
+	const optional = isOptional(param);
+	const type = optional ? param.type : param;
+	return { name: type.label ?? `arg${index + 1}`, type: typeText(type), optional };
+}
+
+/** What a function takes and gives, for an editor or for documentation. */
+export function describeFunction(definition: FunctionDefinition): FunctionDescription {
+	if (!isFunctionDefinition(definition)) throw new TypeError('Not made with define');
+	return {
+		doc: definition.doc,
+		overloads: definition.overloads.map(({ args, returns }) => ({
+			args: args.map(describeParameter),
+			returns: typeText(returns),
+		})),
+	};
+}
+
 /** Everything `t` and `defineType` made, so nothing else passes for a type. */
 const madeTypes = new WeakSet<object>();
 
@@ -251,8 +315,9 @@ export const t: TypeBuilders = Object.freeze<TypeBuilders>({
 /** Where a type is written, which decides what it can be. */
 type Position = 'parameter' | 'optional parameter' | 'field' | 'inner';
 
-/** The deepest type: language section 11. */
+/** The limits of a type: language section 11. */
 const MAX_TYPE_DEPTH = 256;
+const MAX_TYPE_SIZE = 65_536;
 
 /** What is known while checking one signature. */
 interface SignatureCheck {
@@ -263,10 +328,12 @@ interface SignatureCheck {
 	 * however it is reached, and types can share parts exponentially often.
 	 */
 	readonly depths: Map<object, number>;
+	/** The size of each type seen, written out, as it can be far larger than the type. */
+	readonly sizes: Map<object, number>;
 }
 
 function newCheck(): SignatureCheck {
-	return { variables: new Map(), depths: new Map() };
+	return { variables: new Map(), depths: new Map(), sizes: new Map() };
 }
 
 function isType(value: unknown): value is { readonly kind: string } {
@@ -288,6 +355,27 @@ function checkVariable(
 		throw new TypeError(`Type variable ${variable} is used with two different classes`);
 	}
 	variables.set(variable, typeClass);
+}
+
+/** The size of a type that passed `checkType`, so its depth bounds the recursion. */
+function typeSize(type: Type | Optional, sizes: Map<object, number>): number {
+	const node = (isOptional(type) ? type.type : type) as TypeNode;
+	const known = sizes.get(node);
+	if (known !== undefined) return known;
+
+	let size = 1;
+	if (node.kind === 'array') size += typeSize(node.element, sizes);
+	else if (node.kind === 'uniform') size += typeSize(node.value, sizes);
+	else if (node.kind === 'record') {
+		for (const field of Object.values(node.fields)) size += typeSize(field, sizes);
+	}
+	sizes.set(node, size);
+	return size;
+}
+
+/** Hold a type that passed `checkType` to the limit on its size. */
+function checkSize(type: Type | Optional, check: SignatureCheck): void {
+	if (typeSize(type, check.sizes) > MAX_TYPE_SIZE) throw new TypeError('Type is too large');
 }
 
 /** Check a type written at `position`, `level` deep, and give its depth. */
@@ -352,7 +440,10 @@ function checkType(
  */
 export function checkInputTypes(inputs: Readonly<Record<string, Type>>): void {
 	const check = newCheck();
-	for (const name of Object.keys(inputs)) checkType(inputs[name], 'inner', 1, check);
+	for (const name of Object.keys(inputs)) {
+		checkType(inputs[name], 'inner', 1, check);
+		checkSize(inputs[name] as Type, check);
+	}
 }
 
 /** One way to call a function. */
@@ -376,8 +467,10 @@ function checkedSignature(signature: Signature): Signature {
 		}
 		optional = isOptional;
 		checkType(arg, 'parameter', 1, check);
+		checkSize(arg, check);
 	}
 	checkType(returns, 'inner', 1, check);
+	checkSize(returns, check);
 	return Object.freeze({ args: Object.freeze(copy), returns });
 }
 
@@ -507,6 +600,7 @@ export function defineNative(spec: {
 	readonly returns?: Type;
 	readonly overloads?: readonly Signature[];
 	readonly hooks?: readonly number[];
+	readonly doc: string;
 	readonly run: Native['run'];
 }): FunctionDefinition {
 	const { hooks, run, ...signature } = spec;

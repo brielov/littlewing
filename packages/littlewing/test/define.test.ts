@@ -159,10 +159,13 @@ describe('define', () => {
 		}
 	});
 
-	test('shared types are checked once, and too deep is an error', () => {
+	test('shared types are checked once, and too large or too deep is an error', () => {
+		// Sharing does not hide size: this writes out to far past what a type can be
 		let shared: Type = t.number();
 		for (let i = 0; i < 64; i++) shared = t.record({ a: shared, b: shared }) as Type;
-		expect(() => define({ args: [shared], returns: t.number(), run: () => 1 })).not.toThrow();
+		expect(() => define({ args: [shared], returns: t.number(), run: () => 1 })).toThrow(
+			'too large',
+		);
 
 		let deep: Type = t.number();
 		for (let i = 0; i < 300; i++) deep = t.array(deep) as Type;

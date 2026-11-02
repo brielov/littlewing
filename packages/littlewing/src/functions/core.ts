@@ -52,14 +52,16 @@ export function sortedPositions(
 }
 
 const STR = defineNative({
-	args: [t.class('showable', 'T')],
+	doc: 'The text of a value',
+	args: [t.class('showable', 'T', 'value')],
 	returns: t.string(),
 	hooks: [0],
 	run: ([value], { ops, types }) => ops.show(value, types[0]),
 });
 
 const NUM = defineNative({
-	args: [t.class('convertible', 'T')],
+	doc: 'The number a value stands for',
+	args: [t.class('convertible', 'T', 'value')],
 	returns: t.number(),
 	run: ([value]) => {
 		if (isNum(value)) return value;
@@ -73,14 +75,16 @@ const NUM = defineNative({
 });
 
 const LEN = defineNative({
-	args: [t.class('sized', 'S')],
+	doc: 'How many code points or elements',
+	args: [t.class('sized', 'S', 'value')],
 	returns: t.number(),
 	run: ([value]) =>
 		typeof value === 'string' ? lengthOf(value) : (value as readonly Value[]).length,
 });
 
 const SLICE = defineNative({
-	args: [t.class('sized', 'S'), t.number('start'), t.optional(t.number('end'))],
+	doc: 'The part from start up to, and not including, end',
+	args: [t.class('sized', 'S', 'value'), t.number('start'), t.optional(t.number('end'))],
 	returns: t.class('sized', 'S'),
 	run: ([value, start, end]) => {
 		const whole = typeof value === 'string' ? codePoints(value) : (value as readonly Value[]);
@@ -96,10 +100,11 @@ const SLICE = defineNative({
 });
 
 const CONTAINS = defineNative({
+	doc: 'Whether a substring or an element is present',
 	overloads: [
-		{ args: [t.string(), t.string()], returns: t.boolean() },
+		{ args: [t.string('text'), t.string('search')], returns: t.boolean() },
 		{
-			args: [t.array(t.class('equatable', 'T')), t.class('equatable', 'T')],
+			args: [t.array(t.class('equatable', 'T'), 'list'), t.class('equatable', 'T', 'item')],
 			returns: t.boolean(),
 		},
 	],
@@ -122,10 +127,11 @@ function positionIn(container: Value, item: Value, { ops, types }: NativeCall): 
 }
 
 const INDEX_OF = defineNative({
+	doc: 'The first position of a substring or an element, or -1',
 	overloads: [
-		{ args: [t.string(), t.string()], returns: t.number() },
+		{ args: [t.string('text'), t.string('search')], returns: t.number() },
 		{
-			args: [t.array(t.class('equatable', 'T')), t.class('equatable', 'T')],
+			args: [t.array(t.class('equatable', 'T'), 'list'), t.class('equatable', 'T', 'item')],
 			returns: t.number(),
 		},
 	],
@@ -134,7 +140,8 @@ const INDEX_OF = defineNative({
 });
 
 const UPPER = defineNative({
-	args: [t.string()],
+	doc: 'The text in upper case',
+	args: [t.string('text')],
 	returns: t.string(),
 	run: ([text]) => {
 		charge((text as string).length);
@@ -143,7 +150,8 @@ const UPPER = defineNative({
 });
 
 const LOWER = defineNative({
-	args: [t.string()],
+	doc: 'The text in lower case',
+	args: [t.string('text')],
 	returns: t.string(),
 	run: ([text]) => {
 		charge((text as string).length);
@@ -152,7 +160,8 @@ const LOWER = defineNative({
 });
 
 const TRIM = defineNative({
-	args: [t.string()],
+	doc: 'The text without white space at either end',
+	args: [t.string('text')],
 	returns: t.string(),
 	run: ([text]) => {
 		charge((text as string).length);
@@ -161,7 +170,8 @@ const TRIM = defineNative({
 });
 
 const SPLIT = defineNative({
-	args: [t.string(), t.string('separator')],
+	doc: 'The parts between separators',
+	args: [t.string('text'), t.string('separator')],
 	returns: t.array(t.string()),
 	run: ([text, separator]) => {
 		const value = text as string;
@@ -173,7 +183,8 @@ const SPLIT = defineNative({
 });
 
 const REPLACE = defineNative({
-	args: [t.string(), t.string('search'), t.string('replacement')],
+	doc: 'The text with every occurrence replaced',
+	args: [t.string('text'), t.string('search'), t.string('replacement')],
 	returns: t.string(),
 	run: ([text, search, replacement]) => {
 		if (search === '') throw invalid('REPLACE needs something to search for');
@@ -185,7 +196,8 @@ const REPLACE = defineNative({
 });
 
 const SORT = defineNative({
-	args: [t.array(t.class('ordered', 'T'))],
+	doc: 'The elements in ascending order',
+	args: [t.array(t.class('ordered', 'T'), 'list')],
 	returns: t.array(t.class('ordered', 'T')),
 	hooks: [0],
 	run: ([list], call) => {
@@ -198,7 +210,8 @@ const SORT = defineNative({
 });
 
 const SORT_BY = defineNative({
-	args: [t.array(t.var('T')), t.array(t.class('ordered', 'K'))],
+	doc: 'The items, in ascending order of their keys',
+	args: [t.array(t.var('T'), 'items'), t.array(t.class('ordered', 'K'), 'keys')],
 	returns: t.array(t.var('T')),
 	hooks: [1],
 	run: ([list, keys], call) => {
@@ -212,7 +225,8 @@ const SORT_BY = defineNative({
 });
 
 const JOIN = defineNative({
-	args: [t.array(t.string()), t.string('separator')],
+	doc: 'The strings, with the separator between them',
+	args: [t.array(t.string(), 'parts'), t.string('separator')],
 	returns: t.string(),
 	run: ([list, separator]) => {
 		const parts = list as readonly string[];
@@ -225,19 +239,22 @@ const JOIN = defineNative({
 });
 
 const FLOOR = defineNative({
-	args: [t.number()],
+	doc: 'The greatest integer not above it',
+	args: [t.number('value')],
 	returns: t.number(),
 	run: ([value]) => (typeof value === 'number' ? value : round(value as Num, 0, 'floor')),
 });
 
 const CEIL = defineNative({
-	args: [t.number()],
+	doc: 'The least integer not below it',
+	args: [t.number('value')],
 	returns: t.number(),
 	run: ([value]) => (typeof value === 'number' ? value : round(value as Num, 0, 'ceil')),
 });
 
 const ROUND = defineNative({
-	args: [t.number(), t.optional(t.number('digits')), t.optional(t.oneOf(MODES, 'mode'))],
+	doc: 'Rounded to a number of places',
+	args: [t.number('value'), t.optional(t.number('digits')), t.optional(t.oneOf(MODES, 'mode'))],
 	returns: t.number(),
 	run: ([value, digits, mode]) => {
 		const places = digits === undefined ? 0 : integerOf(digits, 'digits');
@@ -246,7 +263,8 @@ const ROUND = defineNative({
 });
 
 const FIXED = defineNative({
-	args: [t.number(), t.number('digits'), t.optional(t.oneOf(MODES, 'mode'))],
+	doc: 'Rounded, then written with exactly that many places',
+	args: [t.number('value'), t.number('digits'), t.optional(t.oneOf(MODES, 'mode'))],
 	returns: t.string(),
 	run: ([value, digits, mode]) => {
 		const places = integerOf(digits, 'digits');
@@ -255,26 +273,46 @@ const FIXED = defineNative({
 	},
 });
 
+export type CoreName =
+	| 'STR'
+	| 'NUM'
+	| 'LEN'
+	| 'SLICE'
+	| 'CONTAINS'
+	| 'INDEX_OF'
+	| 'UPPER'
+	| 'LOWER'
+	| 'TRIM'
+	| 'SPLIT'
+	| 'REPLACE'
+	| 'SORT'
+	| 'SORT_BY'
+	| 'JOIN'
+	| 'FLOOR'
+	| 'CEIL'
+	| 'ROUND'
+	| 'FIXED';
+
 /** The functions every program has, which a host can replace. */
-export const CORE: ReadonlyMap<string, FunctionDefinition> = new Map(
-	Object.entries({
-		STR,
-		NUM,
-		LEN,
-		SLICE,
-		CONTAINS,
-		INDEX_OF,
-		UPPER,
-		LOWER,
-		TRIM,
-		SPLIT,
-		REPLACE,
-		SORT,
-		SORT_BY,
-		JOIN,
-		FLOOR,
-		CEIL,
-		ROUND,
-		FIXED,
-	}),
-);
+export const coreFunctions: Readonly<Record<CoreName, FunctionDefinition>> = Object.freeze({
+	STR,
+	NUM,
+	LEN,
+	SLICE,
+	CONTAINS,
+	INDEX_OF,
+	UPPER,
+	LOWER,
+	TRIM,
+	SPLIT,
+	REPLACE,
+	SORT,
+	SORT_BY,
+	JOIN,
+	FLOOR,
+	CEIL,
+	ROUND,
+	FIXED,
+});
+
+export const CORE: ReadonlyMap<string, FunctionDefinition> = new Map(Object.entries(coreFunctions));

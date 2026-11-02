@@ -2,25 +2,11 @@ import { generate, parse } from 'littlewing';
 import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 import { Editor } from './editor.tsx';
 import { ErrorBoundary } from './error-boundary.tsx';
+import { INITIAL_SOURCE } from './examples.ts';
 import { ExamplesDialog } from './examples-dialog.tsx';
 import { HelpDialog } from './help-dialog.tsx';
 import { Sidebar } from './sidebar.tsx';
 import { useEvaluation } from './use-evaluation.ts';
-
-const INITIAL_SOURCE = `// littlewing playground
-// ?= declares an input, with a default: try changing them in the sidebar
-price ?= 100
-tax_rate ?= 0.08
-discount ?= 15
-
-subtotal = price - discount
-tax = ROUND(subtotal * tax_rate)
-total = subtotal + tax
-
-// Pipe operator chains values through functions
-label = total |> ROUND(?) |> STR(?)
-
-if total > 100 then "Total: $" + label + " (expensive)" else "Total: $" + label + " (affordable)"`;
 
 // --- URL hash encoding (gzip + base64url) ---
 

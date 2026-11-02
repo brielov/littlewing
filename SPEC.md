@@ -1,6 +1,6 @@
 # The Littlewing Language
 
-Version 3.0, draft.
+Version 3.0.
 
 Littlewing is a small, statically typed expression language for formulas embedded in other applications. A program is checked completely before it runs, and it runs in a bounded amount of time and memory, so it can come from an untrusted author.
 

@@ -207,6 +207,18 @@ describe('compile', () => {
 		expect(warnings('x = [1]\nif c then x[0] else 0')).not.toContain('may-fail');
 	});
 
+	test('a mismatch says what was expected and what it got', () => {
+		const message = (source: string): string | undefined => compile(source).diagnostics[0]?.message;
+		expect(message('2 * "a"')).toBe('Expected number, got string');
+		expect(message('UPPER(1)')).toBe('Expected string, got number');
+		expect(message('if 1 then 2 else 3')).toBe('Expected boolean, got number');
+		expect(message('for x in [1] when 1 then x')).toBe('Expected boolean, got number');
+		expect(message('!1')).toBe('Expected boolean, got number');
+		expect(message('"a"..2')).toBe('Expected number, got string');
+		expect(message('"abc"[true]')).toBe('Expected number, got boolean');
+		expect(message('{ a: 1 }[1]')).toBe('Expected string, got number');
+	});
+
 	test('an unknown function is marked by its name, wherever it is', () => {
 		const span = (source: string): (readonly [number, number])[] =>
 			compile(source)
@@ -842,7 +854,7 @@ describe('budgets', () => {
 			returns: t.boolean(),
 			run: () => compile(`1${' + 1'.repeat(200)}`).ok,
 		});
-		expect(codeOf(() => run('C()', { functions: { C }, limits: { maxSteps: 25 } }))).toBe(
+		expect(codeOf(() => run('C()', { functions: { C }, limits: { maxSteps: 60 } }))).toBe(
 			'limit-exceeded',
 		);
 		expect(run('C()', { functions: { C } })).toBe(true);

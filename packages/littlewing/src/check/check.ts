@@ -221,7 +221,7 @@ class Checker {
 		const left = this.typeOf(node.left, scope);
 		const right = this.typeOf(node.right, scope);
 		const expect = (type: Type, expected: Type, side: Expression): void => {
-			solver.unify(type, expected, side);
+			solver.unify(expected, type, side);
 		};
 		// Operands that are not one type are the whole mistake
 		const same = (): boolean => {
@@ -386,12 +386,12 @@ class Checker {
 		}
 
 		if (node.guard !== null) {
-			solver.unify(this.typeOf(node.guard, inner), BOOLEAN, node.guard);
+			solver.unify(BOOLEAN, this.typeOf(node.guard, inner), node.guard);
 		}
 
 		const body = this.typeOf(node.body, inner);
 		if (initial === undefined) return new ArrayType(body);
-		solver.unify(body, initial, node.body);
+		solver.unify(initial, body, node.body);
 		return initial;
 	}
 
@@ -410,7 +410,7 @@ class Checker {
 				return this.note(node, this.binaryType(node, scope));
 			case 'unary': {
 				const expected = node.operator === '-' ? NUMBER : BOOLEAN;
-				solver.unify(this.typeOf(node.argument, scope), expected, node.argument);
+				solver.unify(expected, this.typeOf(node.argument, scope), node.argument);
 				return this.note(node, expected);
 			}
 			case 'fallback': {
@@ -426,8 +426,8 @@ class Checker {
 				return this.note(node, path);
 			}
 			case 'range': {
-				solver.unify(this.typeOf(node.from, scope), NUMBER, node.from);
-				solver.unify(this.typeOf(node.to, scope), NUMBER, node.to);
+				solver.unify(NUMBER, this.typeOf(node.from, scope), node.from);
+				solver.unify(NUMBER, this.typeOf(node.to, scope), node.to);
 				return this.note(node, new ArrayType(NUMBER));
 			}
 			case 'array': {
@@ -447,7 +447,7 @@ class Checker {
 			case 'call':
 				return this.note(node, this.callType(node, scope));
 			case 'if': {
-				solver.unify(this.typeOf(node.condition, scope), BOOLEAN, node.condition);
+				solver.unify(BOOLEAN, this.typeOf(node.condition, scope), node.condition);
 				const consequent = this.typeOf(node.consequent, scope);
 				solver.unify(consequent, this.typeOf(node.alternate, scope), node.alternate);
 				return this.note(node, consequent);
@@ -516,7 +516,7 @@ class Checker {
 		for (const name of Object.keys(inputs)) {
 			const declared = this.solver.instantiate(inputs[name] as HostType, scope);
 			const input = this.inputs.get(name);
-			if (input !== undefined) this.solver.unify(input.type, declared, input.node);
+			if (input !== undefined) this.solver.unify(declared, input.type, input.node);
 		}
 	}
 

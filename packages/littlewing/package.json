@@ -1,17 +1,17 @@
 {
 	"name": "littlewing",
 	"version": "2.3.2",
-	"description": "A minimal, high-performance multi-type expression language with lexer, parser, and interpreter. Optimized for browsers with type-safe execution.",
+	"description": "A small typed language for the formulas your users write: safe by construction, exact decimals, inferred inputs, and a step budget.",
 	"keywords": [
 		"calculator",
-		"evaluation",
+		"decimal",
 		"expression",
 		"formula",
 		"interpreter",
 		"language",
-		"lexer",
-		"math",
-		"parser",
+		"sandbox",
+		"spreadsheet",
+		"type-inference",
 		"type-safe"
 	],
 	"homepage": "https://github.com/brielov/littlewing#readme",

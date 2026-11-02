@@ -1,16 +1,16 @@
 # The Littlewing Host API
 
-Version 3.0, draft.
+Version 3.0.
 
 This document specifies the TypeScript API that an application uses to compile and run Littlewing programs. The language itself is specified in [SPEC.md](./SPEC.md), which this document does not change. Where a section of the language is cited, it is a section of that document.
 
 ## 1. Overview
 
 ```ts
-import { compile, evaluate } from 'littlewing';
+import { compile, CompileError, evaluate } from 'littlewing';
 
 const result = compile('price * quantity * (1 + tax)');
-if (!result.ok) return report(result.diagnostics);
+if (!result.ok) throw new CompileError(result.diagnostics);
 
 result.program.inputs; // what the formula needs, inferred
 evaluate(result.program, { variables: { price: 19.99, quantity: 3, tax: 0.21 } });
@@ -18,12 +18,12 @@ evaluate(result.program, { variables: { price: 19.99, quantity: 3, tax: 0.21 } }
 
 Compile a formula once, and evaluate it as often as needed. `run` does both, for one-off use.
 
-| Entry point           | Exports                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
-| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `littlewing`          | `compile`, `evaluate`, `run`, `define`, `defineType`, `once`, `t`, `Decimal`, `EvaluationError`, `CompileError`, `ParseError`, `toLineColumn`, `parse`, `generate`, the types `Type`, `FunctionDefinition`, `AbstractType`, `RoundingMode`, `DecimalLike`, `Program`, `CompileOptions`, `CompileResult`, `EvaluateOptions`, `Diagnostic`, `InputSchema`, `InputDescription`, `FieldDescription`, `TypeDescription`, and the types of the syntax tree in the namespace `syntax` |
-| `littlewing/std`      | The optional functions, as named exports                                                                                                                                                                                                                                                                                                                                                                                                                                       |
-| `littlewing/temporal` | The date types, their functions as named exports, and all of those functions in `temporalFunctions`, as the types keep a namespace of this module from being spread into `functions`                                                                                                                                                                                                                                                                                           |
-| `littlewing/clock`    | `NOW`, `TODAY` and the other functions that read the clock                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| Entry point           | Exports                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| --------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `littlewing`          | `compile`, `evaluate`, `run`, `define`, `defineType`, `once`, `t`, `Decimal`, `EvaluationError`, `CompileError`, `ParseError`, `toLineColumn`, `parse`, `generate`, `describeFunction`, `coreFunctions`, the types `Type`, `FunctionDefinition`, `AbstractType`, `RoundingMode`, `DecimalLike`, `Program`, `CompileOptions`, `CompileResult`, `EvaluateOptions`, `Diagnostic`, `InputSchema`, `InputDescription`, `FieldDescription`, `TypeDescription`, `FunctionDescription`, `OverloadDescription`, `ParameterDescription`, and the types of the syntax tree in the namespace `syntax` |
+| `littlewing/std`      | The optional functions, as named exports                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| `littlewing/temporal` | The date types, their functions as named exports, and all of those functions in `temporalFunctions`, as the types keep a namespace of this module from being spread into `functions`                                                                                                                                                                                                                                                                                                                                                                                                      |
+| `littlewing/clock`    | `NOW`, `TODAY` and the other functions that read the clock                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
 
 A definition is typed by `FunctionDefinition` or `AbstractType<T>`. An exported one needs that annotation under `isolatedDeclarations`.
 
@@ -47,7 +47,7 @@ type CompileResult =
 - `functions` adds to the core functions, and replaces one of the same name. Keys are identifiers in NFC, as a program could not call anything else. A key is the name a program calls.
 - `types` lists abstract types. Types that appear in a function's signature or in `inputs` are included without being listed. A generic input can only hold a value of a listed or included type.
 - `inputs` declares the types of inputs, as language section 6.5 allows. It is one signature, so `t.var('T')` used twice in it is one variable. A name that is not an input of the program has no effect beyond including its type, and is not in the schema.
-- `limits.maxSteps` is the compile budget. It defaults to 20 million.
+- `limits.maxSteps` is the compile budget. It defaults to 20 million. It bounds the work a program can cause, and memory grows with the length of the source as well, so a host taking formulas from strangers should cap their length, as it would any input. Memory also grows with the size of the signatures a formula calls, and a program holds on to the types of its calls, at about 1 KB per signature node per call, so 3 KB of calls of a function with 1,000 record fields can keep 440 MB. A host that keeps programs compiled from strangers' formulas should weigh that. On a JavaScript heap under about 500 MB, lower `maxSteps`, the one control a host has: the default budget can use that much.
 
 `functions` and `inputs` are read by their own enumerable keys, so nothing inherited counts, and an input named `toString` is simply an input.
 
@@ -59,7 +59,7 @@ It throws a `TypeError` only for a mistake in the host:
 - a value of `functions` not made with `define`, an entry of `types` not made with `defineType`, or a value of `inputs` that is not a type
 - `t.optional` or `t.oneOf` directly in `inputs`
 - two different types with one name
-- a declared type past the depth limit of language section 11
+- a declared type past the limits of language section 11
 - a `maxSteps` that is not a number, is `NaN`, or is negative
 
 ### Diagnostics
@@ -247,7 +247,7 @@ compile(source, { functions: { DISCOUNT } });
 | `cost`      | No                       | Extra steps to charge, computed from the arguments                                                |
 | `doc`       | No                       | A description for tooling                                                                         |
 
-`define` throws a `TypeError` for an invalid definition: both `overloads` and `args`, a required parameter after a `t.optional` one, `t.optional` anywhere but a field or trailing argument, one variable name used by both `t.var` and `t.class`, or by `t.class` with two different classes, a class that is not one of language section 6.2, or a type past the depth limit of language section 11.
+`define` throws a `TypeError` for an invalid definition: both `overloads` and `args`, a required parameter after a `t.optional` one, `t.optional` anywhere but a field or trailing argument, one variable name used by both `t.var` and `t.class`, or by `t.class` with two different classes, a class that is not one of language section 6.2, or a type past the limits of language section 11.
 
 `run` is synchronous. Data a formula needs is fetched before it runs, and passed as variables.
 
@@ -379,6 +379,21 @@ An implementation recognizes a `Decimal` by a private brand, not `instanceof`, a
 ## 8. Tools
 
 `parse(source)` returns the syntax tree, with spans and comments, and throws `ParseError`. `generate(ast)` returns source text. Both exist for formatters and similar tools. No syntax tree can be evaluated, since the only route to execution is `compile`.
+
+`describeFunction(definition)` gives what a function takes and gives, written out for people, for an editor or for documentation. `coreFunctions` holds the core functions, so a tool can describe them too.
+
+```ts
+describeFunction(coreFunctions.ROUND);
+// {
+//   doc: 'Rounded to a number of places',
+//   overloads: [{
+//     args: [{ name: 'value', type: 'number', optional: false }, ...],
+//     returns: 'number',
+//   }],
+// }
+```
+
+A parameter with no `name` label is called `arg1`, `arg2` and so on. A type of a class reads as that class, such as `ordered`.
 
 ## 9. Bundles
 

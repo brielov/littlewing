@@ -20,15 +20,17 @@ import { codePoints, failure, OBJECT_STEPS } from './run/values.js';
 import type { Value } from './run/values.js';
 
 const NUMBER = /* @__PURE__ */ t.number();
+const VALUE = /* @__PURE__ */ t.number('value');
 const STRING = /* @__PURE__ */ t.string();
+const TEXT = /* @__PURE__ */ t.string('text');
 const BOOLEAN = /* @__PURE__ */ t.boolean();
 const ORDERED = /* @__PURE__ */ t.class('ordered', 'T');
-const ORDERED_LIST = /* @__PURE__ */ t.array(ORDERED);
-const EQUATABLE_LIST = /* @__PURE__ */ t.array(/* @__PURE__ */ t.class('equatable', 'T'));
-const SIZED = /* @__PURE__ */ t.class('sized', 'S');
+const ORDERED_LIST = /* @__PURE__ */ t.array(ORDERED, 'list');
+const EQUATABLE_LIST = /* @__PURE__ */ t.array(/* @__PURE__ */ t.class('equatable', 'T'), 'list');
+const SIZED = /* @__PURE__ */ t.class('sized', 'S', 'value');
 const ANY_LIST = /* @__PURE__ */ t.array(/* @__PURE__ */ t.var('T'));
-const NESTED_LIST = /* @__PURE__ */ t.array(ANY_LIST);
-const NUMBER_LIST = /* @__PURE__ */ t.array(NUMBER);
+const NESTED_LIST = /* @__PURE__ */ t.array(ANY_LIST, 'lists');
+const NUMBER_LIST = /* @__PURE__ */ t.array(NUMBER, 'list');
 
 /** Steps a function through doubles costs, as it converts a number twice. */
 const DOUBLE_STEPS = 8;
@@ -44,9 +46,10 @@ function fromResult(result: number): Num {
 }
 
 /** A function through doubles, so about 15 digits. */
-function viaDouble(fn: (value: number) => number): FunctionDefinition {
+function viaDouble(doc: string, fn: (value: number) => number): FunctionDefinition {
 	return defineNative({
-		args: [NUMBER],
+		doc,
+		args: [VALUE],
 		returns: NUMBER,
 		run: ([value]) => {
 			charge(DOUBLE_STEPS);
@@ -62,9 +65,13 @@ function scaled(value: Num): { readonly mantissa: number; readonly exponent: num
 }
 
 /** A logarithm of any number above zero, from that of its mantissa and its exponent. */
-function logarithm(fn: (mantissa: number, exponent: number) => number): FunctionDefinition {
+function logarithm(
+	doc: string,
+	fn: (mantissa: number, exponent: number) => number,
+): FunctionDefinition {
 	return defineNative({
-		args: [NUMBER],
+		doc,
+		args: [VALUE],
 		returns: NUMBER,
 		run: ([value]) => {
 			charge(DOUBLE_STEPS);
@@ -76,13 +83,15 @@ function logarithm(fn: (mantissa: number, exponent: number) => number): Function
 }
 
 export const ABS: FunctionDefinition = /* @__PURE__ */ defineNative({
-	args: [NUMBER],
+	doc: 'The number without its sign',
+	args: [VALUE],
 	returns: NUMBER,
 	run: ([value]) => (isNegative(value as Num) ? neg(value as Num) : value),
 });
 
 export const SQRT: FunctionDefinition = /* @__PURE__ */ defineNative({
-	args: [NUMBER],
+	doc: 'The square root, to about 15 digits',
+	args: [VALUE],
 	returns: NUMBER,
 	run: ([value]) => {
 		charge(DOUBLE_STEPS);
@@ -95,9 +104,18 @@ export const SQRT: FunctionDefinition = /* @__PURE__ */ defineNative({
 	},
 });
 
-export const SIN: FunctionDefinition = /* @__PURE__ */ viaDouble((value) => Math.sin(value));
-export const COS: FunctionDefinition = /* @__PURE__ */ viaDouble((value) => Math.cos(value));
-export const TAN: FunctionDefinition = /* @__PURE__ */ viaDouble((value) => Math.tan(value));
+export const SIN: FunctionDefinition = /* @__PURE__ */ viaDouble(
+	'The sine of an angle in radians, to about 15 digits',
+	(value) => Math.sin(value),
+);
+export const COS: FunctionDefinition = /* @__PURE__ */ viaDouble(
+	'The cosine of an angle in radians, to about 15 digits',
+	(value) => Math.cos(value),
+);
+export const TAN: FunctionDefinition = /* @__PURE__ */ viaDouble(
+	'The tangent of an angle in radians, to about 15 digits',
+	(value) => Math.tan(value),
+);
 
 /** Past this, `e` to a power is below every number the language has. */
 const LOWEST_EXPONENT = -20_000;
@@ -109,7 +127,8 @@ const HIGHEST_DOUBLE_EXPONENT = 709;
 const E = '2.718281828459045235360287471352662';
 
 export const EXP: FunctionDefinition = /* @__PURE__ */ defineNative({
-	args: [NUMBER],
+	doc: 'e to a power, to about 15 digits',
+	args: [VALUE],
 	returns: NUMBER,
 	run: ([value]) => {
 		charge(DOUBLE_STEPS);
@@ -122,14 +141,17 @@ export const EXP: FunctionDefinition = /* @__PURE__ */ defineNative({
 });
 
 export const LOG: FunctionDefinition = /* @__PURE__ */ logarithm(
+	'The natural logarithm, to about 15 digits',
 	(mantissa, exponent) => Math.log(mantissa) + exponent * Math.LN10,
 );
 export const LOG10: FunctionDefinition = /* @__PURE__ */ logarithm(
+	'The logarithm in base 10, to about 15 digits',
 	(mantissa, exponent) => Math.log10(mantissa) + exponent,
 );
 
 export const CLAMP: FunctionDefinition = /* @__PURE__ */ defineNative({
-	args: [NUMBER, NUMBER, NUMBER],
+	doc: 'The value, held between min and max',
+	args: [VALUE, /* @__PURE__ */ t.number('min'), /* @__PURE__ */ t.number('max')],
 	returns: NUMBER,
 	run: ([value, min, max]) => {
 		if (compare(min as Num, max as Num) > 0) throw invalid('CLAMP needs min not above max');
@@ -138,8 +160,9 @@ export const CLAMP: FunctionDefinition = /* @__PURE__ */ defineNative({
 	},
 });
 
-function extreme(direction: 1 | -1): FunctionDefinition {
+function extreme(doc: string, direction: 1 | -1): FunctionDefinition {
 	return defineNative({
+		doc,
 		args: [ORDERED_LIST],
 		returns: ORDERED,
 		hooks: [0],
@@ -157,10 +180,11 @@ function extreme(direction: 1 | -1): FunctionDefinition {
 	});
 }
 
-export const MIN: FunctionDefinition = /* @__PURE__ */ extreme(-1);
-export const MAX: FunctionDefinition = /* @__PURE__ */ extreme(1);
+export const MIN: FunctionDefinition = /* @__PURE__ */ extreme('The smallest element', -1);
+export const MAX: FunctionDefinition = /* @__PURE__ */ extreme('The largest element', 1);
 
 export const SUM: FunctionDefinition = /* @__PURE__ */ defineNative({
+	doc: 'The sum of the elements',
 	args: [NUMBER_LIST],
 	returns: NUMBER,
 	run: ([list]) => {
@@ -173,7 +197,8 @@ export const SUM: FunctionDefinition = /* @__PURE__ */ defineNative({
 });
 
 export const STARTS_WITH: FunctionDefinition = /* @__PURE__ */ defineNative({
-	args: [STRING, STRING],
+	doc: 'Whether the text starts with a prefix',
+	args: [TEXT, /* @__PURE__ */ t.string('prefix')],
 	returns: BOOLEAN,
 	run: ([text, prefix]) => {
 		// Reading any of a string reads all of it, however it was built
@@ -183,7 +208,8 @@ export const STARTS_WITH: FunctionDefinition = /* @__PURE__ */ defineNative({
 });
 
 export const ENDS_WITH: FunctionDefinition = /* @__PURE__ */ defineNative({
-	args: [STRING, STRING],
+	doc: 'Whether the text ends with a suffix',
+	args: [TEXT, /* @__PURE__ */ t.string('suffix')],
 	returns: BOOLEAN,
 	run: ([text, suffix]) => {
 		chargeRead((text as string).length + (suffix as string).length);
@@ -192,7 +218,8 @@ export const ENDS_WITH: FunctionDefinition = /* @__PURE__ */ defineNative({
 });
 
 export const REPEAT: FunctionDefinition = /* @__PURE__ */ defineNative({
-	args: [STRING, NUMBER],
+	doc: 'The text, a number of times over',
+	args: [TEXT, /* @__PURE__ */ t.number('count')],
 	returns: STRING,
 	run: ([text, count]) => {
 		const times = integerOf(count, 'count');
@@ -205,6 +232,7 @@ export const REPEAT: FunctionDefinition = /* @__PURE__ */ defineNative({
 });
 
 export const REVERSE: FunctionDefinition = /* @__PURE__ */ defineNative({
+	doc: 'The code points or elements, last to first',
 	args: [SIZED],
 	returns: SIZED,
 	run: ([value]) => {
@@ -220,6 +248,7 @@ export const REVERSE: FunctionDefinition = /* @__PURE__ */ defineNative({
 });
 
 export const FLAT: FunctionDefinition = /* @__PURE__ */ defineNative({
+	doc: 'The elements of the arrays, as one array',
 	args: [NESTED_LIST],
 	returns: ANY_LIST,
 	run: ([list]) => {
@@ -238,6 +267,7 @@ function isSortable(type: ReturnType<typeof elementOf>): boolean {
 }
 
 export const UNIQUE: FunctionDefinition = /* @__PURE__ */ defineNative({
+	doc: 'The first of each set of equal elements',
 	args: [EQUATABLE_LIST],
 	returns: EQUATABLE_LIST,
 	hooks: [0],

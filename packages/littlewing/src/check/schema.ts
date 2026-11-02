@@ -51,6 +51,9 @@ function uniformOf(record: RecordType): Type | undefined {
 	return type;
 }
 
+/** Steps a type costs to write out, as its description stays for good. */
+const DESCRIBE_STEPS = 8;
+
 /**
  * Write types as plain data. One type is one description, as many inputs can share
  * a large type, but each use is still charged what it costs a host to walk.
@@ -62,6 +65,7 @@ export class TypeDescriber {
 		const current = prune(type);
 		const memo = this.known.get(current);
 		if (memo !== undefined) return memo;
+		charge(DESCRIBE_STEPS);
 
 		let description: TypeDescription;
 		let size = 1;

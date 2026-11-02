@@ -2,10 +2,14 @@ import { describe, expect, test } from 'bun:test';
 import type { CompileOptions } from '../src/compile.js';
 import { compile, evaluate, run } from '../src/compile.js';
 import { Decimal } from '../src/decimal.js';
-import { define, defineType, t } from '../src/define.js';
+import type { FunctionDefinition, Type } from '../src/define.js';
+import { define, defineType, describeFunction, t } from '../src/define.js';
 import { CompileError, EvaluationError } from '../src/errors.js';
+import * as clock from '../src/clock.js';
+import { coreFunctions } from '../src/functions/core.js';
 import { findSubstring, splitOn } from '../src/functions/search.js';
 import * as std from '../src/std.js';
+import { temporalFunctions } from '../src/temporal.js';
 
 const STEPS_TABLE: Record<string, number> = {
 	'UPPER(s)': 6002,
@@ -409,6 +413,94 @@ describe('budgets', () => {
 		expect(codeOf(() => evaluate(replaced, { variables: { ...variables, s: text }, limits }))).toBe(
 			'limit-exceeded',
 		);
+	});
+});
+
+describe('describing functions', () => {
+	const all = { ...coreFunctions, ...std, ...temporalFunctions, ...clock };
+
+	test('every function has a doc and named parameters', () => {
+		for (const [name, definition] of Object.entries(all)) {
+			const description = describeFunction(definition);
+			expect(`${name}: ${description.doc}`).toMatch(/^[A-Z_0-9]+: [A-Za-z]/);
+			for (const overload of description.overloads) {
+				for (const arg of overload.args) expect(`${name} ${arg.name}`).not.toMatch(/arg\d/);
+			}
+		}
+	});
+
+	test('types read as they are written', () => {
+		expect(describeFunction(coreFunctions.ROUND)).toEqual({
+			doc: 'Rounded to a number of places',
+			overloads: [
+				{
+					args: [
+						{ name: 'value', type: 'number', optional: false },
+						{ name: 'digits', type: 'number', optional: true },
+						{
+							name: 'mode',
+							type: '"half_away" | "half_even" | "floor" | "ceil" | "trunc"',
+							optional: true,
+						},
+					],
+					returns: 'number',
+				},
+			],
+		});
+		const { overloads } = describeFunction(coreFunctions.CONTAINS);
+		expect(overloads.length).toBe(2);
+		expect(overloads[1]?.args[0]?.type).toBe('array<equatable>');
+		expect(describeFunction(std.SUM).overloads[0]?.args[0]?.type).toBe('array<number>');
+		expect(describeFunction(temporalFunctions.YEAR as FunctionDefinition).overloads[1]).toEqual({
+			args: [{ name: 'value', type: 'datetime', optional: false }],
+			returns: 'number',
+		});
+
+		const money = defineType<object>({ name: 'money', is: () => false });
+		const F = define({
+			doc: 'A description',
+			args: [
+				t.record({ a: t.number(), b: t.optional(t.string()) }),
+				t.openRecord({ c: money }),
+				t.uniformRecord(t.boolean()),
+				t.var('T'),
+			],
+			returns: t.array(t.var('T')),
+			run: () => [],
+		});
+		const description = describeFunction(F);
+		expect(description.doc).toBe('A description');
+		expect(description.overloads[0]?.args.map((arg) => arg.type)).toEqual([
+			'{ a: number, b?: string }',
+			'{ c: money, ... }',
+			'{ [key]: boolean }',
+			'T',
+		]);
+		expect(description.overloads[0]?.args[0]?.name).toBe('arg1');
+		expect(description.overloads[0]?.returns).toBe('array<T>');
+	});
+
+	test('an empty record reads as one', () => {
+		const F = define({ args: [t.record({})], returns: t.number(), run: () => 1 });
+		expect(describeFunction(F).overloads[0]?.args[0]?.type).toBe('{}');
+	});
+
+	test('a type past the size limit is a mistake in the host', () => {
+		const doubled = (levels: number): Type => {
+			let type: Type = t.number();
+			for (let i = 0; i < levels; i++) type = t.record({ a: type, b: type }) as Type;
+			return type;
+		};
+		const define_ = (type: Type) => define({ args: [type], returns: t.number(), run: () => 1 });
+		// Each level doubles what is under it, so 15 levels write out to 65,535
+		expect(() => define_(doubled(15))).not.toThrow();
+		expect(() => define_(doubled(16))).toThrow(TypeError);
+		expect(() => define({ args: [], returns: doubled(64), run: () => 1 })).toThrow(TypeError);
+		expect(() => compile('1', { inputs: { a: doubled(64) } })).toThrow(TypeError);
+	});
+
+	test('only a definition can be described', () => {
+		expect(() => describeFunction({} as never)).toThrow(TypeError);
 	});
 });
 

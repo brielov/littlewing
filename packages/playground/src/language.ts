@@ -1,32 +1,38 @@
 import type { Monaco } from '@monaco-editor/react';
+import {
+	coreFunctions,
+	describeFunction,
+	type FunctionDescription,
+	type OverloadDescription,
+} from 'littlewing';
 import type { CancellationToken, IDisposable, Position, editor, languages } from 'monaco-editor';
-import { FUNCTION_SIGNATURES, formatSignature } from './function-metadata.ts';
 import { FUNCTIONS } from './use-evaluation.ts';
 import tomorrowNightTheme from './themes/tomorrow-night.json';
 import tomorrowTheme from './themes/tomorrow.json';
 
 const KEYWORDS = ['if', 'then', 'else', 'for', 'in', 'when', 'into'];
-const CORE = [
-	'STR',
-	'NUM',
-	'LEN',
-	'SLICE',
-	'CONTAINS',
-	'INDEX_OF',
-	'UPPER',
-	'LOWER',
-	'TRIM',
-	'SPLIT',
-	'REPLACE',
-	'SORT',
-	'SORT_BY',
-	'JOIN',
-	'FLOOR',
-	'CEIL',
-	'ROUND',
-	'FIXED',
-];
-const BUILTINS = [...CORE, ...Object.keys(FUNCTIONS)];
+const DESCRIPTIONS = new Map<string, FunctionDescription>(
+	Object.entries({ ...coreFunctions, ...FUNCTIONS }).map(([name, definition]) => [
+		name,
+		describeFunction(definition),
+	]),
+);
+const BUILTINS = [...DESCRIPTIONS.keys()];
+
+/** A parameter as an editor shows it, as `digits?: number`. */
+function parameterText(parameter: OverloadDescription['args'][number]): string {
+	return `${parameter.name}${parameter.optional ? '?' : ''}: ${parameter.type}`;
+}
+
+/** One way to call a function, as `ROUND(value: number) → number`. */
+function signatureText(name: string, overload: OverloadDescription): string {
+	return `${name}(${overload.args.map(parameterText).join(', ')}) → ${overload.returns}`;
+}
+
+/** Every way to call a function, one to a line. */
+function formatSignatures(name: string, description: FunctionDescription): string {
+	return description.overloads.map((overload) => signatureText(name, overload)).join('\n');
+}
 
 /**
  * Compute the Levenshtein edit distance between two strings.
@@ -189,10 +195,12 @@ export function registerLittlewingLanguage(monaco: Monaco): void {
 		brackets: [
 			['[', ']'],
 			['(', ')'],
+			['{', '}'],
 		],
 		autoClosingPairs: [
 			{ open: '[', close: ']' },
 			{ open: '(', close: ')' },
+			{ open: '{', close: '}' },
 			{ open: '"', close: '"', notIn: ['string'] },
 		],
 		surroundingPairs: [
@@ -215,16 +223,13 @@ export function registerLittlewingLanguage(monaco: Monaco): void {
 			kind: monaco.languages.CompletionItemKind.Constant,
 			insertText: b,
 		})),
-		...BUILTINS.map((f) => {
-			const sig = FUNCTION_SIGNATURES[f];
-			return {
-				label: f,
-				kind: monaco.languages.CompletionItemKind.Function,
-				insertText: `${f}($0)`,
-				insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
-				detail: sig ? formatSignature(f) : undefined,
-			};
-		}),
+		...[...DESCRIPTIONS].map(([name, description]) => ({
+			label: name,
+			kind: monaco.languages.CompletionItemKind.Function,
+			insertText: `${name}($0)`,
+			insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+			detail: formatSignatures(name, description),
+		})),
 	];
 
 	languageState.providerDisposables.push(
@@ -293,26 +298,21 @@ export function registerLittlewingLanguage(monaco: Monaco): void {
 				if (!match) return null;
 
 				const funcName = match[1]!;
-				const sig = FUNCTION_SIGNATURES[funcName];
-				if (!sig) return null;
+				const description = DESCRIPTIONS.get(funcName);
+				if (description === undefined) return null;
 
-				const paramLabels = sig.parameters.map((p) => `${p.label}: ${p.type}`);
-				const label = `${funcName}(${paramLabels.join(', ')})`;
+				const signatures = description.overloads.map((overload) => ({
+					label: signatureText(funcName, overload),
+					documentation: description.doc,
+					parameters: overload.args.map((parameter) => ({ label: parameterText(parameter) })),
+				}));
+				const longest = Math.max(...description.overloads.map(({ args }) => args.length));
 
 				return {
 					value: {
-						signatures: [
-							{
-								label,
-								documentation: sig.description,
-								parameters: sig.parameters.map((p) => ({
-									label: `${p.label}: ${p.type}`,
-									documentation: p.description,
-								})),
-							},
-						],
+						signatures,
 						activeSignature: 0,
-						activeParameter: Math.min(commas, sig.parameters.length - 1),
+						activeParameter: Math.min(commas, longest - 1),
 					},
 					dispose: () => {},
 				};
@@ -339,11 +339,14 @@ export function registerLittlewingLanguage(monaco: Monaco): void {
 				};
 
 				// Function hover
-				const sig = FUNCTION_SIGNATURES[word.word];
-				if (sig) {
-					const signature = formatSignature(word.word);
+				const description = DESCRIPTIONS.get(word.word);
+				if (description !== undefined) {
+					const signatures = formatSignatures(word.word, description);
 					return {
-						contents: [{ value: `\`\`\`\n${signature}\n\`\`\`` }, { value: sig.description }],
+						contents: [
+							{ value: `\`\`\`\n${signatures}\n\`\`\`` },
+							{ value: description.doc ?? '' },
+						],
 						range,
 					};
 				}
@@ -380,7 +383,7 @@ export function registerLittlewingLanguage(monaco: Monaco): void {
 					const scored: { candidate: string; distance: number }[] = [];
 					for (const candidate of BUILTINS) {
 						const distance = levenshteinDistance(name, candidate);
-						if (distance > 0 && distance <= 3 && distance < name.length) {
+						if (candidate !== name && distance <= 3 && distance < name.length) {
 							scored.push({ candidate, distance });
 						}
 					}

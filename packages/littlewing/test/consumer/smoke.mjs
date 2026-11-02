@@ -16,6 +16,8 @@ const {
 	defineType,
 	evaluate,
 	ParseError,
+	coreFunctions,
+	describeFunction,
 	generate,
 	once,
 	parse,
@@ -35,8 +37,10 @@ assert.deepEqual(Object.keys(await import('littlewing')).sort(), [
 	'EvaluationError',
 	'ParseError',
 	'compile',
+	'coreFunctions',
 	'define',
 	'defineType',
+	'describeFunction',
 	'evaluate',
 	'generate',
 	'once',
@@ -188,6 +192,10 @@ assert.throws(
 	() => evaluate(rope.program, { variables: { s: 'a' } }),
 	(err) => err instanceof EvaluationError && err.code === 'limit-exceeded',
 );
+
+// A definition describes itself, for an editor
+assert.equal(describeFunction(coreFunctions.ROUND).overloads[0].args[1].name, 'digits');
+assert.equal(describeFunction(std.ABS).doc, 'The number without its sign');
 
 // Mistakes come back the way each stage promises
 assert.throws(

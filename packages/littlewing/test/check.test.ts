@@ -904,36 +904,40 @@ describe('order, at random', () => {
 						}),
 		]);
 
-	test('statements in any order mean the same', () => {
-		let next = 12345;
-		const random = (limit: number): number => {
-			next = (next * 1103515245 + 12345) & 0x7fffffff;
-			return (next >>> 8) % limit;
-		};
+	test(
+		'statements in any order mean the same',
+		() => {
+			let next = 12345;
+			const random = (limit: number): number => {
+				next = (next * 1103515245 + 12345) & 0x7fffffff;
+				return (next >>> 8) % limit;
+			};
 
-		const shuffled = <T>(items: readonly T[]): T[] => {
-			const copy = [...items];
-			for (let i = copy.length - 1; i > 0; i--) {
-				const j = random(i + 1);
-				[copy[i], copy[j]] = [copy[j] as T, copy[i] as T];
-			}
-			return copy;
-		};
+			const shuffled = <T>(items: readonly T[]): T[] => {
+				const copy = [...items];
+				for (let i = copy.length - 1; i > 0; i--) {
+					const j = random(i + 1);
+					[copy[i], copy[j]] = [copy[j] as T, copy[i] as T];
+				}
+				return copy;
+			};
 
-		const rounds = Number(process.env.FUZZ_ROUNDS ?? 3000);
-		for (let i = 0; i < rounds; i++) {
-			const chosen = Array.from(
-				{ length: 2 + random(5) },
-				() => POOL[random(POOL.length)] as string,
-			);
-			const named = chosen.map((line, n) => `s${n} = ${line}`);
-			const base = run_(`${named.join('\n')}\n0`);
-			const other = run_(`${shuffled(named).join('\n')}\n0`);
-			if (summary(base) !== summary(other)) {
-				throw new Error(`${named.join(' ; ')}\n${summary(base)}\n${summary(other)}`);
+			const rounds = Number(process.env.FUZZ_ROUNDS ?? 3000);
+			for (let i = 0; i < rounds; i++) {
+				const chosen = Array.from(
+					{ length: 2 + random(5) },
+					() => POOL[random(POOL.length)] as string,
+				);
+				const named = chosen.map((line, n) => `s${n} = ${line}`);
+				const base = run_(`${named.join('\n')}\n0`);
+				const other = run_(`${shuffled(named).join('\n')}\n0`);
+				if (summary(base) !== summary(other)) {
+					throw new Error(`${named.join(' ; ')}\n${summary(base)}\n${summary(other)}`);
+				}
 			}
-		}
-	});
+		},
+		Math.max(5000, Number(process.env.FUZZ_ROUNDS ?? 0)),
+	);
 });
 
 describe('limits', () => {

@@ -6,7 +6,7 @@ Thank you for your interest in contributing to our project! This guide will help
 
 ### Prerequisites
 
-- Bun installed on your system
+- Bun, and Node for `bun run test:package`
 
 ### Getting Started
 
@@ -20,9 +20,9 @@ Thank you for your interest in contributing to our project! This guide will help
 
 1. Create a new branch: `git checkout -b feature/your-feature-name`
 2. Make your changes
-3. Check and fix code style and formatting issues: `bun run lint:fix`
+3. Fix lint issues and format: `bun run lint:fix`, then `bun run fmt`
 4. Run tests: `bun run test`
-5. Build the project: `bun run build`
+5. Build the project: `bun run build`, and check it with `bun run test:package`
 6. Commit your changes using the conventions below
 7. Push your branch to your fork
 8. Open a pull request
@@ -42,7 +42,7 @@ We follow [Conventional Commits](https://www.conventionalcommits.org/) for clear
 
 ## Pull Request Guidelines
 
-1. Update documentation if needed
+1. Update documentation if needed. `SPEC.md` and `HOST_API.md` are normative, so a change in behaviour starts there, and in `packages/littlewing/conformance`
 2. Ensure all tests pass
 3. Address any feedback from code reviews
 4. Once approved, your PR will be merged
