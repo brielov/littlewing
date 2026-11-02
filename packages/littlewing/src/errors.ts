@@ -1,23 +1,6 @@
 import type { Diagnostic } from './diagnostics.js';
 
 /**
- * Error thrown when parsing fails. Carries UTF-16 offsets into the source string
- * so callers can display precise error locations.
- */
-export class ParseError extends Error {
-	override readonly name = 'ParseError';
-	constructor(
-		message: string,
-		readonly start: number,
-		readonly end: number,
-		/** A stable code, from Appendix B of the language spec. */
-		readonly code: string = 'unexpected-token',
-	) {
-		super(message);
-	}
-}
-
-/**
  * Every failure of a program being evaluated. Offsets locate the failing expression,
  * and are 0 for what happens before the program runs or after it ends. For a
  * `host-error`, `cause` is what host code threw.

@@ -22,8 +22,8 @@ export type {
 } from './define.js';
 export { define, defineType, describeFunction, once, t } from './define.js';
 export type { Diagnostic } from './diagnostics.js';
-export { CompileError, EvaluationError, ParseError, toLineColumn } from './errors.js';
+export { CompileError, EvaluationError, toLineColumn } from './errors.js';
 export { coreFunctions } from './functions/core.js';
 export type * as syntax from './syntax/ast.js';
 export { generate } from './syntax/generate.js';
-export { parse } from './syntax/parser.js';
+export { parse, type ParseResult } from './syntax/parser.js';

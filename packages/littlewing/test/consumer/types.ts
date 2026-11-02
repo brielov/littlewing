@@ -62,7 +62,7 @@ export const MONEY: FunctionDefinition = define({
 	run: (cents) => new Money(cents.toNumber()),
 });
 
-export const tree: syntax.Program = parse('1');
+export const tree: syntax.Program = parse('1').program;
 
 export const dateType: unknown = date;
 

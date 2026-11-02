@@ -4,7 +4,15 @@ import { check } from '../src/check/check.ts';
 import type { FunctionDefinition, Type } from '../src/define.ts';
 import { define, defineType, t } from '../src/define.ts';
 import { desugarProgram } from '../src/syntax/desugar.ts';
+import type { Program } from '../src/syntax/ast.ts';
 import { parse } from '../src/syntax/parser.ts';
+
+/** The tree of a source that parses, as a test of checking needs. */
+function tree(source: string): Program {
+	const { program, diagnostics } = parse(source);
+	if (diagnostics.length > 0) throw new Error(`${source}: ${diagnostics[0]?.message}`);
+	return program;
+}
 
 class Money {
 	constructor(readonly cents: number) {}
@@ -90,7 +98,7 @@ interface Outcome {
 }
 
 function run_(source: string, inputs?: Record<string, Type>): Outcome {
-	const program = desugarProgram(parse(source));
+	const program = desugarProgram(tree(source));
 	const result = check(program, inputs ? { functions, inputs } : { functions });
 	return {
 		codes: result.diagnostics.filter((d) => d.severity === 'error').map((d) => d.code),
@@ -714,7 +722,7 @@ describe('found in review', () => {
 			],
 		]);
 		const local_ = (source: string): string[] =>
-			check(desugarProgram(parse(source)), { functions: local })
+			check(desugarProgram(tree(source)), { functions: local })
 				.diagnostics.filter((d) => d.severity === 'error')
 				.map((d) => d.code);
 		expect(local_('TT(1, "a")')).toEqual([]);
@@ -800,7 +808,7 @@ describe('found in review', () => {
 
 	test('a failed meeting is reported where it met', () => {
 		const source = 'r = {...x, a: 1}\ns = if c then r else {a: 2}\ns';
-		const program = desugarProgram(parse(source));
+		const program = desugarProgram(tree(source));
 		const [first] = check(program, { functions }).diagnostics;
 		expect(source.slice(first?.start, first?.end)).toBe('{a: 2}');
 	});

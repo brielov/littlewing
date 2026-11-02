@@ -107,11 +107,9 @@ export function App() {
 	);
 
 	const formatSource = useCallback(() => {
-		try {
-			setSource(generate(parse(source)));
-		} catch {
-			// Source has parse errors — silently ignore
-		}
+		const { program, diagnostics } = parse(source);
+		// A tree with errors has lost what they are in
+		if (diagnostics.length === 0) setSource(generate(program));
 	}, [source]);
 
 	const monacoTheme = isDark ? 'tomorrow-night' : 'tomorrow';

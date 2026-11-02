@@ -29,6 +29,7 @@ A stored formula may need changes too. Compiling it with 3.0 finds what no longe
 | `ExecutionResult`                        | Return a record                                                                                                                                                                 |
 | `ASTNode`, `Operator` and the node types | The namespace `syntax`                                                                                                                                                          |
 | `ParseError` from `evaluate`             | `result.diagnostics` from `compile`, `CompileError` from `run`                                                                                                                  |
+| `parse` throwing `ParseError`            | `parse(source)` returns `{ program, diagnostics }`, with every problem and every statement it could read                                                                        |
 
 ```ts
 // 2.x

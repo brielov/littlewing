@@ -1,9 +1,8 @@
 import { describe, expect, test } from 'bun:test';
 import type { Diagnostic } from '../src/diagnostics.ts';
-import { ParseError } from '../src/errors.ts';
 import type { Expression, Program } from '../src/syntax/ast.ts';
 import { generate } from '../src/syntax/generate.ts';
-import { parse, parseProgram } from '../src/syntax/parser.ts';
+import { parse } from '../src/syntax/parser.ts';
 import { random, randomProgram, randomSoup } from './syntax-generators.ts';
 
 function shape(value: unknown): unknown {
@@ -17,11 +16,18 @@ function shape(value: unknown): unknown {
 }
 
 function codes(source: string): string[] {
-	return parseProgram(source).diagnostics.map((d) => d.code);
+	return parse(source).diagnostics.map((d) => d.code);
+}
+
+/** The tree of a source that has no problems. */
+function tree(source: string): Program {
+	const { program, diagnostics } = parse(source);
+	expect(diagnostics).toEqual([]);
+	return program;
 }
 
 function only(source: string): Expression {
-	const program = parse(source);
+	const program = tree(source);
 	expect(program.statements.length).toBe(1);
 	return program.statements[0] as Expression;
 }
@@ -123,46 +129,46 @@ describe('what a grammar production can be followed by', () => {
 
 describe('statements', () => {
 	test('a line break ends a statement before -, ( and [', () => {
-		expect(parse('a = 5\n-1').statements.length).toBe(2);
-		expect(parse('a\n(b)').statements.length).toBe(2);
-		expect(parse('a\n[1]').statements.length).toBe(2);
-		expect(parse('a\n!b').statements.length).toBe(2);
-		expect(parse('F\n(1)').statements.length).toBe(2);
+		expect(tree('a = 5\n-1').statements.length).toBe(2);
+		expect(tree('a\n(b)').statements.length).toBe(2);
+		expect(tree('a\n[1]').statements.length).toBe(2);
+		expect(tree('a\n!b').statements.length).toBe(2);
+		expect(tree('F\n(1)').statements.length).toBe(2);
 	});
 
 	test('other operators continue from the line before', () => {
-		expect(parse('a\n  + 1').statements.length).toBe(1);
-		expect(parse('a -\n  1').statements.length).toBe(1);
-		expect(parse('a\n  .b\n  .c').statements.length).toBe(1);
-		expect(parse('a\n  |> F').statements.length).toBe(1);
-		expect(parse('a\n  ?? 1').statements.length).toBe(1);
+		expect(tree('a\n  + 1').statements.length).toBe(1);
+		expect(tree('a -\n  1').statements.length).toBe(1);
+		expect(tree('a\n  .b\n  .c').statements.length).toBe(1);
+		expect(tree('a\n  |> F').statements.length).toBe(1);
+		expect(tree('a\n  ?? 1').statements.length).toBe(1);
 	});
 
 	test('enclosed code ignores line breaks', () => {
-		expect(parse('(a\n  - 1)').statements.length).toBe(1);
-		expect(parse('[a\n  -1]').statements.length).toBe(1);
-		expect(parse('{ a: b\n  -1 }').statements.length).toBe(1);
-		expect(parse('"#{a\n  -1}"').statements.length).toBe(1);
-		expect(parse('if a\n-1 > 0 then b\n-1 else c').statements.length).toBe(1);
-		expect(parse('for x in a\n-1 then x').statements.length).toBe(1);
+		expect(tree('(a\n  - 1)').statements.length).toBe(1);
+		expect(tree('[a\n  -1]').statements.length).toBe(1);
+		expect(tree('{ a: b\n  -1 }').statements.length).toBe(1);
+		expect(tree('"#{a\n  -1}"').statements.length).toBe(1);
+		expect(tree('if a\n-1 > 0 then b\n-1 else c').statements.length).toBe(1);
+		expect(tree('for x in a\n-1 then x').statements.length).toBe(1);
 		// The tail of a `for` is not enclosed
-		expect(parse('for x in a then x\n- 1').statements.length).toBe(2);
-		expect(parse('if a then b else c\n- 1').statements.length).toBe(2);
+		expect(tree('for x in a then x\n- 1').statements.length).toBe(2);
+		expect(tree('if a then b else c\n- 1').statements.length).toBe(2);
 	});
 
 	test('separators', () => {
-		expect(parse('a = 1; b = 2; a + b').statements.length).toBe(3);
-		expect(parse(';;a;;\n\n;b;').statements.length).toBe(2);
-		expect(parse('a = 1\n\n// note\n\nb').statements.length).toBe(2);
+		expect(tree('a = 1; b = 2; a + b').statements.length).toBe(3);
+		expect(tree(';;a;;\n\n;b;').statements.length).toBe(2);
+		expect(tree('a = 1\n\n// note\n\nb').statements.length).toBe(2);
 		expect(codes('1 2')).toEqual(['unexpected-token']);
 		expect(codes('x = 1 y = 2')).toEqual(['unexpected-token']);
 	});
 
 	test('bindings', () => {
-		const statement = parse('rate ?= 0.1').statements[0];
+		const statement = tree('rate ?= 0.1').statements[0];
 		expect(statement?.kind).toBe('binding');
 		expect(statement?.kind === 'binding' && statement.input).toBe(true);
-		expect(parse('a\n= 1').statements[0]?.kind).toBe('binding');
+		expect(tree('a\n= 1').statements[0]?.kind).toBe('binding');
 		expect(codes('a = b = 1')).toEqual(['unexpected-token']);
 		expect(codes('(x) = 5')).toEqual(['unexpected-token']);
 	});
@@ -212,7 +218,7 @@ describe('tokens', () => {
 
 	test('identifiers', () => {
 		expect(codes('año = 1\nprecio_total\nΩ\n_x')).toEqual([]);
-		const composed = parse('é'.normalize('NFD')).statements[0];
+		const composed = tree('é'.normalize('NFD')).statements[0];
 		expect(composed?.kind === 'name' && composed.name).toBe('é');
 		expect(codes('precio_€')).toEqual(['invalid-character']);
 		expect(codes('a\u00a0b')).toContain('invalid-character');
@@ -262,7 +268,7 @@ describe('tokens', () => {
 	});
 
 	test('line endings', () => {
-		expect(parse('a\r\nb\rc\nd').statements.length).toBe(4);
+		expect(tree('a\r\nb\rc\nd').statements.length).toBe(4);
 	});
 });
 
@@ -280,7 +286,7 @@ describe('interpolation', () => {
 		expect(codes('"#{"#{"#{x}"}"}"')).toEqual([]);
 		expect(codes('"#{ { a: 1 }.a }"')).toEqual([]);
 		expect(codes('"#{ { a }.a }"')).toEqual([]);
-		expect(parse('"a#{x}" + "b"').statements.length).toBe(1);
+		expect(tree('"a#{x}" + "b"').statements.length).toBe(1);
 	});
 
 	test('does not end the string early', () => {
@@ -438,13 +444,13 @@ describe('hostile sources stay linear', () => {
 	test('names with many combining marks', () => {
 		const name = `a${'\u0301'.repeat(150_000)}${'\u0323'.repeat(150_000)}`;
 		expect(codes(name)).toEqual(['identifier-too-long']);
-		const program = parse(`{ "${name}": 1 }`);
+		const program = tree(`{ "${name}": 1 }`);
 		expect(generate(program).length).toBeGreaterThan(300_000);
 	});
 
 	test('escapes with no end', () => {
-		expect(parseProgram(`"${'\\u'.repeat(1_000_000)}"`).diagnostics.length).toBe(100);
-		expect(parseProgram(`"${'\\u{4'.repeat(500_000)}"`).diagnostics.length).toBe(100);
+		expect(parse(`"${'\\u'.repeat(1_000_000)}"`).diagnostics.length).toBe(100);
+		expect(parse(`"${'\\u{4'.repeat(500_000)}"`).diagnostics.length).toBe(100);
 	});
 
 	test('errors are capped', () => {
@@ -455,7 +461,7 @@ describe('hostile sources stay linear', () => {
 
 	test('messages stay short', () => {
 		const longest = (source: string): number =>
-			Math.max(...parseProgram(source).diagnostics.map((d) => d.message.length));
+			Math.max(...parse(source).diagnostics.map((d) => d.message.length));
 		expect(longest('1'.repeat(1_000_000))).toBeLessThan(100);
 		expect(longest(`1 ${'a'.repeat(100_000)}`)).toBeLessThan(120);
 		expect(longest(`{ ${'a'.repeat(1000)}: 1, ${'a'.repeat(1000)}: 2 }`)).toBeLessThan(100);
@@ -464,7 +470,7 @@ describe('hostile sources stay linear', () => {
 
 	test('many comments', () => {
 		const source = `${'//x\n'.repeat(500_000)}1`;
-		expect(generate(parse(source)).length).toBe(source.length);
+		expect(generate(tree(source)).length).toBe(source.length);
 	});
 });
 
@@ -478,9 +484,9 @@ describe('recovery', () => {
 	});
 
 	test('keeps the statements it can read', () => {
-		const { program, diagnostics } = parseProgram('a = 1\nb = ]\nc = 2');
+		const { program, diagnostics } = parse('a = 1\nb = ]\nc = 2');
 		expect(diagnostics.length).toBe(1);
-		expect(program?.statements.length).toBe(2);
+		expect(program.statements.length).toBe(2);
 	});
 
 	test('a stray closing token does not loop', () => {
@@ -529,13 +535,13 @@ describe('recovery', () => {
 	});
 
 	test('an unterminated string is reported from its start', () => {
-		const [first] = parseProgram('x = "#{').diagnostics;
+		const [first] = parse('x = "#{').diagnostics;
 		expect(first?.code).toBe('unterminated-string');
 		expect(first?.start).toBe(4);
 	});
 
 	test('an invalid fallback is reported with its parentheses', () => {
-		const [first] = parseProgram('(a) ?? 0').diagnostics;
+		const [first] = parse('(a) ?? 0').diagnostics;
 		expect([first?.start, first?.end]).toEqual([0, 3]);
 	});
 
@@ -545,7 +551,7 @@ describe('recovery', () => {
 	});
 
 	test('diagnostics are in source order with exact spans', () => {
-		const { diagnostics } = parseProgram('a = )\nb = 007');
+		const { diagnostics } = parse('a = )\nb = 007');
 		const spans = diagnostics.map((d: Diagnostic) => [d.code, d.start, d.end]);
 		expect(spans).toEqual([
 			['unexpected-token', 4, 5],
@@ -553,22 +559,37 @@ describe('recovery', () => {
 		]);
 	});
 
-	test('parse throws the first error', () => {
-		expect(() => parse('a = )')).toThrow(ParseError);
-		try {
-			parse('\n\n007');
-		} catch (error) {
-			expect(error).toBeInstanceOf(ParseError);
-			expect((error as ParseError).code).toBe('invalid-number');
-			expect((error as ParseError).start).toBe(2);
-		}
+	test('a tree comes with every error', () => {
+		const { program, diagnostics } = parse('a = )\nb = 2\n007');
+		expect(diagnostics.map((d) => d.code)).toEqual(['unexpected-token', 'invalid-number']);
+		expect(program.statements.map((statement) => statement.kind)).toEqual(['binding', 'number']);
+	});
+
+	test('comments leave with a statement that could not be read', () => {
+		const source = '// lead\na = 1\n// on b\nb = ] // bad\nc = 2 // tail\nd = 1 2 // junk\n// end';
+		expect(generate(parse(source).program)).toBe('// lead\na = 1\nc = 2 // tail\nd = 1\n// end');
+		const { program } = parse('a = ] // x\n// end');
+		expect(program.statements).toEqual([]);
+		expect(program.trailingComments).toEqual(['// end']);
+	});
+
+	test('a program with no statements keeps its comments', () => {
+		const { program, diagnostics } = parse('// nothing\n;;\n');
+		expect(diagnostics.map((d) => d.code)).toEqual(['empty-program']);
+		expect(program).toEqual({
+			kind: 'program',
+			statements: [],
+			start: 0,
+			end: 0,
+			trailingComments: ['// nothing'],
+		});
 	});
 
 	test('token soup always ends, with a report', () => {
 		for (let seed = 1; seed <= 4000; seed++) {
 			const next = random(seed);
 			const source = randomSoup(next, 1 + next(40));
-			const { diagnostics } = parseProgram(source);
+			const { diagnostics } = parse(source);
 			for (const d of diagnostics) {
 				expect(d.start).toBeLessThanOrEqual(d.end);
 				expect(d.end).toBeLessThanOrEqual(source.length);
@@ -580,7 +601,7 @@ describe('recovery', () => {
 describe('spans', () => {
 	test('cover what was written', () => {
 		const source = 'total = (a + b) * 2';
-		const statement = parse(source).statements[0];
+		const statement = tree(source).statements[0];
 		expect(statement?.start).toBe(0);
 		expect(statement?.end).toBe(source.length);
 		if (statement?.kind !== 'binding') throw new Error('expected a binding');
@@ -589,7 +610,7 @@ describe('spans', () => {
 });
 
 describe('generate', () => {
-	const roundTrip = (source: string): string => generate(parse(source));
+	const roundTrip = (source: string): string => generate(tree(source));
 
 	test('parentheses appear only where needed', () => {
 		const cases: [string, string][] = [
@@ -645,7 +666,7 @@ describe('generate', () => {
 	test('keeps comments', () => {
 		const source = '// first\na = 1 // inline\n\n// second\nb\n// last';
 		expect(roundTrip(source)).toBe('// first\na = 1 // inline\n// second\nb\n// last');
-		expect(generate(parse(roundTrip(source)))).toBe(roundTrip(source));
+		expect(generate(tree(roundTrip(source)))).toBe(roundTrip(source));
 	});
 
 	test('any tree survives a round trip', () => {
@@ -653,7 +674,7 @@ describe('generate', () => {
 			const next = random(seed * 7919);
 			const program: Program = randomProgram(next, 1 + next(4));
 			const text = generate(program);
-			const { program: back, diagnostics } = parseProgram(text);
+			const { program: back, diagnostics } = parse(text);
 			if (diagnostics.length > 0)
 				throw new Error(`seed ${seed}: ${text}\n${diagnostics[0]?.message}`);
 			expect(shape(back)).toEqual(shape(program));

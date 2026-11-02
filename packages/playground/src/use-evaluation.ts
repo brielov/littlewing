@@ -190,7 +190,7 @@ function compileSource(source: string): CompileOutcome {
 	}
 
 	const { program } = result;
-	const value = { program, ast: parse(source), inputVariables: inputsOf(program), compileMs };
+	const value = { program, ast: parse(source).program, inputVariables: inputsOf(program), compileMs };
 	return { ok: true, value, diagnostics };
 }
 

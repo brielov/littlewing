@@ -1,123 +1,49 @@
 import { describe, expect, test } from 'bun:test';
-import { ParseError } from '../src/errors';
 import { toLineColumn } from '../src/errors';
 import { parse } from '../src/syntax/parser';
 
-describe('ParseError', () => {
-	test('parse errors are instanceof ParseError', () => {
-		try {
-			parse('if x');
-			expect.unreachable('should have thrown');
-		} catch (err) {
-			expect(err).toBeInstanceOf(ParseError);
-			expect(err).toBeInstanceOf(Error);
-		}
+/** The first problem `parse` finds in `source`. */
+function first(source: string) {
+	const [diagnostic] = parse(source).diagnostics;
+	if (diagnostic === undefined) throw new Error(`no problem in ${source}`);
+	return diagnostic;
+}
+
+describe('parse diagnostics', () => {
+	test('unexpected character after an operator has correct span', () => {
+		expect(first('1 + @')).toMatchObject({ code: 'invalid-character', start: 4, end: 5 });
 	});
 
-	test("ParseError has name 'ParseError'", () => {
-		const err = new ParseError('test', 0, 1);
-		expect(err.name).toBe('ParseError');
-	});
-
-	test('ParseError carries start and end offsets', () => {
-		const err = new ParseError('test', 5, 10);
-		expect(err.start).toBe(5);
-		expect(err.end).toBe(10);
-		expect(err.message).toBe('test');
-	});
-
-	test('unexpected token has correct span', () => {
-		// Source: "1 + @"
-		//          01234
-		// The '@' is at position 4, spans 1 character
-		try {
-			parse('1 + @');
-			expect.unreachable('should have thrown');
-		} catch (err) {
-			expect(err).toBeInstanceOf(ParseError);
-			const pe = err as ParseError;
-			expect(pe.start).toBe(4);
-			expect(pe.end).toBe(5);
-		}
-	});
-
-	test('missing closing parenthesis has correct span', () => {
-		// Source: "(1 + 2"
-		// The EOF token is at position 6
-		try {
-			parse('(1 + 2');
-			expect.unreachable('should have thrown');
-		} catch (err) {
-			expect(err).toBeInstanceOf(ParseError);
-			const pe = err as ParseError;
-			expect(pe.code).toBe('unexpected-token');
-			expect(pe.start).toBe(6);
-		}
+	test('missing closing parenthesis is reported at the end', () => {
+		expect(first('(1 + 2')).toMatchObject({ code: 'unexpected-token', start: 6 });
 	});
 
 	test("missing 'then' in if expression has correct span", () => {
-		// Source: "if true 2"
-		//          0123456789
-		// After "if true", parser expects "then" but finds "2" at position 8
-		try {
-			parse('if true 2');
-			expect.unreachable('should have thrown');
-		} catch (err) {
-			expect(err).toBeInstanceOf(ParseError);
-			const pe = err as ParseError;
-			expect(pe.code).toBe('unexpected-token');
-			expect(pe.start).toBe(8);
-			expect(pe.end).toBe(9);
-		}
+		expect(first('if true 2')).toMatchObject({ code: 'unexpected-token', start: 8, end: 9 });
 	});
 
-	test("missing 'else' in if expression has correct span", () => {
-		try {
-			parse('if true then 1');
-			expect.unreachable('should have thrown');
-		} catch (err) {
-			expect(err).toBeInstanceOf(ParseError);
-			const pe = err as ParseError;
-			expect(pe.code).toBe('unexpected-token');
-		}
+	test("missing 'else' in if expression", () => {
+		expect(first('if true then 1').code).toBe('unexpected-token');
 	});
 
-	test('unterminated string has correct span', () => {
-		// Source: '"hello'
-		//          012345
-		// String starts at 0, unterminated at 6
-		try {
-			parse('"hello');
-			expect.unreachable('should have thrown');
-		} catch (err) {
-			expect(err).toBeInstanceOf(ParseError);
-			const pe = err as ParseError;
-			expect(pe.message).toBe('Unterminated string');
-			expect(pe.start).toBe(0);
-		}
+	test('unterminated string is reported from its start', () => {
+		expect(first('"hello')).toMatchObject({ message: 'Unterminated string', start: 0 });
 	});
 
 	test('unexpected character has correct span', () => {
-		try {
-			parse('&');
-			expect.unreachable('should have thrown');
-		} catch (err) {
-			expect(err).toBeInstanceOf(ParseError);
-			const pe = err as ParseError;
-			expect(pe.message).toBe("Unexpected character '&'");
-			expect(pe.start).toBe(0);
-		}
+		expect(first('&')).toMatchObject({ message: "Unexpected character '&'", start: 0, end: 1 });
 	});
 
-	test('invalid assignment target has correct span', () => {
-		try {
-			parse('5 = 10');
-			expect.unreachable('should have thrown');
-		} catch (err) {
-			expect(err).toBeInstanceOf(ParseError);
-			const pe = err as ParseError;
-			expect(pe.code).toBe('unexpected-token');
-		}
+	test('invalid assignment target', () => {
+		expect(first('5 = 10').code).toBe('unexpected-token');
+	});
+
+	test('a source that is not a string is a mistake of the host', () => {
+		expect(() => parse(42 as unknown as string)).toThrow(TypeError);
+	});
+
+	test('every problem is an error', () => {
+		expect(parse('if x').diagnostics.every((d) => d.severity === 'error')).toBe(true);
 	});
 });
 

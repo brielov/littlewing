@@ -1,5 +1,4 @@
 import type { Diagnostic } from '../diagnostics.js';
-import { ParseError } from '../errors.js';
 import type { BinaryOperator, Expression, Program, RecordMember, Statement } from './ast.js';
 import { Precedence } from './ast.js';
 import type { Comment, Cursor, Token } from './lexer.js';
@@ -62,9 +61,9 @@ interface ParserState {
 	readonly placeholders: Set<Expression>;
 }
 
+/** A tree of every statement that could be read, and every problem found. */
 export interface ParseResult {
-	/** Absent only if no statement could be read. */
-	readonly program: Program | undefined;
+	readonly program: Program;
 	readonly diagnostics: readonly Diagnostic[];
 }
 
@@ -743,15 +742,17 @@ function isInlineComment(source: string, commentOffset: number): boolean {
 /**
  * Put comments on statements: one on the same line as code trails it, one on its
  * own line or inside a statement leads a statement, and any left over trail the
- * program.
+ * program. A statement that could not be read is `undefined`, and its comments go
+ * with it rather than onto its neighbours.
  */
 function attachComments(
 	source: string,
-	statements: readonly Statement[],
+	statements: readonly (Statement | undefined)[],
 	extents: readonly (readonly [start: number, end: number])[],
 	comments: readonly Comment[],
 ): { statements: readonly Statement[]; trailing: string[] | undefined } {
-	if (comments.length === 0) return { statements, trailing: undefined };
+	const read = statements.filter((statement) => statement !== undefined);
+	if (comments.length === 0) return { statements: read, trailing: undefined };
 
 	const leading: (string[] | undefined)[] = [];
 	const inline: (string[] | undefined)[] = [];
@@ -778,7 +779,8 @@ function attachComments(
 		}
 	}
 
-	const result = statements.map((statement, i) => {
+	const result = statements.flatMap((statement, i) => {
+		if (statement === undefined) return [];
 		const leadingComments = leading[i];
 		const trailingComments = inline[i];
 		if (!leadingComments && !trailingComments) return statement;
@@ -792,24 +794,13 @@ function attachComments(
 }
 
 /**
- * Parse a program for a tool such as a formatter, throwing on its first error.
- */
-export function parse(source: string): Program {
-	const { program, diagnostics } = parseProgram(source);
-	const first = diagnostics.find((diagnostic) => diagnostic.severity === 'error');
-	if (first !== undefined || program === undefined) {
-		const { code, message, start, end } = first as Diagnostic;
-		throw new ParseError(message, start, end, code);
-	}
-	return program;
-}
-
-/**
  * Parse a program, reporting every problem it can find rather than the first. A
- * broken statement is abandoned at its first error, and parsing resumes at the
- * next statement.
+ * statement that cannot be read is left out, with its comments, and parsing
+ * resumes at the next one. Errors that can be read past, such as an invalid
+ * number, leave their statement in the tree.
  */
-export function parseProgram(source: string): ParseResult {
+export function parse(source: string): ParseResult {
+	if (typeof source !== 'string') throw new TypeError('A source is a string');
 	const cursor = createCursor(source);
 	const state: ParserState = {
 		cursor,
@@ -829,7 +820,9 @@ export function parseProgram(source: string): ParseResult {
 	};
 
 	const statements: Statement[] = [];
-	// With any outer parentheses, which the nodes leave out
+	// Every statement, with `undefined` for what could not be read, and where each
+	// is, with any outer parentheses, which the nodes leave out
+	const slots: (Statement | undefined)[] = [];
 	const extents: [start: number, end: number][] = [];
 	let broken = false;
 
@@ -842,7 +835,9 @@ export function parseProgram(source: string): ParseResult {
 		const statementStart = state.token[1];
 		let failed = false;
 		try {
-			statements.push(parseStatement(state));
+			const statement = parseStatement(state);
+			statements.push(statement);
+			slots.push(statement);
 			extents.push([statementStart, state.previousEnd]);
 			if (!endsStatement(state.token)) unexpected(state, 'the end of the statement');
 		} catch (error) {
@@ -851,14 +846,24 @@ export function parseProgram(source: string): ParseResult {
 				const [, start, end] = state.token;
 				report(state, 'limit-exceeded', 'Out of stack', start, end);
 				broken = true;
+				// Its comments go with it, as with any statement that cannot be read
+				if (extents.at(-1)?.[0] !== statementStart) {
+					slots.push(undefined);
+					extents.push([statementStart, source.length]);
+				}
 				break;
 			}
 			if (error !== BAIL) throw error;
 			broken = true;
 			failed = true;
+			// When the statement was read and what follows it was not, only that is dropped
+			const read = extents.at(-1)?.[0] === statementStart;
+			const from = read ? state.token[1] : statementStart;
 			// A token no statement can start with would otherwise be met again and again
 			if (state.token[1] === statementStart) advance(state);
 			recover(state);
+			slots.push(undefined);
+			extents.push([from, Math.max(from, state.previousEnd)]);
 		}
 
 		if (state.placeholders.size > 0) {
@@ -878,14 +883,12 @@ export function parseProgram(source: string): ParseResult {
 	}
 
 	const diagnostics = cursor.diagnostics.slice().sort((a, b) => a.start - b.start);
-	if (statements.length === 0) return { program: undefined, diagnostics };
-
-	const attached = attachComments(source, statements, extents, cursor.comments);
+	const attached = attachComments(source, slots, extents, cursor.comments);
 	const program: Program = {
 		kind: 'program',
 		statements: attached.statements,
-		start: (statements[0] as Statement).start,
-		end: (statements[statements.length - 1] as Statement).end,
+		start: statements[0]?.start ?? 0,
+		end: statements.at(-1)?.end ?? 0,
 		...(attached.trailing ? { trailingComments: attached.trailing } : {}),
 	};
 	return { program, diagnostics };

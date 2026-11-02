@@ -31,7 +31,7 @@ import { failure, isNum } from './run/values.js';
 import { CORE } from './functions/core.js';
 import { desugarProgram } from './syntax/desugar.js';
 import { isKeyword } from './syntax/lexer.js';
-import { parseProgram } from './syntax/parser.js';
+import { parse } from './syntax/parser.js';
 
 /** The default budget of compiling, and of evaluating. */
 const DEFAULT_MAX_STEPS = 20_000_000;
@@ -240,9 +240,9 @@ export function compile(source: string, options: CompileOptions = {}): CompileRe
 	return withBudget(maxSteps, currentEvaluation() !== undefined, () => {
 		const diagnostics: Diagnostic[] = [];
 		try {
-			const parsed = parseProgram(source);
+			const parsed = parse(source);
 			diagnostics.push(...parsed.diagnostics);
-			if (parsed.program === undefined || hasError(diagnostics)) {
+			if (hasError(diagnostics)) {
 				return { ok: false, diagnostics };
 			}
 

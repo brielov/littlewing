@@ -15,7 +15,6 @@ const {
 	define,
 	defineType,
 	evaluate,
-	ParseError,
 	coreFunctions,
 	describeFunction,
 	generate,
@@ -35,7 +34,6 @@ assert.deepEqual(Object.keys(await import('littlewing')).sort(), [
 	'CompileError',
 	'Decimal',
 	'EvaluationError',
-	'ParseError',
 	'compile',
 	'coreFunctions',
 	'define',
@@ -157,7 +155,8 @@ const deepest = [
 	`${'1 |> ROUND(?, '.repeat(254)}1${')'.repeat(254)}`,
 ];
 for (const source of deepest) {
-	const tree = parse(source);
+	const { program: tree, diagnostics } = parse(source);
+	assert.deepEqual(diagnostics, []);
 	assert.equal(typeof generate(tree), 'string');
 	const result = compile(source);
 	assert.ok(result.ok, source.slice(0, 20));
@@ -203,7 +202,7 @@ assert.throws(
 	(err) => err instanceof CompileError,
 );
 assert.throws(() => Decimal.from('not a number'), EvaluationError);
-assert.throws(() => parse('1 +'), ParseError);
+assert.equal(parse('1 +').diagnostics[0].code, 'unexpected-token');
 assert.deepEqual(toLineColumn('a\nb', 2), { line: 2, column: 1 });
 
 // One reading per evaluation, on this engine's module instance too
