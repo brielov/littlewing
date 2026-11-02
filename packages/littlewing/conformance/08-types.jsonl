@@ -1,0 +1,125 @@
+{"spec": "6.1", "source": "x == [x]", "error": "type-mismatch"}
+{"spec": "6.1", "source": "x + [x]", "error": "type-mismatch"}
+{"spec": "6.1", "source": "a = [1]\na == [a]", "error": "type-mismatch"}
+{"spec": "6.1", "source": "x = 1\nif x then 1 else 2", "error": "type-mismatch"}
+{"spec": "6.1", "source": "if c then 1 else \"a\"", "error": "type-mismatch"}
+{"spec": "6.1", "source": "[a, 1, \"s\"]", "error": "type-mismatch"}
+{"spec": "6.1", "source": "a ?? 1\na + \"s\"", "error": "type-mismatch"}
+{"spec": "6.1", "source": "a ?= 1\na + \"s\"", "error": "type-mismatch"}
+{"spec": "6.1", "source": "x.a + 1\nx.a + \"s\"", "error": "type-mismatch"}
+{"spec": "6.1", "source": "x + 1\nUPPER(x)", "error": "type-mismatch"}
+{"spec": "6.1", "source": "LEN(x)\nx * 2", "error": "type-mismatch"}
+{"spec": "6.1", "source": "x[0] + 1\nUPPER(x[1])", "error": "type-mismatch"}
+{"spec": "6.2", "source": "a == b\na.x", "error": "type-mismatch"}
+{"spec": "6.2", "source": "[a] == [b]\na.x", "error": "type-mismatch"}
+{"spec": "6.2", "source": "a < b", "value": "true", "inputs": {"a": 1, "b": 2}}
+{"spec": "6.2", "source": "a < b", "failure": "invalid-input", "inputs": {"a": "x", "b": "y"}}
+{"spec": "6.2", "source": "a + b", "value": "3", "inputs": {"a": 1, "b": 2}}
+{"spec": "6.2", "source": "a + b", "failure": "invalid-input", "inputs": {"a": "x", "b": "y"}}
+{"spec": "6.2", "source": "a - b", "failure": "invalid-input", "inputs": {"a": "x", "b": "y"}}
+{"spec": "6.2", "source": "x = a < \"z\"\na + \"!\"", "value": "\"b!\"", "inputs": {"a": "b"}}
+{"spec": "6.2", "source": "a == b", "value": "true", "inputs": {"a": 1, "b": 1}}
+{"spec": "6.2", "source": "a == b", "value": "false", "inputs": {"a": "x", "b": "y"}}
+{"spec": "6.2", "source": "a == b", "value": "true", "inputs": {"a": [1], "b": [1]}}
+{"spec": "6.2", "source": "a == b", "value": "true", "inputs": {"a": {"x": 1}, "b": {"x": 1}}}
+{"spec": "6.2", "source": "a == b", "value": "true", "inputs": {"a": true, "b": true}}
+{"spec": "6.2", "source": "a == b", "value": "true", "inputs": {"a": [], "b": []}}
+{"spec": "6.2", "source": "a == b", "value": "false", "inputs": {"a": [], "b": [1]}}
+{"spec": "6.2", "source": "a == b", "failure": "invalid-input", "inputs": {"a": 1, "b": "x"}}
+{"spec": "6.2", "source": "a == b", "failure": "invalid-input", "inputs": {"a": [1], "b": ["x"]}}
+{"spec": "6.2", "source": "a == b", "failure": "invalid-input", "inputs": {"a": {"x": 1}, "b": {"y": 1}}}
+{"spec": "6.2", "source": "\"#{a}\"", "value": "\"1\"", "inputs": {"a": 1}}
+{"spec": "6.2", "source": "\"#{a}\"", "value": "\"x\"", "inputs": {"a": "x"}}
+{"spec": "6.2", "source": "\"#{a}\"", "value": "\"true\"", "inputs": {"a": true}}
+{"spec": "6.2", "source": "\"#{a}\"", "failure": "invalid-input", "inputs": {"a": [1]}}
+{"spec": "6.2", "source": "\"#{a}\"", "failure": "invalid-input", "inputs": {"a": {"x": 1}}}
+{"spec": "6.2", "source": "NUM(a)", "value": "1", "inputs": {"a": 1}}
+{"spec": "6.2", "source": "NUM(a)", "value": "1", "inputs": {"a": true}}
+{"spec": "6.2", "source": "NUM(a)", "value": "5", "inputs": {"a": "5"}}
+{"spec": "6.2", "source": "NUM(a)", "failure": "invalid-input", "inputs": {"a": [1]}}
+{"spec": "6.2", "source": "LEN(a)", "value": "1", "inputs": {"a": "x"}}
+{"spec": "6.2", "source": "LEN(a)", "value": "1", "inputs": {"a": [1]}}
+{"spec": "6.2", "source": "LEN(a)", "failure": "invalid-input", "inputs": {"a": 1}}
+{"spec": "6.2", "source": "LEN(a)", "failure": "invalid-input", "inputs": {"a": {"x": 1}}}
+{"spec": "6.3", "source": "a[0]", "value": "1", "inputs": {"a": [1]}}
+{"spec": "6.3", "source": "a[0]", "failure": "invalid-input", "inputs": {"a": "x"}}
+{"spec": "6.3", "source": "a[k]", "failure": "invalid-input", "inputs": {"a": {"x": 1}, "k": "x"}}
+{"spec": "6.3", "source": "x = UPPER(k)\na[k]", "value": "1", "inputs": {"a": {"x": 1}, "k": "x"}}
+{"spec": "6.3", "source": "a[k]", "value": "1", "inputs": {"a": [1], "k": 0}}
+{"spec": "6.3", "source": "x = UPPER(a)\na[0]", "value": "\"b\"", "inputs": {"a": "bc"}}
+{"spec": "6.3", "source": "x = UPPER(a)\nfor c in a then c", "value": "[\"b\", \"c\"]", "inputs": {"a": "bc"}}
+{"spec": "6.3", "source": "for c in a then c", "value": "[1]", "inputs": {"a": [1]}}
+{"spec": "6.3", "source": "for c in a then c", "failure": "invalid-input", "inputs": {"a": "x"}}
+{"spec": "6.3", "source": "x[0] + 1\nx[1] + \"s\"", "error": "type-mismatch"}
+{"spec": "6.3", "source": "x[0] + 1\nfor c in x then UPPER(c)", "error": "type-mismatch"}
+{"spec": "6.3", "source": "x[k]\nUPPER(k)\nk + 1", "error": "type-mismatch"}
+{"spec": "6.3", "source": "x[\"a\" + b]\nx[0]", "error": "type-mismatch"}
+{"spec": "6.3", "source": "CONTAINS(x, \"a\")", "value": "true", "inputs": {"x": "abc"}}
+{"spec": "6.3", "source": "CONTAINS(x, \"a\")", "failure": "invalid-input", "inputs": {"x": ["a"]}}
+{"spec": "6.3", "source": "CONTAINS(x, 1)", "value": "true", "inputs": {"x": [1]}}
+{"spec": "6.3", "source": "CONTAINS(x, 1)", "failure": "invalid-input", "inputs": {"x": "1"}}
+{"spec": "6.3", "source": "CONTAINS(x, y)", "value": "true", "inputs": {"x": "ab", "y": "a"}}
+{"spec": "6.3", "source": "CONTAINS(x, y)", "failure": "invalid-input", "inputs": {"x": ["a"], "y": "a"}}
+{"spec": "6.3", "source": "CONTAINS(1, 2)", "error": "type-mismatch"}
+{"spec": "6.3", "source": "CONTAINS(\"a\", 1)", "error": "type-mismatch"}
+{"spec": "6.3", "source": "CONTAINS([1], \"a\")", "error": "type-mismatch"}
+{"spec": "6.4", "source": "r.a + 1", "value": "2", "inputs": {"r": {"a": 1}}}
+{"spec": "6.4", "source": "r.a + 1", "value": "2", "inputs": {"r": {"a": 1, "b": "carried"}}}
+{"spec": "6.4", "source": "r.a + 1", "failure": "invalid-input", "inputs": {"r": {}}}
+{"spec": "6.4", "source": "r.a + 1", "failure": "invalid-input", "inputs": {"r": 1}}
+{"spec": "6.4", "source": "x = if c then r else { a: 1 }\nx.a", "value": "1", "inputs": {"c": false, "r": {"a": 2}}}
+{"spec": "6.4", "source": "x = if c then r else { a: 1 }\nx.a", "failure": "invalid-input", "inputs": {"c": false, "r": {"a": 2, "b": 3}}}
+{"spec": "6.4", "source": "x = if c then r else { a: 1 }\nx.b", "error": "type-mismatch"}
+{"spec": "6.4", "source": "r.b\nx = if c then r else { a: 1 }\nx", "error": "type-mismatch"}
+{"spec": "6.4", "source": "if c then { a: 1 } else { b: 1 }", "error": "type-mismatch"}
+{"spec": "6.4", "source": "if c then { a: 1 } else { a: 1, b: 2 }", "error": "type-mismatch"}
+{"spec": "6.4", "source": "if c then a else b", "value": "1", "inputs": {"c": true, "a": 1, "b": 2}}
+{"spec": "6.4", "source": "r.a + 1\nr.a == \"s\"", "error": "type-mismatch"}
+{"spec": "6.4", "source": "{ ...r, x: 1 }.y", "value": "2", "inputs": {"r": {"y": 2}}}
+{"spec": "6.4", "source": "{ ...r, x: 1 }.x", "value": "1", "inputs": {"r": {"x": "other"}}}
+{"spec": "6.4", "source": "r = { a: 1 }\n{ ...r, b: 2 }.a", "value": "1"}
+{"spec": "6.4", "source": "{ ...{ a: 1 }, a: \"x\" }.a", "value": "\"x\""}
+{"spec": "6.4", "source": "{ a: 1, ...r, b: 2 }.b\nr.c", "error": "type-mismatch"}
+{"spec": "6.4", "source": "{ ...a, ...b }.x", "error": "type-mismatch"}
+{"spec": "6.4", "source": "{ x: 1, ...a }.y", "error": "type-mismatch"}
+{"spec": "6.4", "source": "{ ...1 }", "error": "type-mismatch"}
+{"spec": "6.4", "source": "{ ...\"a\" }", "error": "type-mismatch"}
+{"spec": "6.4", "source": "{ ...[1] }", "error": "type-mismatch"}
+{"spec": "6.4", "source": "{ ...a, x: 1 }\na == { y: 1 }", "value": "true", "inputs": {"a": {"y": 1}}}
+{"spec": "6.5", "source": "a * b", "failure": "invalid-input", "inputs": {"a": "x", "b": 1}}
+{"spec": "6.5", "source": "a * b", "value": "6", "inputs": {"a": 2, "b": 3}}
+{"spec": "6.5", "source": "a + 1", "value": "2", "inputs": {"a": 1}}
+{"spec": "6.5", "source": "a ?= 1\nb = a + 1\nb", "value": "6", "inputs": {"a": 5}}
+{"spec": "6.6", "source": "a + 1", "failure": "invalid-input", "inputs": {"a": "1"}}
+{"spec": "6.6", "source": "a + 1", "failure": "invalid-input", "inputs": {"a": true}}
+{"spec": "6.6", "source": "a + 1", "failure": "invalid-input", "inputs": {"a": null}}
+{"spec": "6.6", "source": "UPPER(a)", "failure": "invalid-input", "inputs": {"a": 1}}
+{"spec": "6.6", "source": "!a", "failure": "invalid-input", "inputs": {"a": 1}}
+{"spec": "6.6", "source": "!a", "failure": "invalid-input", "inputs": {"a": null}}
+{"spec": "6.6", "source": "a[0] + 1", "failure": "invalid-input", "inputs": {"a": [1, "x"]}}
+{"spec": "6.6", "source": "a[0] + 1", "value": "2", "inputs": {"a": [1, 2]}}
+{"spec": "6.6", "source": "x = a[0] + 1\n1", "failure": "missing-value", "inputs": {"a": []}}
+{"spec": "6.6", "source": "a[0] + 1", "failure": "invalid-input", "inputs": {"a": {"x": 1}}}
+{"spec": "6.6", "source": "missing + a", "failure": "missing-input", "inputs": {"a": "wrong type"}}
+{"spec": "6.6", "source": "r.a ?? 0", "value": "1", "inputs": {"r": {"a": 1}}}
+{"spec": "6.6", "source": "r.a ?? 0", "value": "0", "inputs": {"r": {}}}
+{"spec": "6.6", "source": "r.a ?? 0", "failure": "invalid-input", "inputs": {"r": {"a": "x"}}}
+{"spec": "6.6", "source": "a", "value": "1", "inputs": {"a": 1}}
+{"spec": "6.6", "source": "a", "value": "[1, 2]", "inputs": {"a": [1, 2]}}
+{"spec": "6.6", "source": "a", "value": "{\"x\": 1}", "inputs": {"a": {"x": 1}}}
+{"spec": "6.6", "source": "a", "value": "\"x\"", "inputs": {"a": "x"}}
+{"spec": "6.6", "source": "a", "value": "true", "inputs": {"a": true}}
+{"spec": "6.6", "source": "a", "value": "[]", "inputs": {"a": []}}
+{"spec": "6.6", "source": "a", "failure": "invalid-input", "inputs": {"a": [1, "x"]}}
+{"spec": "6.6", "source": "a", "failure": "invalid-input", "inputs": {"a": [[1], ["x"]]}}
+{"spec": "6.6", "source": "a", "value": "[[], [1]]", "inputs": {"a": [[], [1]]}}
+{"spec": "6.6", "source": "a", "failure": "invalid-input", "inputs": {"a": [{"x": 1}, {"y": 1}]}}
+{"spec": "6.6", "source": "a", "value": "[{\"x\": 1}, {\"x\": 2}]", "inputs": {"a": [{"x": 1}, {"x": 2}]}}
+{"spec": "6.6", "source": "a", "failure": "invalid-input", "inputs": {"a": null}}
+{"spec": "6.6", "source": "a", "failure": "invalid-input", "inputs": {"a": [null]}}
+{"spec": "6.6", "source": "[a, b]", "value": "[1, 2]", "inputs": {"a": 1, "b": 2}}
+{"spec": "6.6", "source": "[a, b]", "failure": "invalid-input", "inputs": {"a": 1, "b": "x"}}
+{"spec": "6.6", "source": "x = UPPER(k)\nr[k] + 1", "value": "2", "inputs": {"r": {"a": 1}, "k": "a"}}
+{"spec": "6.6", "source": "x = UPPER(k)\nr[k] + 1", "failure": "invalid-input", "inputs": {"r": {"a": "x"}, "k": "a"}}
+{"spec": "6.6", "source": "x = UPPER(k)\nr[k] + 1", "value": "2", "inputs": {"r": {"a": 1, "b": 2}, "k": "a"}}
+{"spec": "6.6", "source": "x = UPPER(k)\nr[k] + 1", "failure": "invalid-input", "inputs": {"r": {"a": 1, "b": "x"}, "k": "a"}}

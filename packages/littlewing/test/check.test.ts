@@ -920,7 +920,8 @@ describe('order, at random', () => {
 			return copy;
 		};
 
-		for (let i = 0; i < 3000; i++) {
+		const rounds = Number(process.env.FUZZ_ROUNDS ?? 3000);
+		for (let i = 0; i < rounds; i++) {
 			const chosen = Array.from(
 				{ length: 2 + random(5) },
 				() => POOL[random(POOL.length)] as string,

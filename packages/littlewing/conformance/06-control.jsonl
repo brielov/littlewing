@@ -1,0 +1,55 @@
+{"spec": "5.8", "source": "if true then 1 else 2", "value": "1"}
+{"spec": "5.8", "source": "if false then 1 else 2", "value": "2"}
+{"spec": "5.8", "source": "if 1 > 2 then \"a\" else \"b\"", "value": "\"b\""}
+{"spec": "5.8", "source": "1 + if false then 2 else 3 + 4", "value": "8"}
+{"spec": "5.8", "source": "if true then 1 else 2 + 3", "value": "1"}
+{"spec": "5.8", "source": "if false then 1 else if false then 2 else 3", "value": "3"}
+{"spec": "5.8", "source": "[if true then 1 else 2]", "value": "[1]"}
+{"spec": "5.8", "source": "if a then 1 else 1 / 0", "value": "1", "inputs": {"a": true}}
+{"spec": "5.8", "source": "if a then 1 else 1 / b", "failure": "division-by-zero", "inputs": {"a": false, "b": 0}}
+{"spec": "5.8", "source": "if true then 1 else 1 / 0", "value": "1"}
+{"spec": "5.8", "source": "if 1 then 2 else 3", "error": "type-mismatch"}
+{"spec": "5.8", "source": "if \"a\" then 2 else 3", "error": "type-mismatch"}
+{"spec": "5.8", "source": "if true then 1 else \"a\"", "error": "type-mismatch"}
+{"spec": "5.8", "source": "if true then 1", "error": "unexpected-token"}
+{"spec": "5.8", "source": "if true 1 else 2", "error": "unexpected-token"}
+{"spec": "5.8", "source": "if then 1 else 2", "error": "unexpected-token"}
+{"spec": "5.9", "source": "for x in [1, 2] then x * 2", "value": "[2, 4]"}
+{"spec": "5.9", "source": "for x in 1..=3 then x", "value": "[1, 2, 3]"}
+{"spec": "5.9", "source": "for x in [] then x", "value": "[]"}
+{"spec": "5.9", "source": "for c in \"a😀\" then c", "value": "[\"a\", \"😀\"]"}
+{"spec": "5.9", "source": "for c in \"\" then c", "value": "[]"}
+{"spec": "5.9", "source": "for x in 1..=4 when x % 2 == 0 then x", "value": "[2, 4]"}
+{"spec": "5.9", "source": "for x in [1] when false then x", "value": "[]"}
+{"spec": "5.9", "source": "for x in 1..=4 into acc = 0 then acc + x", "value": "10"}
+{"spec": "5.9", "source": "for x in [] into acc = 5 then acc + x", "value": "5"}
+{"spec": "5.9", "source": "for x in 1..=4 when x > 2 into acc = 0 then acc + x", "value": "7"}
+{"spec": "5.9", "source": "for x in 1..=3 when acc == 0 into acc = 0 then x", "value": "1"}
+{"spec": "5.9", "source": "for c in \"ab\" into s = \"\" then c + s", "value": "\"ba\""}
+{"spec": "5.9", "source": "for x in [1, 2] then for y in [10, 20] then x * y", "value": "[[10, 20], [20, 40]]"}
+{"spec": "5.9", "source": "a = for x in [1] then x\nb = for x in [2] then x\na + b", "value": "[1, 2]"}
+{"spec": "5.9", "source": "for x in [1, 2] then { x }", "value": "[{\"x\": 1}, {\"x\": 2}]"}
+{"spec": "5.9", "source": "for x in (for y in [1] then y) then x", "value": "[1]"}
+{"spec": "5.9", "source": "for y in (for x in [1] then x) then for x in [2] then x + y", "value": "[[3]]"}
+{"spec": "5.9", "source": "for x in [3] into a = (for y in [1] into b = 0 then b + y) then a + x", "value": "4"}
+{"spec": "5.9", "source": "for x in [1] into x = 0 then x", "error": "duplicate-binding"}
+{"spec": "5.9", "source": "x = 1\nfor x in [1] then x", "error": "duplicate-binding"}
+{"spec": "5.9", "source": "a = 1\nfor x in [1] into a = 0 then a", "error": "duplicate-binding"}
+{"spec": "5.9", "source": "for x in [1] then for x in [2] then x", "error": "duplicate-binding"}
+{"spec": "5.9", "source": "for x in [1] into a = 0 then for y in [1] into a = 0 then a", "error": "duplicate-binding"}
+{"spec": "5.9", "source": "b = x + 1\nfor x in [1] then x", "error": "duplicate-binding"}
+{"spec": "5.9", "source": "for x in [x] then x", "error": "duplicate-binding"}
+{"spec": "5.9", "source": "for x in [1] into a = x then a", "error": "duplicate-binding"}
+{"spec": "5.9", "source": "for x in [1] into a = a then a", "error": "duplicate-binding"}
+{"spec": "5.9", "source": "for x in 1 then x", "error": "type-mismatch"}
+{"spec": "5.9", "source": "for x in true then x", "error": "type-mismatch"}
+{"spec": "5.9", "source": "for x in { a: 1 } then x", "error": "type-mismatch"}
+{"spec": "5.9", "source": "for x in [1] when 1 then x", "error": "type-mismatch"}
+{"spec": "5.9", "source": "for x in [1] into a = \"\" then a + x", "error": "type-mismatch"}
+{"spec": "5.9", "source": "for x in [1] into a = 0 then \"s\"", "error": "type-mismatch"}
+{"spec": "5.9", "source": "for x [1] then x", "error": "unexpected-token"}
+{"spec": "5.9", "source": "for x in [1] x", "error": "unexpected-token"}
+{"spec": "5.9", "source": "for x in [1] into a then a", "error": "unexpected-token"}
+{"spec": "5.9", "source": "for x in a then x + 1", "value": "[2]", "inputs": {"a": [1]}}
+{"spec": "5.9", "source": "for x in a then 1 / x", "failure": "division-by-zero", "inputs": {"a": [1, 0]}}
+{"spec": "5.9", "source": "for x in a when x != 0 then 1 / x", "value": "[1]", "inputs": {"a": [1, 0]}}

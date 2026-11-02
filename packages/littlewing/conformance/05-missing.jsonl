@@ -1,0 +1,48 @@
+{"spec": "5.6", "source": "a ?? \"none\"", "value": "\"none\""}
+{"spec": "5.6", "source": "o.c.t ?? \"none\"", "value": "\"none\""}
+{"spec": "5.6", "source": "o.c.t ?? \"none\"", "value": "\"none\"", "inputs": {}}
+{"spec": "5.6", "source": "o.c.t ?? \"none\"", "value": "\"none\"", "inputs": {"o": {}}}
+{"spec": "5.6", "source": "o.c.t ?? \"none\"", "value": "\"none\"", "inputs": {"o": {"c": {}}}}
+{"spec": "5.6", "source": "o.c.t ?? \"none\"", "value": "\"gold\"", "inputs": {"o": {"c": {"t": "gold"}}}}
+{"spec": "5.6", "source": "a[5] ?? 9", "value": "9", "inputs": {"a": [1]}}
+{"spec": "5.6", "source": "a[0] ?? 9", "value": "1", "inputs": {"a": [1]}}
+{"spec": "5.6", "source": "a[-9] ?? 9", "value": "9", "inputs": {"a": [1]}}
+{"spec": "5.6", "source": "a[i] ?? 9", "value": "9", "inputs": {"a": [1], "i": 3}}
+{"spec": "5.6", "source": "a = [1]\na[5] ?? 9", "value": "9"}
+{"spec": "5.6", "source": "s = \"ab\"\ns[5] ?? \"z\"", "value": "\"z\""}
+{"spec": "5.6", "source": "a[0].b ?? 9", "value": "9", "inputs": {"a": [{}]}}
+{"spec": "5.6", "source": "a[0].b ?? 9", "value": "1", "inputs": {"a": [{"b": 1}]}}
+{"spec": "5.6", "source": "a.b[0] ?? 9", "value": "9", "inputs": {"a": {}}}
+{"spec": "5.6", "source": "a.b[0] ?? 9", "value": "9", "inputs": {"a": {"b": []}}}
+{"spec": "5.6", "source": "a ?? 1", "value": "0", "inputs": {"a": 0}}
+{"spec": "5.6", "source": "a ?? \"x\"", "value": "\"\"", "inputs": {"a": ""}}
+{"spec": "5.6", "source": "a ?? true", "value": "false", "inputs": {"a": false}}
+{"spec": "5.6", "source": "a ?? [1]", "value": "[]", "inputs": {"a": []}}
+{"spec": "5.6", "source": "a[1 / b] ?? 9", "failure": "division-by-zero", "inputs": {"a": [1], "b": 0}}
+{"spec": "5.6", "source": "a.c[1 / b] ?? 9", "value": "9", "inputs": {"a": {}, "b": 0}}
+{"spec": "5.6", "source": "a[b.c] ?? 9", "failure": "missing-input", "inputs": {"a": [1]}}
+{"spec": "5.6", "source": "c = [1]\nc[a ?? 0]", "value": "1"}
+{"spec": "5.6", "source": "c = [1, 2]\nc[a ?? 0]", "value": "2", "inputs": {"a": 1}}
+{"spec": "5.6", "source": "(a) ?? 1", "error": "invalid-fallback"}
+{"spec": "5.6", "source": "(a).b ?? 1", "error": "invalid-fallback"}
+{"spec": "5.6", "source": "(a.b) ?? 1", "error": "invalid-fallback"}
+{"spec": "5.6", "source": "1 ?? 2", "error": "invalid-fallback"}
+{"spec": "5.6", "source": "\"a\" ?? \"b\"", "error": "invalid-fallback"}
+{"spec": "5.6", "source": "[1][0] ?? 2", "error": "invalid-fallback"}
+{"spec": "5.6", "source": "STR(1) ?? \"x\"", "error": "invalid-fallback"}
+{"spec": "5.6", "source": "(a + b) ?? 1", "error": "invalid-fallback"}
+{"spec": "5.6", "source": "(a)[0] ?? 1", "error": "invalid-fallback"}
+{"spec": "5.6", "source": "{ a: 1 }.a ?? 2", "error": "invalid-fallback"}
+{"spec": "5.6", "source": "-a ?? 1", "error": "invalid-fallback"}
+{"spec": "5.6", "source": "c = [1]\nc[(0)] ?? 9", "value": "1"}
+{"spec": "5.6", "source": "a ?? \"x\" == 1", "error": "type-mismatch"}
+{"spec": "5.6", "source": "r = { a: 1 }\nr.b ?? 2", "error": "type-mismatch"}
+{"spec": "5.6", "source": "a = 1\na ?? \"x\"", "error": "type-mismatch"}
+{"spec": "5.6", "source": "a ?? 1", "failure": "invalid-input", "inputs": {"a": "x"}}
+{"spec": "5.6", "source": "a[i]", "failure": "missing-value", "inputs": {"a": [], "i": 0}}
+{"spec": "5.6", "source": "x = UPPER(k)\nr[k]", "failure": "missing-value", "inputs": {"r": {}, "k": "x"}}
+{"spec": "5.6", "source": "r[k]", "failure": "invalid-input", "inputs": {"r": {}, "k": "x"}}
+{"spec": "5.6", "source": "a.b", "failure": "missing-input"}
+{"spec": "5.6", "source": "a.b", "failure": "invalid-input", "inputs": {"a": {}}}
+{"spec": "5.6", "source": "x = a ?? 1\ny = b ?? x\ny", "value": "1"}
+{"spec": "5.6", "source": "[a ?? 1, a ?? 2]", "value": "[5, 5]", "inputs": {"a": 5}}

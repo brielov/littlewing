@@ -1,0 +1,4 @@
+{"spec": "3.1", "source": "\"\ud800\"", "error": "invalid-character"}
+{"spec": "3.1", "source": "1 // \ud800", "error": "invalid-character"}
+{"spec": "3.1", "source": "\"\udc00a\"", "error": "invalid-character"}
+{"spec": "3.1", "source": "1\ud800", "error": "invalid-character"}

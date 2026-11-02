@@ -1,0 +1,223 @@
+{"spec": "5.7", "source": "1 + 2 * 3", "value": "7"}
+{"spec": "5.7", "source": "(1 + 2) * 3", "value": "9"}
+{"spec": "5.7", "source": "2 * 3 + 4", "value": "10"}
+{"spec": "5.7", "source": "10 - 2 - 3", "value": "5"}
+{"spec": "5.7", "source": "2 ^ 3 ^ 2", "value": "512"}
+{"spec": "5.7", "source": "(2 ^ 3) ^ 2", "value": "64"}
+{"spec": "5.7", "source": "-2 ^ 2", "value": "-4"}
+{"spec": "5.7", "source": "(-2) ^ 2", "value": "4"}
+{"spec": "5.7", "source": "2 ^ -1 * 3", "value": "1.5"}
+{"spec": "5.7", "source": "2 ^ -2", "value": "0.25"}
+{"spec": "5.7", "source": "- - 1", "value": "1"}
+{"spec": "5.7", "source": "--1", "value": "1"}
+{"spec": "5.7", "source": "!!true", "value": "true"}
+{"spec": "5.7", "source": "!false", "value": "true"}
+{"spec": "5.7", "source": "-(1 + 2)", "value": "-3"}
+{"spec": "5.7", "source": "8 / 2 / 2", "value": "2"}
+{"spec": "5.7", "source": "8 / -2 * 4", "value": "-16"}
+{"spec": "5.7", "source": "7 % 3", "value": "1"}
+{"spec": "5.7", "source": "2 * 7 % 3", "value": "2"}
+{"spec": "5.7", "source": "1 + 2 == 3", "value": "true"}
+{"spec": "5.7", "source": "1 < 2 == true", "value": "true"}
+{"spec": "5.7", "source": "true == (1 < 2)", "value": "true"}
+{"spec": "5.7", "source": "1 == 1 == true", "value": "true"}
+{"spec": "5.7", "source": "1 < 2 && 2 < 3", "value": "true"}
+{"spec": "5.7", "source": "false && false || true", "value": "true"}
+{"spec": "5.7", "source": "true || false && false", "value": "true"}
+{"spec": "5.7", "source": "!true || true", "value": "true"}
+{"spec": "5.7", "source": "1..2 + 1", "value": "[1, 2]"}
+{"spec": "5.7", "source": "0..1 + 1 == [0, 1]", "value": "true"}
+{"spec": "5.7", "source": "1 + 2 |> STR", "value": "\"3\""}
+{"spec": "5.7", "source": "[1, 2] == [1, 2] && true", "value": "true"}
+{"spec": "5.7", "source": "a ?? 1 + 2", "value": "3"}
+{"spec": "5.7", "source": "a ?? 1 == 1", "value": "true"}
+{"spec": "5.7", "source": "1 == a ?? 1", "value": "true"}
+{"spec": "5.7", "source": "a ?? b ?? 3", "value": "3"}
+{"spec": "5.7", "source": "a ?? b ?? 3", "value": "2", "inputs": {"b": 2}}
+{"spec": "5.7", "source": "1 + (a ?? 2)", "value": "3"}
+{"spec": "5.7", "source": "1 < 2 < 3", "error": "type-mismatch"}
+{"spec": "5.7", "source": "1..2..3", "error": "unexpected-token"}
+{"spec": "5.7", "source": "0.1 + 0.2", "value": "0.3"}
+{"spec": "5.7", "source": "4.35 * 100", "value": "435"}
+{"spec": "5.7", "source": "10 / 3", "value": "3.333333333333333333333333333333333"}
+{"spec": "5.7", "source": "1 / 3 * 3", "value": "0.9999999999999999999999999999999999"}
+{"spec": "5.7", "source": "2 ^ 0.5", "value": "1.414213562373095048801688724209698"}
+{"spec": "5.7", "source": "1 - 0.9", "value": "0.1"}
+{"spec": "5.7", "source": "0.1 * 3", "value": "0.3"}
+{"spec": "5.7", "source": "1 / 4", "value": "0.25"}
+{"spec": "5.7", "source": "0 ^ 0", "value": "1"}
+{"spec": "5.7", "source": "5 ^ 0", "value": "1"}
+{"spec": "5.7", "source": "0.5 ^ 0", "value": "1"}
+{"spec": "5.7", "source": "0 ^ 5", "value": "0"}
+{"spec": "5.7", "source": "(-2) ^ 3", "value": "-8"}
+{"spec": "5.7", "source": "(-8) ^ 3", "value": "-512"}
+{"spec": "5.7", "source": "4 ^ 0.5", "value": "2"}
+{"spec": "5.7", "source": "-7 % 2", "value": "-1"}
+{"spec": "5.7", "source": "7 % -2", "value": "1"}
+{"spec": "5.7", "source": "-7 % -2", "value": "-1"}
+{"spec": "5.7", "source": "7.5 % 2", "value": "1.5"}
+{"spec": "5.7", "source": "-7.5 % 2", "value": "-1.5"}
+{"spec": "5.7", "source": "5 % 5", "value": "0"}
+{"spec": "5.7", "source": "0 % 5", "value": "0"}
+{"spec": "5.7", "source": "1e40 % 7", "value": "4"}
+{"spec": "5.7", "source": "1 % 0.3", "value": "0.1"}
+{"spec": "5.7", "source": "1 / 0", "error": "division-by-zero"}
+{"spec": "5.7", "source": "0 / 0", "error": "division-by-zero"}
+{"spec": "5.7", "source": "1 % 0", "error": "modulo-by-zero"}
+{"spec": "5.7", "source": "(-8) ^ 0.5", "error": "invalid-power"}
+{"spec": "5.7", "source": "0 ^ -1", "error": "invalid-power"}
+{"spec": "5.7", "source": "(-1) ^ 0.5", "error": "invalid-power"}
+{"spec": "5.7", "source": "a / b", "failure": "division-by-zero", "inputs": {"a": 1, "b": 0}}
+{"spec": "5.7", "source": "a % b", "failure": "modulo-by-zero", "inputs": {"a": 1, "b": 0}}
+{"spec": "5.7", "source": "a ^ b", "failure": "invalid-power", "inputs": {"a": -8, "b": 0.5}}
+{"spec": "5.7", "source": "a ^ b", "failure": "invalid-power", "inputs": {"a": 0, "b": -1}}
+{"spec": "4.1", "source": "9.999999999999999999999999999999999e6144 * 10", "error": "overflow"}
+{"spec": "4.1", "source": "9.999999999999999999999999999999999e6144 + 9.999999999999999999999999999999999e6144", "error": "overflow"}
+{"spec": "4.1", "source": "1e6144 * 10", "error": "overflow"}
+{"spec": "4.1", "source": "10 ^ 6145", "error": "overflow"}
+{"spec": "4.1", "source": "(-10) ^ 6145", "error": "overflow"}
+{"spec": "4.1", "source": "1 / 1e-6176", "error": "overflow"}
+{"spec": "4.1", "source": "1e6144 * 9", "value": "9e6144"}
+{"spec": "4.1", "source": "9.999999999999999999999999999999999e6144 + 1", "value": "9.999999999999999999999999999999999e6144"}
+{"spec": "4.1", "source": "10 ^ 6144", "value": "1e6144"}
+{"spec": "4.1", "source": "1e-6176 / 2", "value": "0"}
+{"spec": "4.1", "source": "3e-6176 / 2", "value": "2e-6176"}
+{"spec": "4.1", "source": "(0 - 1e-6176) / 2", "value": "0"}
+{"spec": "4.1", "source": "1e-6176 * 1e-6176", "value": "0"}
+{"spec": "4.1", "source": "1e-6176 + 1e-6176", "value": "2e-6176"}
+{"spec": "4.1", "source": "1e-6143 / 10", "value": "1e-6144"}
+{"spec": "4.1", "source": "1.000000000000000000000000000000001e-6143 / 10", "value": "1e-6144"}
+{"spec": "4.1", "source": "1000000000000000000000000000000000 + 0.5", "value": "1000000000000000000000000000000000"}
+{"spec": "4.1", "source": "1000000000000000000000000000000001 + 0.5", "value": "1000000000000000000000000000000002"}
+{"spec": "4.1", "source": "9999999999999999999999999999999999 + 1", "value": "1e34"}
+{"spec": "4.1", "source": "9999999999999999999999999999999999 + 2", "value": "1e34"}
+{"spec": "4.1", "source": "1e34 + 1", "value": "1e34"}
+{"spec": "4.1", "source": "1e34 + 5", "value": "1e34"}
+{"spec": "4.1", "source": "1e34 + 6", "value": "1.000000000000000000000000000000001e34"}
+{"spec": "4.1", "source": "9007199254740991 + 2", "value": "9007199254740993"}
+{"spec": "4.1", "source": "94906267 * 94906267", "value": "9007199515875289"}
+{"spec": "4.1", "source": "9007199254740993 - 1", "value": "9007199254740992"}
+{"spec": "4.1", "source": "-9007199254740993 + 1", "value": "-9007199254740992"}
+{"spec": "4.1", "source": "1.5 == 1.50", "value": "true"}
+{"spec": "4.1", "source": "15e-1 == 1.5", "value": "true"}
+{"spec": "4.1", "source": "1e3 == 1000", "value": "true"}
+{"spec": "4.1", "source": "STR(15e-1)", "value": "\"1.5\""}
+{"spec": "4.1", "source": "0 * -1", "value": "0"}
+{"spec": "4.1", "source": "-0", "value": "0"}
+{"spec": "4.1", "source": "0 - 0", "value": "0"}
+{"spec": "4.1", "source": "STR(0 * -5)", "value": "\"0\""}
+{"spec": "5.7", "source": "1 + \"a\"", "error": "type-mismatch"}
+{"spec": "5.7", "source": "\"a\" + 1", "error": "type-mismatch"}
+{"spec": "5.7", "source": "true + true", "error": "type-mismatch"}
+{"spec": "5.7", "source": "[1] + 1", "error": "type-mismatch"}
+{"spec": "5.7", "source": "[1] + [\"a\"]", "error": "type-mismatch"}
+{"spec": "5.7", "source": "\"a\" - \"b\"", "error": "type-mismatch"}
+{"spec": "5.7", "source": "true - false", "error": "type-mismatch"}
+{"spec": "5.7", "source": "[1] - [1]", "error": "type-mismatch"}
+{"spec": "5.7", "source": "\"a\" * 2", "error": "type-mismatch"}
+{"spec": "5.7", "source": "2 * \"a\"", "error": "type-mismatch"}
+{"spec": "5.7", "source": "\"a\" / 2", "error": "type-mismatch"}
+{"spec": "5.7", "source": "2 % \"a\"", "error": "type-mismatch"}
+{"spec": "5.7", "source": "2 ^ \"a\"", "error": "type-mismatch"}
+{"spec": "5.7", "source": "-\"a\"", "error": "type-mismatch"}
+{"spec": "5.7", "source": "-true", "error": "type-mismatch"}
+{"spec": "5.7", "source": "!1", "error": "type-mismatch"}
+{"spec": "5.7", "source": "!\"a\"", "error": "type-mismatch"}
+{"spec": "5.7", "source": "{ a: 1 } + { a: 2 }", "error": "type-mismatch"}
+{"spec": "5.7", "source": "{ a: 1 } - { a: 2 }", "error": "type-mismatch"}
+{"spec": "5.7", "source": "\"a\" + \"b\"", "value": "\"ab\""}
+{"spec": "5.7", "source": "\"\" + \"\"", "value": "\"\""}
+{"spec": "5.7", "source": "[1] + [2]", "value": "[1, 2]"}
+{"spec": "5.7", "source": "[] + []", "value": "[]"}
+{"spec": "5.7", "source": "[[1]] + [[2]]", "value": "[[1], [2]]"}
+{"spec": "5.7", "source": "1 == 1", "value": "true"}
+{"spec": "5.7", "source": "1 != 1", "value": "false"}
+{"spec": "5.7", "source": "1 == 2", "value": "false"}
+{"spec": "5.7", "source": "1 != 2", "value": "true"}
+{"spec": "5.7", "source": "\"a\" == \"a\"", "value": "true"}
+{"spec": "5.7", "source": "\"a\" != \"b\"", "value": "true"}
+{"spec": "5.7", "source": "true == true", "value": "true"}
+{"spec": "5.7", "source": "true != false", "value": "true"}
+{"spec": "5.7", "source": "[1, 2] == [1, 2]", "value": "true"}
+{"spec": "5.7", "source": "[1, 2] == [2, 1]", "value": "false"}
+{"spec": "5.7", "source": "[1] == [1, 2]", "value": "false"}
+{"spec": "5.7", "source": "[] == []", "value": "true"}
+{"spec": "5.7", "source": "[[1]] == [[1]]", "value": "true"}
+{"spec": "5.7", "source": "{ a: 1 } == { a: 1 }", "value": "true"}
+{"spec": "5.7", "source": "{ a: 1, b: 2 } == { b: 2, a: 1 }", "value": "true"}
+{"spec": "5.7", "source": "{ a: 1 } != { a: 2 }", "value": "true"}
+{"spec": "5.7", "source": "{} == {}", "value": "true"}
+{"spec": "5.7", "source": "[{ a: [1] }] == [{ a: [1] }]", "value": "true"}
+{"spec": "5.7", "source": "0.1 + 0.2 == 0.3", "value": "true"}
+{"spec": "5.7", "source": "\"\" == \"\"", "value": "true"}
+{"spec": "5.7", "source": "1 == \"1\"", "error": "type-mismatch"}
+{"spec": "5.7", "source": "\"1\" == 1", "error": "type-mismatch"}
+{"spec": "5.7", "source": "1 == true", "error": "type-mismatch"}
+{"spec": "5.7", "source": "[1] == 1", "error": "type-mismatch"}
+{"spec": "5.7", "source": "[1] == [\"a\"]", "error": "type-mismatch"}
+{"spec": "5.7", "source": "{ a: 1 } == { b: 1 }", "error": "type-mismatch"}
+{"spec": "5.7", "source": "{ a: 1 } == { a: \"x\" }", "error": "type-mismatch"}
+{"spec": "5.7", "source": "{ a: 1 } == { a: 1, b: 2 }", "error": "type-mismatch"}
+{"spec": "5.7", "source": "1 != \"1\"", "error": "type-mismatch"}
+{"spec": "5.7", "source": "1 < 2", "value": "true"}
+{"spec": "5.7", "source": "2 < 1", "value": "false"}
+{"spec": "5.7", "source": "1 <= 1", "value": "true"}
+{"spec": "5.7", "source": "1 >= 1", "value": "true"}
+{"spec": "5.7", "source": "2 > 1", "value": "true"}
+{"spec": "5.7", "source": "1 > 1", "value": "false"}
+{"spec": "5.7", "source": "-1 < 0", "value": "true"}
+{"spec": "5.7", "source": "1.5 < 1.51", "value": "true"}
+{"spec": "5.7", "source": "1e40 > 1e39", "value": "true"}
+{"spec": "5.7", "source": "\"a\" < \"b\"", "value": "true"}
+{"spec": "5.7", "source": "\"b\" > \"a\"", "value": "true"}
+{"spec": "5.7", "source": "\"a\" < \"a\"", "value": "false"}
+{"spec": "5.7", "source": "\"a\" <= \"a\"", "value": "true"}
+{"spec": "5.7", "source": "\"a\" < \"ab\"", "value": "true"}
+{"spec": "5.7", "source": "\"ab\" > \"a\"", "value": "true"}
+{"spec": "5.7", "source": "\"\" < \"a\"", "value": "true"}
+{"spec": "5.7", "source": "\"Z\" < \"a\"", "value": "true"}
+{"spec": "5.7", "source": "\"\\u{10000}\" > \"\\u{FFFF}\"", "value": "true"}
+{"spec": "5.7", "source": "\"\\u{E000}\" < \"\\u{10000}\"", "value": "true"}
+{"spec": "5.7", "source": "\"é\" > \"z\"", "value": "true"}
+{"spec": "5.7", "source": "true < false", "error": "type-mismatch"}
+{"spec": "5.7", "source": "[1] < [2]", "error": "type-mismatch"}
+{"spec": "5.7", "source": "{ a: 1 } < { a: 2 }", "error": "type-mismatch"}
+{"spec": "5.7", "source": "1 < \"a\"", "error": "type-mismatch"}
+{"spec": "5.7", "source": "\"a\" < 1", "error": "type-mismatch"}
+{"spec": "5.7", "source": "true <= true", "error": "type-mismatch"}
+{"spec": "5.7", "source": "true && true", "value": "true"}
+{"spec": "5.7", "source": "true && false", "value": "false"}
+{"spec": "5.7", "source": "false && true", "value": "false"}
+{"spec": "5.7", "source": "true || false", "value": "true"}
+{"spec": "5.7", "source": "false || false", "value": "false"}
+{"spec": "5.7", "source": "false && 1 / 0 == 1", "value": "false"}
+{"spec": "5.7", "source": "true || 1 / 0 == 1", "value": "true"}
+{"spec": "5.7", "source": "a && 1 / b == 1", "failure": "division-by-zero", "inputs": {"a": true, "b": 0}}
+{"spec": "5.7", "source": "a && 1 / b == 1", "value": "false", "inputs": {"a": false, "b": 0}}
+{"spec": "5.7", "source": "a || 1 / b == 1", "value": "true", "inputs": {"a": true, "b": 0}}
+{"spec": "5.7", "source": "a || 1 / b == 1", "failure": "division-by-zero", "inputs": {"a": false, "b": 0}}
+{"spec": "5.7", "source": "1 && true", "error": "type-mismatch"}
+{"spec": "5.7", "source": "true && 1", "error": "type-mismatch"}
+{"spec": "5.7", "source": "\"a\" || true", "error": "type-mismatch"}
+{"spec": "5.7", "source": "true || \"a\"", "error": "type-mismatch"}
+{"spec": "5.7", "source": "1..4", "value": "[1, 2, 3]"}
+{"spec": "5.7", "source": "1..=3", "value": "[1, 2, 3]"}
+{"spec": "5.7", "source": "3..3", "value": "[]"}
+{"spec": "5.7", "source": "3..=3", "value": "[3]"}
+{"spec": "5.7", "source": "-2..1", "value": "[-2, -1, 0]"}
+{"spec": "5.7", "source": "-1..=0", "value": "[-1, 0]"}
+{"spec": "5.7", "source": "1.0..3", "value": "[1, 2]"}
+{"spec": "5.7", "source": "0..0", "value": "[]"}
+{"spec": "5.7", "source": "9007199254740992..9007199254740995", "value": "[9007199254740992, 9007199254740993, 9007199254740994]"}
+{"spec": "5.7", "source": "1e33..(1e33 + 2)", "value": "[1000000000000000000000000000000000, 1000000000000000000000000000000001]"}
+{"spec": "5.7", "source": "4..1", "error": "invalid-range"}
+{"spec": "5.7", "source": "1..=0", "error": "invalid-range"}
+{"spec": "5.7", "source": "1.5..3", "error": "not-an-integer"}
+{"spec": "5.7", "source": "1..2.5", "error": "not-an-integer"}
+{"spec": "5.7", "source": "2.5..1", "error": "not-an-integer"}
+{"spec": "5.7", "source": "1e34..(1e34 + 20)", "error": "invalid-range"}
+{"spec": "5.7", "source": "\"a\"..1", "error": "type-mismatch"}
+{"spec": "5.7", "source": "1..true", "error": "type-mismatch"}
+{"spec": "5.7", "source": "(1e34 - 2)..=1e34", "value": "[9999999999999999999999999999999998, 9999999999999999999999999999999999, 1e34]"}
+{"spec": "5.7", "source": "a..b", "failure": "not-an-integer", "inputs": {"a": 1.5, "b": 3}}
+{"spec": "5.7", "source": "a..b", "failure": "invalid-range", "inputs": {"a": 4, "b": 1}}

@@ -19,8 +19,7 @@ Work remaining before v3 ships. The engine overhaul is done, on the `v3` branch.
    - [x] M6: `compile`, `evaluate`, `run`, and crossing the boundary
    - [x] M7: Core functions, `littlewing/std`, `littlewing/temporal`, `littlewing/clock`
    - [x] Swap: delete the old pipeline, export the new API, and port the consumer tests and playground to it, in one commit as the lint hook covers them all
-   - [ ] M8: The conformance suite and fuzzing, including solving order
-     - Old coverage nothing replaces yet, in git history: the random-program property of `optimizer-contract.test.ts`, that folding preserves value, failure and host calls; `UNIQUE` against a quadratic scan on random arrays, and values that print alike, from `stdlib.test.ts`; order, once-only evaluation and failure spans of pipes with host functions, from `pipe.test.ts`; datetime variants of each date function, from `date-utils`, `time` and `datetime-full`, now with declared `inputs`
+   - [x] M8: The conformance suite and fuzzing, including solving order
    - [ ] M9: Playground, docs and packaging
 4. [ ] Release v3.0.0, following AGENTS.md
 

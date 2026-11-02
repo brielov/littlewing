@@ -1,0 +1,82 @@
+{"spec": "5.3", "source": "true", "value": "true"}
+{"spec": "5.3", "source": "false", "value": "false"}
+{"spec": "5.3", "source": "[1, 2, 3]", "value": "[1, 2, 3]"}
+{"spec": "5.3", "source": "[1, 2,]", "value": "[1, 2]"}
+{"spec": "5.3", "source": "[]", "value": "[]"}
+{"spec": "5.3", "source": "[[]]", "value": "[[]]"}
+{"spec": "5.3", "source": "[[], [1]]", "value": "[[], [1]]"}
+{"spec": "5.3", "source": "[] + [1]", "value": "[1]"}
+{"spec": "5.3", "source": "[1, \"a\"]", "error": "type-mismatch"}
+{"spec": "5.3", "source": "[1, [2]]", "error": "type-mismatch"}
+{"spec": "5.3", "source": "[true, 1]", "error": "type-mismatch"}
+{"spec": "5.3", "source": "[,]", "error": "unexpected-token"}
+{"spec": "5.3", "source": "[1,,2]", "error": "unexpected-token"}
+{"spec": "5.4", "source": "{ a: 1 }", "value": "{\"a\": 1}"}
+{"spec": "5.4", "source": "{}", "value": "{}"}
+{"spec": "5.4", "source": "{ a: 1, }", "value": "{\"a\": 1}"}
+{"spec": "5.4", "source": "{ \"tax id\": 12 }", "value": "{\"tax id\": 12}"}
+{"spec": "5.4", "source": "a = 1\n{ a }", "value": "{\"a\": 1}"}
+{"spec": "5.4", "source": "a = 1\n{ a, b: 2 }", "value": "{\"a\": 1, \"b\": 2}"}
+{"spec": "5.4", "source": "i = { p: 2, q: 3 }\n{ ...i, t: i.p * i.q }", "value": "{\"p\": 2, \"q\": 3, \"t\": 6}"}
+{"spec": "5.4", "source": "{ a: 1, ...{ a: 2 } }", "value": "{\"a\": 2}"}
+{"spec": "5.4", "source": "{ ...{ a: 2 }, a: 1 }", "value": "{\"a\": 1}"}
+{"spec": "5.4", "source": "{ ...{ a: 1 }, ...{ a: 2, b: 3 } }", "value": "{\"a\": 2, \"b\": 3}"}
+{"spec": "5.4", "source": "{ ...{ a: 1 } }", "value": "{\"a\": 1}"}
+{"spec": "5.4", "source": "{ ...{} }", "value": "{}"}
+{"spec": "5.4", "source": "{ a: 1, ...{ a: \"x\" } }.a", "value": "\"x\""}
+{"spec": "5.4", "source": "{ if: 1, then: 2 }.then", "value": "2"}
+{"spec": "5.4", "source": "{ a: 1, a: 2 }", "error": "duplicate-field"}
+{"spec": "5.4", "source": "{ a: 1, \"a\": 2 }", "error": "duplicate-field"}
+{"spec": "5.4", "source": "{ if }", "error": "unexpected-token"}
+{"spec": "5.4", "source": "{ \"a\" }", "error": "unexpected-token"}
+{"spec": "5.4", "source": "{ \"#{1}\": 2 }", "error": "unexpected-token"}
+{"spec": "5.4", "source": "{ a: 1 b: 2 }", "error": "unexpected-token"}
+{"spec": "5.4", "source": "a = 1\n{ a, a }", "error": "duplicate-field"}
+{"spec": "5.4", "source": "a = 1\n{ a, a: 2 }", "error": "duplicate-field"}
+{"spec": "5.4", "source": "{ a: { b: { c: 1 } } }.a.b.c", "value": "1"}
+{"spec": "5.4", "source": "{ a: [1, 2] }.a[1]", "value": "2"}
+{"spec": "5.4", "source": "[{ a: 1 }][0].a", "value": "1"}
+{"spec": "5.5", "source": "[1, 2, 3][0]", "value": "1"}
+{"spec": "5.5", "source": "[1, 2, 3][2]", "value": "3"}
+{"spec": "5.5", "source": "[1, 2, 3][-1]", "value": "3"}
+{"spec": "5.5", "source": "[1, 2, 3][-3]", "value": "1"}
+{"spec": "5.5", "source": "\"abc\"[0]", "value": "\"a\""}
+{"spec": "5.5", "source": "\"abc\"[-1]", "value": "\"c\""}
+{"spec": "5.5", "source": "\"😀b\"[0]", "value": "\"😀\""}
+{"spec": "5.5", "source": "\"😀b\"[1]", "value": "\"b\""}
+{"spec": "5.5", "source": "\"😀b\"[-2]", "value": "\"😀\""}
+{"spec": "5.5", "source": "[1, 2][1.0]", "value": "2"}
+{"spec": "5.5", "source": "[1, 2][2 - 1]", "value": "2"}
+{"spec": "5.5", "source": "[1, 2][2]", "error": "missing-value"}
+{"spec": "5.5", "source": "[1, 2][-3]", "error": "missing-value"}
+{"spec": "5.5", "source": "\"a\"[1]", "error": "missing-value"}
+{"spec": "5.5", "source": "\"\"[0]", "error": "missing-value"}
+{"spec": "5.5", "source": "[][0]", "error": "missing-value"}
+{"spec": "5.5", "source": "[1][0.5]", "error": "not-an-integer"}
+{"spec": "5.5", "source": "\"a\"[0.5]", "error": "not-an-integer"}
+{"spec": "5.5", "source": "[1][\"a\"]", "error": "type-mismatch"}
+{"spec": "5.5", "source": "\"a\"[\"b\"]", "error": "type-mismatch"}
+{"spec": "5.5", "source": "1[0]", "error": "type-mismatch"}
+{"spec": "5.5", "source": "true[0]", "error": "type-mismatch"}
+{"spec": "5.5", "source": "a[i]", "failure": "missing-value", "inputs": {"a": [1], "i": 5}}
+{"spec": "5.5", "source": "a[i]", "failure": "not-an-integer", "inputs": {"a": [1], "i": 0.5}}
+{"spec": "5.5", "source": "a[i]", "failure": "not-an-integer", "inputs": {"a": [], "i": 0.5}}
+{"spec": "5.5", "source": "a[i]", "value": "1", "inputs": {"a": [1], "i": 0}}
+{"spec": "5.5", "source": "[1, 2, 3][1e40 + i]", "failure": "missing-value", "inputs": {"i": 0}}
+{"spec": "5.5", "source": "[1, 2, 3][1e-40 + i]", "failure": "not-an-integer", "inputs": {"i": 0}}
+{"spec": "5.5", "source": "r = { a: 1, \"b c\": 2 }\nr[\"b c\"]", "value": "2"}
+{"spec": "5.5", "source": "r = { a: 1 }\nr[\"a\"]", "value": "1"}
+{"spec": "5.5", "source": "r = { a: 1 }\nr[\"b\"]", "error": "type-mismatch"}
+{"spec": "5.5", "source": "rates = { AR: 0.21, UY: 0.22 }\nrates[c] ?? 0", "value": "0.22", "inputs": {"c": "UY"}}
+{"spec": "5.5", "source": "rates = { AR: 0.21, UY: 0.22 }\nrates[c] ?? 0", "value": "0", "inputs": {"c": "CL"}}
+{"spec": "5.5", "source": "rates = { AR: 0.21 }\nrates[c]", "failure": "missing-value", "inputs": {"c": "CL"}}
+{"spec": "5.5", "source": "r = { a: 1, b: \"x\" }\nk = \"a\" + \"\"\nr[k]", "error": "type-mismatch"}
+{"spec": "5.5", "source": "{ a: 1 }.b", "error": "type-mismatch"}
+{"spec": "5.5", "source": "1.a", "error": "invalid-number"}
+{"spec": "5.5", "source": "x = 1\nx.a", "error": "type-mismatch"}
+{"spec": "5.5", "source": "\"a\".b", "error": "type-mismatch"}
+{"spec": "5.5", "source": "[1].a", "error": "type-mismatch"}
+{"spec": "5.5", "source": "r = { a: 1 }\nk = \"a\"\nr[k]", "value": "1"}
+{"spec": "5.5", "source": "{ if: 1 }[\"if\"]", "value": "1"}
+{"spec": "4.2", "source": "\"é\" == \"é\"", "value": "false"}
+{"spec": "4.2", "source": "\"a\" == \"a\"", "value": "true"}

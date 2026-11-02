@@ -1,0 +1,42 @@
+{"spec": "5.10", "source": "1 |> STR", "value": "\"1\""}
+{"spec": "5.10", "source": "1.5 |> ROUND", "value": "2"}
+{"spec": "5.10", "source": "1.456 |> ROUND(?, 2)", "value": "1.46"}
+{"spec": "5.10", "source": "2 |> ROUND(1.456, ?)", "value": "1.46"}
+{"spec": "5.10", "source": "\"a,b\" |> SPLIT(?, \",\") |> LEN", "value": "2"}
+{"spec": "5.10", "source": "[1] |> LEN", "value": "1"}
+{"spec": "5.10", "source": "\"a\" |> REPLACE(?, ?, \"b\")", "value": "\"b\""}
+{"spec": "5.10", "source": "\"ab\" |> REPLACE(?, \"a\", ?)", "value": "\"abb\""}
+{"spec": "5.10", "source": "1 + 1 |> STR", "value": "\"2\""}
+{"spec": "5.10", "source": "1 |> STR |> LEN", "value": "1"}
+{"spec": "5.10", "source": "\"a\" |> REPLACE((?), (\"a\"), \"b\")", "value": "\"b\""}
+{"spec": "5.10", "source": "1 |> ROUND(2)", "error": "invalid-placeholder"}
+{"spec": "5.10", "source": "1 |> ROUND()", "error": "invalid-placeholder"}
+{"spec": "5.10", "source": "?", "error": "invalid-placeholder"}
+{"spec": "5.10", "source": "1 + ?", "error": "invalid-placeholder"}
+{"spec": "5.10", "source": "ROUND(?)", "error": "invalid-placeholder"}
+{"spec": "5.10", "source": "1 |> ROUND(?, ? + 1)", "error": "invalid-placeholder"}
+{"spec": "5.10", "source": "1 |> ROUND(?, [?])", "error": "invalid-placeholder"}
+{"spec": "5.10", "source": "[?]", "error": "invalid-placeholder"}
+{"spec": "5.10", "source": "1 |> 2", "error": "unexpected-token"}
+{"spec": "5.10", "source": "1 |>", "error": "unexpected-token"}
+{"spec": "5.10", "source": "1 |> x.y", "error": "unexpected-token"}
+{"spec": "5.11", "source": "LEN(\"a\")", "value": "1"}
+{"spec": "5.11", "source": "LEN(SPLIT(\"a,b\", \",\"))", "value": "2"}
+{"spec": "5.11", "source": "FOO(1)", "error": "unknown-function"}
+{"spec": "5.11", "source": "1 |> FOO", "error": "unknown-function"}
+{"spec": "5.11", "source": "foo(1)", "error": "unknown-function"}
+{"spec": "5.11", "source": "len(\"a\")", "error": "unknown-function"}
+{"spec": "5.11", "source": "LEN()", "error": "wrong-argument-count"}
+{"spec": "5.11", "source": "LEN(\"a\", \"b\")", "error": "wrong-argument-count"}
+{"spec": "5.11", "source": "ROUND(1, 2, \"floor\", 4)", "error": "wrong-argument-count"}
+{"spec": "5.11", "source": "\"a\" |> LEN(?, ?)", "error": "wrong-argument-count"}
+{"spec": "5.11", "source": "LEN = 1\nLEN + LEN(\"ab\")", "value": "3"}
+{"spec": "5.11", "source": "LEN ?? 1", "value": "1"}
+{"spec": "5.11", "source": "ROUND(1, 0, \"up\")", "error": "type-mismatch"}
+{"spec": "5.11", "source": "ROUND(1, 0, m)", "failure": "invalid-argument", "inputs": {"m": "up"}}
+{"spec": "5.11", "source": "ROUND(1.5, 0, m)", "value": "1", "inputs": {"m": "floor"}}
+{"spec": "7", "source": "\"#{1}#{2}\"", "value": "\"12\""}
+{"spec": "7", "source": "\"#{[1][0]}\"", "value": "\"1\""}
+{"spec": "7", "source": "\"#{[1]}\"", "error": "type-mismatch"}
+{"spec": "7", "source": "\"#{{ a: 1 }}\"", "error": "type-mismatch"}
+{"spec": "7", "source": "STR = 1\n\"#{STR}\"", "value": "\"1\""}

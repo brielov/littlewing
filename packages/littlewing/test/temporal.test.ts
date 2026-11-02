@@ -252,6 +252,50 @@ describe('as abstract types', () => {
 	});
 });
 
+describe('on a declared date and time', () => {
+	const inputs = { a: temporal.datetime, b: temporal.datetime };
+	const a = dt('2024-03-15T10:20:30.500');
+	const b = dt('2024-03-17T12:00:00');
+	const variables = { a, b };
+
+	test.each<[string, unknown]>([
+		['YEAR(a)', 2024],
+		['MONTH(a)', 3],
+		['DAY(a)', 15],
+		['WEEKDAY(a)', 5],
+		['DAY_OF_YEAR(a)', 75],
+		['QUARTER(a)', 1],
+		['IS_WEEKEND(b)', true],
+		['IS_WEEKEND(a)', false],
+		['IS_LEAP_YEAR(a)', true],
+		['HOUR(a)', 10],
+		['MINUTE(a)', 20],
+		['SECOND(a)', 30],
+		['MILLISECOND(a)', 500],
+		['DIFF(a, b, "days")', 2],
+		['DIFF(a, b, "hours")', 49],
+		['DIFF(a, b, "minutes")', 2979],
+		['IS_SAME_DAY(a, b)', false],
+		['IS_SAME_DAY(a, a)', true],
+		['AGE(a, b)', 0],
+	])('%s', (source, value) => {
+		expect(run(source, { functions, inputs, variables })).toBe(value);
+	});
+
+	test.each([
+		['ADD(a, 1, "days")', '2024-03-16T10:20:30.5'],
+		['ADD(a, 1, "months")', '2024-04-15T10:20:30.5'],
+		['ADD(a, 1, "hours")', '2024-03-15T11:20:30.5'],
+		['ADD(a, 1, "minutes")', '2024-03-15T10:21:30.5'],
+		['ADD(a, 1, "seconds")', '2024-03-15T10:20:31.5'],
+		['START_OF(a, "week")', '2024-03-11T00:00:00'],
+		['END_OF(a, "quarter")', '2024-03-31T23:59:59.999999999'],
+		['COMBINE(TO_DATE(a), TO_TIME(b))', '2024-03-15T12:00:00'],
+	])('%s', (source, value) => {
+		expect(String(run(source, { functions, inputs, variables }))).toBe(value);
+	});
+});
+
 describe('the record of functions', () => {
 	test('it holds every function, and a namespace cannot be spread', () => {
 		const { date, time, datetime, temporalFunctions, ...named } = temporal;

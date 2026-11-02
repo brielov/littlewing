@@ -1,0 +1,106 @@
+{"spec": "9", "source": "USD(1) + USD(2) == USD(3)", "value": "true"}
+{"spec": "9", "source": "USD(5) - USD(2) == USD(3)", "value": "true"}
+{"spec": "9", "source": "USD(1) < USD(2)", "value": "true"}
+{"spec": "9", "source": "USD(2) <= USD(2)", "value": "true"}
+{"spec": "9", "source": "USD(3) > USD(2)", "value": "true"}
+{"spec": "9", "source": "USD(1) == USD(1)", "value": "true"}
+{"spec": "9", "source": "USD(1) != USD(2)", "value": "true"}
+{"spec": "9", "source": "STR(USD(1))", "value": "\"$1\""}
+{"spec": "9", "source": "\"#{USD(1)}\"", "value": "\"$1\""}
+{"spec": "9", "source": "CENTS(SORT([USD(2), USD(1)])[0])", "value": "1"}
+{"spec": "9", "source": "CONTAINS([USD(1)], USD(1))", "value": "true"}
+{"spec": "9", "source": "INDEX_OF([USD(1), USD(2)], USD(2))", "value": "1"}
+{"spec": "9", "source": "SORT_BY([\"a\", \"b\"], [USD(2), USD(1)])", "value": "[\"b\", \"a\"]"}
+{"spec": "9", "source": "[USD(1)] == [USD(1)]", "value": "true"}
+{"spec": "9", "source": "{ a: USD(1) } == { a: USD(1) }", "value": "true"}
+{"spec": "9", "source": "[USD(1)] + [USD(2)] == [USD(1), USD(2)]", "value": "true"}
+{"spec": "9", "source": "x = USD(1)\nif true then x == x else false", "value": "true"}
+{"spec": "9", "source": "OPAQUE(1) + OPAQUE(2)", "error": "type-mismatch"}
+{"spec": "9", "source": "OPAQUE(1) - OPAQUE(2)", "error": "type-mismatch"}
+{"spec": "9", "source": "OPAQUE(1) < OPAQUE(2)", "error": "type-mismatch"}
+{"spec": "9", "source": "OPAQUE(1) == OPAQUE(2)", "error": "type-mismatch"}
+{"spec": "9", "source": "[OPAQUE(1)] == [OPAQUE(2)]", "error": "type-mismatch"}
+{"spec": "9", "source": "{ a: OPAQUE(1) } == { a: OPAQUE(2) }", "error": "type-mismatch"}
+{"spec": "9", "source": "STR(OPAQUE(1))", "error": "type-mismatch"}
+{"spec": "9", "source": "\"#{OPAQUE(1)}\"", "error": "type-mismatch"}
+{"spec": "9", "source": "SORT([OPAQUE(1)])", "error": "type-mismatch"}
+{"spec": "9", "source": "CONTAINS([OPAQUE(1)], OPAQUE(1))", "error": "type-mismatch"}
+{"spec": "9", "source": "USD(1) + 1", "error": "type-mismatch"}
+{"spec": "9", "source": "1 + USD(1)", "error": "type-mismatch"}
+{"spec": "9", "source": "USD(1) * 2", "error": "type-mismatch"}
+{"spec": "9", "source": "USD(1) / 2", "error": "type-mismatch"}
+{"spec": "9", "source": "USD(1) % 2", "error": "type-mismatch"}
+{"spec": "9", "source": "USD(1) ^ 2", "error": "type-mismatch"}
+{"spec": "9", "source": "-USD(1)", "error": "type-mismatch"}
+{"spec": "9", "source": "USD(1) == 1", "error": "type-mismatch"}
+{"spec": "9", "source": "USD(1) + OPAQUE(1)", "error": "type-mismatch"}
+{"spec": "9", "source": "USD(1) == OPAQUE(1)", "error": "type-mismatch"}
+{"spec": "9", "source": "USD(1).a", "error": "type-mismatch"}
+{"spec": "9", "source": "USD(1)[0]", "error": "type-mismatch"}
+{"spec": "9", "source": "for x in USD(1) then x", "error": "type-mismatch"}
+{"spec": "9", "source": "[USD(1), 1]", "error": "type-mismatch"}
+{"spec": "9", "source": "[USD(1), OPAQUE(1)]", "error": "type-mismatch"}
+{"spec": "9", "source": "if true then USD(1) else OPAQUE(1)", "error": "type-mismatch"}
+{"spec": "9", "source": "if USD(1) then 1 else 2", "error": "type-mismatch"}
+{"spec": "5", "source": "CENTS(USD(1) + USD(2))", "value": "3"}
+{"spec": "5", "source": "CENTS(USD(5) - USD(2))", "value": "3"}
+{"spec": "10", "source": "STR(USD(1.50))", "value": "\"$1.5\""}
+{"spec": "4.1", "source": "\"#{USD(1e34)}\"", "value": "\"$1e34\""}
+{"spec": "10", "source": "LEN([OPAQUE(1), OPAQUE(2)])", "value": "2"}
+{"spec": "5", "source": "x = OPAQUE(1)\n1", "value": "1"}
+{"spec": "5", "source": "CENTS(if true then USD(1) else USD(2))", "value": "1"}
+{"spec": "10", "source": "[USD(2), USD(1)] |> SORT |> LEN", "value": "2"}
+{"spec": "10", "source": "LEN(SORT_BY([OPAQUE(1)], [1]))", "value": "1"}
+{"spec": "10", "source": "LEN({ a: [OPAQUE(1)] }.a)", "value": "1"}
+{"spec": "10", "source": "CONTAINS([USD(1)], USD(2))", "value": "false"}
+{"spec": "10", "source": "INDEX_OF([USD(1)], USD(2))", "value": "-1"}
+{"spec": "5", "source": "USD(1) != USD(1)", "value": "false"}
+{"spec": "10", "source": "CENTS(SORT_BY([USD(1), USD(2)], [USD(2), USD(1)])[0])", "value": "2"}
+{"spec": "5", "source": "USD(1) >= USD(2)", "value": "false"}
+{"spec": "5", "source": "\"#{USD(1)}#{USD(2)}\"", "value": "\"$1$2\""}
+{"spec": "10", "source": "LEN(STR(USD(100)))", "value": "4"}
+{"spec": "5", "source": "CENTS(for x in [USD(1), USD(2)] into s = USD(0) then s + x)", "value": "3"}
+{"spec": "5", "source": "[USD(1)][0] == USD(1)", "value": "true"}
+{"spec": "5", "source": "{ a: USD(1) }.a < USD(2)", "value": "true"}
+{"spec": "6.5", "source": "[USD(1)] + [OPAQUE(1)]", "error": "type-mismatch"}
+{"spec": "6.4", "source": "{ ...USD(1) }", "error": "type-mismatch"}
+{"spec": "6.1", "source": "NUM(USD(1))", "error": "type-mismatch"}
+{"spec": "6.1", "source": "LEN(USD(1))", "error": "type-mismatch"}
+{"spec": "6.1", "source": "UPPER(USD(1))", "error": "type-mismatch"}
+{"spec": "6.1", "source": "FLOOR(USD(1))", "error": "type-mismatch"}
+{"spec": "6.5", "source": "SORT([USD(1), OPAQUE(1)])", "error": "type-mismatch"}
+{"spec": "6.1", "source": "USD(\"a\")", "error": "type-mismatch"}
+{"spec": "6.1", "source": "CENTS(1)", "error": "type-mismatch"}
+{"spec": "6.1", "source": "CENTS(OPAQUE(1))", "error": "type-mismatch"}
+{"spec": "6.5", "source": "SORT_BY([1], [OPAQUE(1)])", "error": "type-mismatch"}
+{"spec": "6.5", "source": "SORT_BY([1], [true])", "error": "type-mismatch"}
+{"spec": "6.1", "source": "if true then USD(1) else 1", "error": "type-mismatch"}
+{"spec": "6.1", "source": "USD(1) && true", "error": "type-mismatch"}
+{"spec": "6.1", "source": "!USD(1)", "error": "type-mismatch"}
+{"spec": "6.1", "source": "1..USD(1)", "error": "type-mismatch"}
+{"spec": "6.1", "source": "\"a\" + USD(1)", "error": "type-mismatch"}
+{"spec": "6.5", "source": "JOIN([USD(1)], \",\")", "error": "type-mismatch"}
+{"spec": "6.1", "source": "ROUND(USD(1))", "error": "type-mismatch"}
+{"spec": "6.5", "source": "USD(1)[\"a\"]", "error": "type-mismatch"}
+{"spec": "5.11", "source": "USD()", "error": "wrong-argument-count"}
+{"spec": "5.11", "source": "USD(1, 2)", "error": "wrong-argument-count"}
+{"spec": "5.6", "source": "USD(1) ?? 1", "error": "invalid-fallback"}
+{"spec": "8.2", "source": "1 / CENTS(USD(0))", "error": "division-by-zero"}
+{"spec": "5", "source": "1 / CENTS(USD(1) - USD(1))", "failure": "division-by-zero"}
+{"spec": "5", "source": "1 / NUM(USD(1) == USD(2))", "failure": "division-by-zero"}
+{"spec": "5", "source": "1 / NUM(CONTAINS([USD(1)], USD(2)))", "failure": "division-by-zero"}
+{"spec": "5", "source": "1 / (LEN(STR(USD(1))) - 2)", "failure": "division-by-zero"}
+{"spec": "5", "source": "1 / CENTS(SORT([USD(0)])[0])", "failure": "division-by-zero"}
+{"spec": "8.2", "source": "USD(1 / 0)", "error": "division-by-zero"}
+{"spec": "5.6", "source": "[USD(1)][5]", "error": "missing-value"}
+{"spec": "6.4", "source": "z = a == b\ny = if c then a else { f: OPAQUE(1) }\n1", "error": "type-mismatch"}
+{"spec": "6.4", "source": "y = if c then a else { f: OPAQUE(1) }\nz = a == b\n1", "error": "type-mismatch"}
+{"spec": "6.4", "source": "z = a == b\nx = if c then a else d\ny = if c then d else { f: OPAQUE(1) }\n1", "error": "type-mismatch"}
+{"spec": "6.4", "source": "x = if c then a else d\nz = a == b\ny = if c then d else { f: OPAQUE(1) }\n1", "error": "type-mismatch"}
+{"spec": "6.4", "source": "y = if c then d else { f: OPAQUE(1) }\nz = a == b\nx = if c then a else d\n1", "error": "type-mismatch"}
+{"spec": "6.5", "source": "z = [a] == [b]\ny = if c then a else OPAQUE(1)\n1", "error": "type-mismatch"}
+{"spec": "6.1", "source": "y = if c then a else OPAQUE(1)\nz = a == b\n1", "error": "type-mismatch"}
+{"spec": "6.5", "source": "z = a == b\nx = a[0]\ny = if c then x else OPAQUE(1)\n1", "error": "type-mismatch"}
+{"spec": "9", "source": "x = 1\nBOOM()", "failure": "host-error"}
+{"spec": "9", "source": "if false then BOOM() else 1", "value": "1"}
+{"spec": "6.2", "source": "a - b\nLEN(a)", "error": "type-mismatch"}

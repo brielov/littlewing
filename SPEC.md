@@ -44,7 +44,7 @@ The one input to meaning that this document does not pin is the version of Unico
 
 ### 3.1 Source text
 
-A program is a sequence of Unicode scalar values. An unpaired surrogate is an `invalid-character` error. One U+FEFF at the very start is ignored.
+A program is a sequence of Unicode scalar values. An unpaired surrogate is an `invalid-character` error, which an implementation whose source text cannot hold one has no need to report. One U+FEFF at the very start is ignored.
 
 Tokens are matched left to right, and each token is the longest one possible.
 
@@ -427,7 +427,7 @@ An index that is a string, and not a string literal, makes `C` a uniform record.
 
 One container has one element type, even before it is known: every `e[i]` without a string literal index, and every `for` over it, share `R`.
 
-A call of an overloaded function waits until its arguments select one overload. The parameters of an overload resolve together, so `CONTAINS(x, y)` cannot end with `x` a string and `y` a number.
+A call of an overloaded function waits until its arguments select one overload. The parameters of an overload resolve together, so `CONTAINS(x, y)` cannot end with `x` a string and `y` a number. The result of such a call is not known until then, even if its overloads agree.
 
 ### 6.4 Records
 
@@ -464,7 +464,7 @@ A class with one type becomes that type. When nothing else can be solved, the fi
 
 1. The first waiting spread, in source order, takes its operand as open.
 2. The first container or iterable, in source order, with arrays still in its class becomes `array<R>`, where `R` is its element.
-3. The first undecided overloaded call, in source order, takes its first overload that fits, in the order its signature lists them.
+3. The first undecided overloaded call, in source order, takes its first overload that fits its arguments as they are known so far, in the order its signature lists them.
 4. A class that came from `addable`, `subtractable` or `ordered` and contains `number` becomes `number`.
 
 Source order is the order of a node's first token, and for a call written as a pipe step it is the step's. When no rule applies, solving ends. Any type variable left, other than a row, is **generic**: an input of that type can be any type in the class, and all inputs that share the variable have the same one.
@@ -485,6 +485,8 @@ Matching is structural, from the schema down:
 - An open type matches a record with its required fields, and any of its optional ones. Other fields are carried along unread and unchecked, whatever they are.
 - A field matches the type of that field. A uniform type matches a record whose fields all match `V`.
 - A generic type takes the type of the value: an array's elements have one type, `[]` is `array<T>` for any `T`, and a record has the closed type of its fields. It matches if that type is in the class, and if the types of all values at positions of that variable unify, across all inputs, array elements and fields.
+
+An input does not match if its type, written out with what its generic positions turned out to be, would be past the limits of [section 11](#11-limits).
 
 ### 6.7 Soundness
 
@@ -522,7 +524,7 @@ Only pure functions fold. A host declares which of its functions are pure, and e
 
 ### 8.2 Constant failures
 
-A **constant expression** is a literal, a name bound with `=` to a constant expression, an operator, field access or index applied to constant expressions, an array or record literal of constant expressions, or a call of a pure function on constant expressions. `if`, `for`, `??` and anything that can reach an operation of an abstract type are not constant expressions. A missing step in the path of a `??` is not a failure.
+A **constant expression** is a literal, a name bound with `=` to a constant expression, an operator, field access or index applied to constant expressions, an array or record literal of constant expressions, or a call of a pure function on constant expressions. `if`, `for`, `??` and anything that can reach an operation of an abstract type are not constant expressions. An operator other than `&&` and `||`, or a core function at a parameter that is or holds a class `ordered`, `equatable` or `showable`, counts as one that can if its operand's type still contains a generic variable. So `[] == []` and `[] + []` are not constant expressions, and `LEN([])` and `[][0]` are. A missing step in the path of a `??` is not a failure.
 
 An expression **may be skipped** if it is a branch of `if`, the guard or body of `for`, the fallback of `??`, the right operand of `&&` or `||`, the default of `?=`, or an index in the path of a `??`, or is inside one. Every other expression **always runs**, including conditions, iterables and the `initial` of a loop.
 
