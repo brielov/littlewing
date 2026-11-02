@@ -41,6 +41,18 @@
 			"types": "./dist/index.d.ts",
 			"default": "./dist/index.js"
 		},
+		"./std": {
+			"types": "./dist/std.d.ts",
+			"default": "./dist/std.js"
+		},
+		"./temporal": {
+			"types": "./dist/temporal.d.ts",
+			"default": "./dist/temporal.js"
+		},
+		"./clock": {
+			"types": "./dist/clock.d.ts",
+			"default": "./dist/clock.js"
+		},
 		"./package.json": "./package.json"
 	},
 	"scripts": {

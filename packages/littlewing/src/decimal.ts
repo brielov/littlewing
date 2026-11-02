@@ -33,7 +33,7 @@ function isSpace(text: string, index: number): boolean {
  * Remove `White_Space` from both ends of a string. Every character it tests is
  * in the BMP, and scanning from each end cannot backtrack.
  */
-function trimWhiteSpace(text: string): string {
+export function trimWhiteSpace(text: string): string {
 	let start = 0;
 	let end = text.length;
 	while (start < end && isSpace(text, start)) start++;

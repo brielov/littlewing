@@ -6,7 +6,7 @@ import type {
 	Type as HostType,
 	TypeNode,
 } from '../define.js';
-import { isOptional, walkType } from '../define.js';
+import { isOptional, nativeOf, walkType } from '../define.js';
 import type { Diagnostic } from '../diagnostics.js';
 import { charge } from '../limits.js';
 import type {
@@ -121,6 +121,8 @@ class Checker {
 		};
 		for (const type of types ?? []) this.solver.abstract(type.definition);
 		for (const definition of functions.values()) {
+			// The library's functions name no abstract type
+			if (nativeOf(definition) !== undefined) continue;
 			for (const signature of definition.overloads) {
 				for (const arg of signature.args) walkType(arg, seen, collect);
 				walkType(signature.returns, seen, collect);

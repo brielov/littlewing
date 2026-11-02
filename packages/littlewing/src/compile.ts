@@ -28,6 +28,7 @@ import { Compiler } from './run/interpret.js';
 import type { Frame } from './run/operations.js';
 import type { Value } from './run/values.js';
 import { failure, isNum } from './run/values.js';
+import { CORE } from './functions/core.js';
 import { desugarProgram } from './syntax/desugar.js';
 import { isKeyword } from './syntax/lexer.js';
 import { parseProgram } from './syntax/parser.js';
@@ -190,7 +191,7 @@ function checkOptions(options: CompileOptions): Map<string, FunctionDefinition> 
 	}
 	if (inputs !== undefined) checkInputTypes(inputs);
 	checkTypeNames(functions, options);
-	return functions;
+	return new Map([...CORE, ...functions]);
 }
 
 /** What a `RangeError` means here: the stack ran out, or a string or array grew too long. */

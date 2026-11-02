@@ -1,3 +1,5 @@
+import type { Type as CheckedType } from './check/types.js';
+import type { Operations } from './run/operations.js';
 import type { Decimal } from './decimal.js';
 import { currentEvaluation } from './limits.js';
 
@@ -421,6 +423,32 @@ export interface FunctionDefinition {
 	readonly run: (...args: never[]) => unknown;
 }
 
+/** What a function of the library knows about a call. */
+export interface NativeCall {
+	readonly ops: Operations;
+	/** The type of each argument at this call. */
+	readonly types: readonly (CheckedType | undefined)[];
+}
+
+/**
+ * A function of the library. It takes the language's own values, charges for its
+ * own work, and is trusted to return a value of the right type, so it is spared the
+ * boundary. This module is not an entry point of the package, so trust stays with
+ * the definitions the library made, and nothing a host holds can change it.
+ */
+export interface Native {
+	readonly run: (args: readonly unknown[], call: NativeCall) => unknown;
+	/** The arguments through which it can reach an operation of an abstract type. */
+	readonly hooks: readonly number[];
+}
+
+const natives = new WeakMap<FunctionDefinition, Native>();
+
+/** The implementation of a function of the library, or undefined for a host's. */
+export function nativeOf(definition: FunctionDefinition): Native | undefined {
+	return natives.get(definition);
+}
+
 const definitions = new WeakSet<object>();
 
 export function isFunctionDefinition(value: unknown): value is FunctionDefinition {
@@ -455,7 +483,11 @@ export function define<const O extends readonly Signature[]>(
 export function define<const A extends readonly (Type | Optional)[], R extends Type>(
 	spec: SingleSpec<A, R>,
 ): FunctionDefinition;
-export function define(spec: {
+export function define(spec: DefinitionSpec): FunctionDefinition {
+	return makeDefinition(spec);
+}
+
+interface DefinitionSpec {
 	readonly args?: readonly (Type | Optional)[];
 	readonly returns?: Type;
 	readonly overloads?: readonly Signature[];
@@ -463,7 +495,27 @@ export function define(spec: {
 	readonly cost?: (...args: never[]) => number;
 	readonly doc?: string;
 	readonly run: (...args: never[]) => unknown;
+}
+
+function notCallable(): never {
+	throw new TypeError('A function of the library runs inside a program');
+}
+
+/** Define a function of the library. Every one of them is pure. */
+export function defineNative(spec: {
+	readonly args?: readonly (Type | Optional)[];
+	readonly returns?: Type;
+	readonly overloads?: readonly Signature[];
+	readonly hooks?: readonly number[];
+	readonly run: Native['run'];
 }): FunctionDefinition {
+	const { hooks, run, ...signature } = spec;
+	const definition = makeDefinition({ ...signature, pure: true, run: notCallable });
+	natives.set(definition, { run, hooks: hooks ?? [] });
+	return definition;
+}
+
+function makeDefinition(spec: DefinitionSpec): FunctionDefinition {
 	// One read of each, as a getter can answer differently the next time
 	const { args, returns, overloads, pure, cost, doc, run } = spec;
 

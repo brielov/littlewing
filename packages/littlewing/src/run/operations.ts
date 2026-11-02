@@ -11,15 +11,17 @@ import type {
 import { isOptional } from '../define.js';
 import { charge, chargeRead, exhaust } from '../limits.js';
 import type { Num } from '../number.js';
-import { equals as numbersEqual, toText } from '../number.js';
+import { compare, equals as numbersEqual, toText } from '../number.js';
 import type { Node } from '../syntax/ast.js';
 import type { Bindings } from './boundary.js';
 import { logicalSize, Reader, Writer } from './boundary.js';
 import type { RecordValue, Value } from './values.js';
 import {
+	callCompare,
 	callEquals,
 	callIs,
 	codePoints,
+	compareStrings,
 	failure,
 	hasUnpaired,
 	HOOK_STEPS,
@@ -73,9 +75,23 @@ export function readIndex(
 	return position === undefined ? undefined : items[position];
 }
 
-function accepts(param: HostType | Optional, value: Value): boolean {
-	const shape = (isOptional(param) ? param.type : param) as TypeNode;
-	return shape.kind !== 'oneOf' || shape.values.includes(value as string);
+/** Whether a signature has a parameter that `t.oneOf` restricts. */
+export function hasRestriction(signature: Signature): boolean {
+	return signature.args.some((param) => {
+		const shape = (isOptional(param) ? param.type : param) as TypeNode;
+		return shape.kind === 'oneOf';
+	});
+}
+
+/** Hold arguments to what `t.oneOf` accepts, which only a literal could be checked for. */
+export function checkAccepted(signature: Signature, args: readonly Value[]): void {
+	for (let i = 0; i < args.length; i++) {
+		const param = signature.args[i] as HostType | Optional;
+		const shape = (isOptional(param) ? param.type : param) as TypeNode;
+		if (shape.kind === 'oneOf' && !shape.values.includes(args[i] as string)) {
+			throw failure('invalid-argument', 'This is not one of the accepted strings');
+		}
+	}
 }
 
 /**
@@ -160,8 +176,22 @@ export class Operations {
 		return callEquals(this.abstractOf(a), a, b);
 	}
 
+	/** The order of values of a type, for the functions that sort. */
+	order(type: Type | undefined): (a: Value, b: Value) => number {
+		const current = type === undefined ? undefined : prune(type);
+		if (current instanceof AbstractTypeRef) {
+			const { definition } = current;
+			return (a, b) => callCompare(definition, a, b);
+		}
+		return (a, b) => {
+			if (typeof a === 'number' && typeof b === 'number') return a - b;
+			return isNum(a) ? compare(a, b as Num) : compareStrings(a as string, b as string);
+		};
+	}
+
 	show(value: Value, type: Type | undefined): string {
-		const abstract = type instanceof AbstractTypeRef ? type.definition : undefined;
+		const current = type === undefined ? undefined : prune(type);
+		const abstract = current instanceof AbstractTypeRef ? current.definition : undefined;
 		if (abstract === undefined) {
 			if (typeof value === 'string') return value;
 			if (typeof value === 'boolean') return value ? 'true' : 'false';
@@ -182,11 +212,7 @@ export class Operations {
 
 	invoke(call: HostCall, args: readonly Value[], frame: Frame): Value {
 		const { label, definition, signature, argTypes, result } = call;
-		for (let i = 0; i < args.length; i++) {
-			if (!accepts(signature.args[i] as HostType | Optional, args[i])) {
-				throw failure('invalid-argument', 'This is not one of the accepted strings');
-			}
-		}
+		checkAccepted(signature, args);
 
 		const sizes = new Map<object, number>();
 		for (let i = 0; i < args.length; i++) charge(logicalSize(args[i], argTypes[i], sizes));

@@ -534,7 +534,13 @@ export class Writer {
 	) {}
 
 	private number(value: Num): Value {
-		return this.form === 'decimal' ? wrapDecimal(value) : toDouble(value);
+		if (this.form === 'decimal') return wrapDecimal(value);
+		if (typeof value === 'number') return value;
+		try {
+			return toDouble(value);
+		} catch {
+			throw failure('overflow', 'Number is too large for a JS number. Ask for a Decimal');
+		}
 	}
 
 	private array(value: readonly Value[], element: Type | undefined): Value {

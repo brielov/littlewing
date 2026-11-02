@@ -17,7 +17,8 @@ Work remaining before v3 ships. The engine overhaul is done, on the `v3` branch.
    - [x] M4: Desugaring and the checker: inference, classes, records, input schema
    - [x] M5: The optimizer, and the interpreter on typed programs
    - [x] M6: `compile`, `evaluate`, `run`, and crossing the boundary
-   - [ ] M7: Core functions, `littlewing/std`, `littlewing/temporal`, `littlewing/clock`
+   - [x] M7: Core functions, `littlewing/std`, `littlewing/temporal`, `littlewing/clock`
+   - [ ] Swap: delete the old pipeline, export the new API, and port the consumer tests and playground to it, in one commit as the lint hook covers them all
    - [ ] M8: The conformance suite and fuzzing, including solving order
    - [ ] M9: Playground, docs and packaging
 4. [ ] Release v3.0.0, following AGENTS.md
@@ -301,7 +302,7 @@ At the host boundary, JS numbers enter by their shortest decimal form, so `0.1` 
 
 Temporal is three of seven types and 45 of 82 functions.
 
-`littlewing/temporal` defines `date`, `time` and `datetime` with `defineType`, along with their functions, and the engine stops mentioning `Temporal`. `NOW` and `TODAY` get their own entry, `littlewing/clock`, so that spreading `littlewing/temporal` stays deterministic.
+`littlewing/temporal` defines `date`, `time` and `datetime` with `defineType`, along with their functions, and the engine stops mentioning `Temporal`. `NOW` and `TODAY` get their own entry, `littlewing/clock`, so that `temporalFunctions` stays deterministic.
 
 This replaces the earlier decision to keep the date types in the engine. That decision judged an opaque type mechanism by what dates alone would save, and relied on adding it in a later 3.x release. With the syntax frozen, and with money and decimals in view, the mechanism is the point.
 
@@ -371,7 +372,7 @@ Done in M0: `temporal-polyfill` and `temporal-spec` 1.0, the easy updates, TypeS
 - [ ] Compare CodeMirror 6 with Monaco. Monaco appears to load from a public CDN at runtime, separately from its `package.json` version, which is only used for types. Measure size, load time and mobile behaviour first.
 - [ ] Run evaluation in a Web Worker, so that typing never blocks the page. Dates need custom serialization to cross into it.
 - [ ] Embed mode, so that docs examples are runnable
-- [ ] Use the library's function signatures instead of `function-metadata.ts`
+- [ ] Use the library's function signatures instead of `function-metadata.ts`, which needs `doc` on every definition, and parameter names back in `std` and `temporal`, as the shared type constants dropped them
 - [ ] Measure load time, and whether both `.woff` and `.woff2` fonts need shipping
 
 ## Open source

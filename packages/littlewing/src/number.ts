@@ -432,9 +432,7 @@ export function toText(a: Num): string {
 export function toDouble(a: Num): number {
 	if (typeof a === 'number') return a;
 	const value = Number(toText(a));
-	if (!Number.isFinite(value)) {
-		throw failure('overflow', 'Number is too large for a JS number. Ask for a Decimal');
-	}
+	if (!Number.isFinite(value)) throw overflow();
 	return value === 0 ? 0 : value;
 }
 

@@ -10,6 +10,7 @@ import {
 	TypeVariable,
 } from '../check/types.js';
 import type { AbstractDefinition, FunctionDefinition, Signature } from '../define.js';
+import { nativeOf } from '../define.js';
 import type { Diagnostic } from '../diagnostics.js';
 import { errorAt } from '../diagnostics.js';
 import { EvaluationError } from '../errors.js';
@@ -42,7 +43,7 @@ import type {
 } from '../syntax/ast.js';
 import { logicalSize } from './boundary.js';
 import type { Frame, HostCall } from './operations.js';
-import { Operations, readIndex } from './operations.js';
+import { checkAccepted, hasRestriction, Operations, readIndex } from './operations.js';
 import type { RecordValue, Value } from './values.js';
 import {
 	buildRange,
@@ -149,25 +150,49 @@ function buildRecord(
 	};
 }
 
+/** What runs once the arguments of a call are known. */
+type Invoke = (values: readonly Value[], frame: Frame) => Value;
+
+function invokeOf(ops: Operations, call: HostCall): Invoke {
+	const native = nativeOf(call.definition);
+	if (native === undefined) return (values, frame) => ops.invoke(call, values, frame);
+	const { run } = native;
+	const { signature, argTypes } = call;
+	const context = { ops, types: argTypes };
+	if (!hasRestriction(signature)) return (values) => run(values, context);
+	return (values) => {
+		checkAccepted(signature, values);
+		return run(values, context);
+	};
+}
+
 /** A call, whose first code is the value of its pipe if `piped` says it has one. */
 function buildCall(
 	node: Node,
-	ops: Operations,
-	call: HostCall,
+	invoke: Invoke,
 	placeholders: readonly boolean[],
 	piped: boolean,
 	codes: readonly Code[],
 ): Code {
-	const start = piped ? 1 : 0;
+	if (!piped) {
+		const count = codes.length;
+		return (frame) => {
+			step(frame, node);
+			const values: Value[] = [];
+			for (let i = 0; i < count; i++) values.push((codes[i] as Code)(frame));
+			frame.current = node;
+			return invoke(values, frame);
+		};
+	}
 	return (frame) => {
 		step(frame, node);
-		const value = piped ? (codes[0] as Code)(frame) : undefined;
-		let next = start;
+		const value = (codes[0] as Code)(frame);
+		let next = 1;
 		const values = placeholders.map((placeholder) =>
 			placeholder ? value : (codes[next++] as Code)(frame),
 		);
 		frame.current = node;
-		return ops.invoke(call, values, frame);
+		return invoke(values, frame);
 	};
 }
 
@@ -325,7 +350,7 @@ export class Compiler {
 			return { code: kept ? constantCode(value, node) : code, constant: { value, kept } };
 		} catch (error) {
 			if (!(error instanceof EvaluationError) || remainingSteps() < 0) this.stopFolding(error);
-			else this.report(node, error, skipped);
+			else if (error.code !== 'limit-exceeded') this.report(node, error, skipped);
 			return { code, constant: undefined };
 		}
 	}
@@ -691,13 +716,17 @@ export class Compiler {
 			result: this.typeOf(node) as Type,
 		};
 		const isPiped = piped !== undefined;
+		const invoke = invokeOf(ops, call);
+		const hooks = nativeOf(definition)?.hooks ?? [];
+		const folds =
+			definition.pure && hooks.every((position) => this.foldsOn(call.argTypes[position]));
 
 		return this.fold(
 			node,
 			skipped,
 			children,
-			(codes) => buildCall(node, ops, call, placeholders, isPiped, codes),
-			definition.pure === true,
+			(codes) => buildCall(node, invoke, placeholders, isPiped, codes),
+			folds,
 		);
 	}
 
