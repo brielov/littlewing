@@ -4,7 +4,7 @@
  * the language spec, sections 5.2 and 5.9.
  */
 import type { syntax } from 'littlewing';
-import { type Token, TokenKind } from './tokens.ts';
+import { startsStatement, type Token, TokenKind } from './tokens.ts';
 
 /** Where a name is written. */
 export interface Occurrence {
@@ -282,7 +282,7 @@ export interface LoopName {
  * The names of the loops around `position`, innermost last, read from tokens, for
  * a loop the parser could not read, as one whose body is being typed. A loop is
  * around a position in its guard or body, until a bracket it is in closes, or a
- * line or `;` ends its statement.
+ * line that starts a statement, or a `;`, ends its statement.
  */
 export function loopsAround(
 	tokens: readonly Token[],
@@ -317,7 +317,7 @@ export function loopsAround(
 				if (--depth < 0) part = 'outside';
 			} else if (depth > 0) {
 				// Inside brackets, nothing ends or divides this loop
-			} else if (token.startsLine || kind === TokenKind.Semicolon) {
+			} else if ((token.startsLine && startsStatement(kind)) || kind === TokenKind.Semicolon) {
 				part = 'outside';
 			} else if (kind === TokenKind.If) {
 				inner.push('if');

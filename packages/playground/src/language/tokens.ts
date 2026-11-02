@@ -17,6 +17,34 @@ import {
 
 export { isWord, TokenKind };
 
+/**
+ * Whether a token can start a statement, which a line break before it outside
+ * enclosed code then does. Any other token, as an operator, goes on with the
+ * statement before it. As the parser's own `startsStatement`.
+ */
+export function startsStatement(kind: Token['kind']): boolean {
+	switch (kind) {
+		case TokenKind.Number:
+		case TokenKind.Identifier:
+		case TokenKind.String:
+		case TokenKind.TemplateHead:
+		case TokenKind.Minus:
+		case TokenKind.Bang:
+		case TokenKind.LParen:
+		case TokenKind.LBracket:
+		case TokenKind.LBrace:
+		case TokenKind.If:
+		case TokenKind.For:
+		case TokenKind.True:
+		case TokenKind.False:
+		case TokenKind.Question:
+		case TokenKind.Reserved:
+			return true;
+		default:
+			return false;
+	}
+}
+
 /** A token as the lexer gives it, with comments as tokens of their own. */
 export interface Token {
 	readonly kind: TokenKind | 'comment';

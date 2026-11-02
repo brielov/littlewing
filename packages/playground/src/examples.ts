@@ -8,7 +8,7 @@ export const examples: Example[] = [
 	{
 		title: 'Pricing Rules',
 		description: 'Tax by country and a discount by tier, from three inputs',
-		source: `// Inputs with defaults, which the sidebar can change
+		source: `// Inputs with defaults, which the Inputs panel can change
 total ?= 1200
 country ?= "UY"
 tier ?= "gold"
@@ -28,7 +28,7 @@ tax = subtotal * tax_rate
 	{
 		title: 'Loan Amortization',
 		description: 'Monthly payment and total interest on a fixed-rate loan',
-		source: `// Fixed-rate loan amortization. Try changing the inputs in the sidebar
+		source: `// Fixed-rate loan amortization. Try changing the inputs beside the editor
 principal ?= 250000
 annual_rate ?= 0.065
 years ?= 30
@@ -241,7 +241,7 @@ row_maxs = for row in matrix then MAX(row)
 
 /** The program the playground opens with. */
 export const INITIAL_SOURCE = `// littlewing playground
-// ?= declares an input, with a default: try changing them in the sidebar
+// ?= declares an input, with a default: try changing them under Inputs
 price ?= 100
 tax_rate ?= 0.08
 discount ?= 15

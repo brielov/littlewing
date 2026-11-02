@@ -1,12 +1,21 @@
-import { generate, parse } from 'littlewing';
-import { useCallback, useEffect, useState, useSyncExternalStore } from 'react';
+import { EditorSelection } from '@codemirror/state';
+import { EditorView } from '@codemirror/view';
+import {
+	type ReactNode,
+	useCallback,
+	useEffect,
+	useRef,
+	useState,
+	useSyncExternalStore,
+} from 'react';
 import { Editor } from './editor.tsx';
 import { ErrorBoundary } from './error-boundary.tsx';
 import { INITIAL_SOURCE } from './examples.ts';
 import { ExamplesDialog } from './examples-dialog.tsx';
 import { HelpDialog } from './help-dialog.tsx';
-import { Sidebar } from './sidebar.tsx';
-import { useEvaluation } from './use-evaluation.ts';
+import { formatDocument } from './editor/index.ts';
+import { useEvaluation } from './evaluation/hook.ts';
+import { Panel } from './results/panel.tsx';
 
 // --- URL hash encoding (gzip + base64url) ---
 
@@ -66,9 +75,7 @@ export function App() {
 	// Restore source from URL hash on mount
 	useEffect(() => {
 		void readSourceFromHash().then((decoded) => {
-			if (decoded !== null) {
-				replaceSource(decoded);
-			}
+			if (decoded !== null) replaceSource(decoded);
 			setReady(true);
 		});
 	}, [replaceSource]);
@@ -90,39 +97,65 @@ export function App() {
 
 	const evaluation = useEvaluation(source);
 
+	// The editor, once it exists, and a place to show in it once it does
+	const view = useRef<EditorView | null>(null);
+	const [jump, setJump] = useState<{ from: number; to: number } | null>(null);
+	const onView = useCallback((editor: EditorView | null) => {
+		view.current = editor;
+		if (editor !== null) setJump((pending) => (pending === null ? null : { ...pending }));
+	}, []);
+	useEffect(() => {
+		const editor = view.current;
+		if (jump === null || editor === null) return;
+		const length = editor.state.doc.length;
+		const from = Math.min(jump.from, length);
+		editor.dispatch({
+			selection: EditorSelection.range(from, Math.min(Math.max(jump.to, from), length)),
+			effects: EditorView.scrollIntoView(from, { y: 'center' }),
+		});
+		editor.focus();
+		setJump(null);
+	}, [jump]);
+	const onJump = useCallback((from: number, to: number) => {
+		setMobileView('editor');
+		setJump({ from, to });
+	}, []);
+
+	// In the editor, so that formatting can be undone
 	const formatSource = useCallback(() => {
-		const { program, diagnostics } = parse(source);
-		// A tree with errors has lost what they are in
-		if (diagnostics.length === 0) setSource(generate(program));
-	}, [source]);
+		if (view.current !== null) formatDocument(view.current);
+	}, []);
+
+	const editor = (
+		<Editor
+			value={source}
+			onChange={setSource}
+			analyzed={evaluation.problemsSource}
+			problems={evaluation.problems}
+			types={evaluation.types}
+			typesCurrent={evaluation.typesCurrent}
+			onView={onView}
+		/>
+	);
+	const results = (
+		<ErrorBoundary resetKey={evaluation.source}>
+			<Panel evaluation={evaluation} onJump={onJump} />
+		</ErrorBoundary>
+	);
 
 	return (
-		<div className="flex h-full flex-col" style={{ backgroundColor: 'var(--color-bg)' }}>
-			<header
-				className="flex shrink-0 items-center justify-between px-4"
-				style={{
-					height: 44,
-					borderBottom: '1px solid var(--color-border)',
-				}}
-			>
-				<a
-					href={window.location.pathname}
-					className="text-sm font-semibold tracking-tight no-underline"
-					style={{
-						fontFamily: '"Maple Mono", monospace',
-						color: 'var(--color-fg)',
-					}}
-				>
+		<div className="flex h-full flex-col bg-(--color-bg)">
+			<header className="flex h-11 shrink-0 items-center justify-between border-b border-(--color-border) px-4">
+				<a href={window.location.pathname} className="text-sm font-semibold tracking-tight">
 					littlewing
 				</a>
-				<div className="flex items-center gap-3">
+				<nav className="flex items-center gap-3 text-xs text-(--color-fg-muted)">
 					<ExamplesDialog onSelect={replaceSource} />
 					<button
 						type="button"
 						onClick={formatSource}
-						className="cursor-pointer text-xs"
-						style={{ color: 'var(--color-fg-muted)' }}
-						title="Format code"
+						className="cursor-pointer hover:text-(--color-fg)"
+						title="Format (Shift+Alt+F)"
 					>
 						Format
 					</button>
@@ -131,62 +164,36 @@ export function App() {
 						href="https://github.com/brielov/littlewing"
 						target="_blank"
 						rel="noopener noreferrer"
-						className="text-xs"
-						style={{ color: 'var(--color-fg-muted)' }}
-						title="GitHub repository"
+						className="hover:text-(--color-fg)"
 					>
 						GitHub
 					</a>
-				</div>
+				</nav>
 			</header>
 
 			{isDesktop ? (
-				<main className="flex min-h-0 flex-1 flex-row">
-					<div className="flex min-h-0 min-w-0 flex-[7_1_0%]">
-						<Editor
-							value={source}
-							onChange={setSource}
-							analyzed={evaluation.source}
-							problems={evaluation.diagnostics}
-							types={evaluation.types}
-							typesCurrent={evaluation.typesCurrent}
-						/>
-					</div>
-					<div
-						className="flex min-h-0 flex-[3_1_0%] border-l"
-						style={{ borderColor: 'var(--color-border)' }}
-					>
-						<ErrorBoundary resetKey={evaluation.source}>
-							<Sidebar evaluation={evaluation} />
-						</ErrorBoundary>
+				<main className="flex min-h-0 flex-1">
+					<div className="flex min-h-0 min-w-0 flex-[7_1_0%]">{editor}</div>
+					<div className="flex min-h-0 flex-[3_1_0%] border-l border-(--color-border)">
+						{results}
 					</div>
 				</main>
 			) : (
 				<>
-					<main className="flex min-h-0 flex-1">
-						{mobileView === 'editor' ? (
-							<Editor
-								value={source}
-								onChange={setSource}
-								analyzed={evaluation.source}
-								problems={evaluation.diagnostics}
-								types={evaluation.types}
-								typesCurrent={evaluation.typesCurrent}
-							/>
-						) : (
-							<ErrorBoundary resetKey={evaluation.source}>
-								<Sidebar evaluation={evaluation} />
-							</ErrorBoundary>
-						)}
+					{/* Both stay mounted, so that switching keeps undo history and what is typed */}
+					<main className="relative flex min-h-0 flex-1">
+						<div
+							className={`min-h-0 min-w-0 flex-1 ${mobileView === 'editor' ? 'flex' : 'hidden'}`}
+						>
+							{editor}
+						</div>
+						<div
+							className={`min-h-0 min-w-0 flex-1 ${mobileView === 'results' ? 'flex' : 'hidden'}`}
+						>
+							{results}
+						</div>
 					</main>
-					<nav
-						className="flex shrink-0"
-						style={{
-							height: 44,
-							borderTop: '1px solid var(--color-border)',
-							backgroundColor: 'var(--color-bg)',
-						}}
-					>
+					<nav className="flex h-11 shrink-0 border-t border-(--color-border)">
 						<TabButton active={mobileView === 'editor'} onClick={() => setMobileView('editor')}>
 							Editor
 						</TabButton>
@@ -207,16 +214,15 @@ function TabButton({
 }: {
 	active: boolean;
 	onClick: () => void;
-	children: React.ReactNode;
+	children: ReactNode;
 }) {
 	return (
 		<button
 			type="button"
 			onClick={onClick}
-			className="flex flex-1 cursor-pointer items-center justify-center text-xs font-medium"
-			style={{
-				color: active ? 'var(--color-accent)' : 'var(--color-fg-muted)',
-			}}
+			className={`flex flex-1 cursor-pointer items-center justify-center text-xs font-medium ${
+				active ? 'text-(--color-accent)' : 'text-(--color-fg-muted)'
+			}`}
 		>
 			{children}
 		</button>

@@ -24,7 +24,8 @@ import { signatureHelp } from './signature.ts';
 import { analysisField, inText, syntaxField } from './state.ts';
 import { theme } from './theme.ts';
 
-export { showProblems, type Problem } from './diagnostics.ts';
+export { showProblems } from './diagnostics.ts';
+export { formatDocument } from './names.ts';
 export { setAnalysis, type Analysis } from './state.ts';
 
 /**

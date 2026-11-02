@@ -92,6 +92,7 @@ describe('loopsAround', () => {
 		expect(around('for x in [a, b] when x > 0 then x.')).toEqual(['x<-[a, b]']);
 		expect(around('for x in a then for y in F(x, b) then y.')).toEqual(['x<-a', 'y<-F(x, b)']);
 		expect(around('for x in xs into s = 0 then s + ')).toEqual(['x<-xs', 's<-']);
+		expect(around('a = for x in xs then x\n  + x.')).toEqual(['x<-xs']);
 	});
 
 	test('not loops it is outside of', () => {

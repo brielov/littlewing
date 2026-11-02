@@ -1,16 +1,8 @@
 import { type Diagnostic, setDiagnostics } from '@codemirror/lint';
 import type { StateEffect } from '@codemirror/state';
 import type { EditorView } from '@codemirror/view';
+import type { Problem } from '../evaluation/protocol.ts';
 import { closest, FUNCTION_DESCRIPTIONS } from '../language/catalog.ts';
-
-/** A problem compiling or running the program found, at offsets into its source. */
-export interface Problem {
-	readonly code: string;
-	readonly message: string;
-	readonly severity: 'error' | 'warning';
-	readonly from: number;
-	readonly to: number;
-}
 
 /** Warnings about code that does nothing, which is shown faded. */
 const UNNECESSARY = new Set(['unused-binding', 'unused-statement']);

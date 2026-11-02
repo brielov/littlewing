@@ -2,7 +2,8 @@ import { EditorState } from '@codemirror/state';
 import { EditorView } from '@codemirror/view';
 import type { TypeDescription } from 'littlewing';
 import { useEffect, useRef } from 'react';
-import { littlewing, type Problem, setAnalysis, showProblems } from './editor/index.ts';
+import { littlewing, setAnalysis, showProblems } from './editor/index.ts';
+import type { Problem } from './evaluation/protocol.ts';
 
 interface EditorProps {
 	/** The source, with `\n` line breaks, as the editor keeps it. */
@@ -14,6 +15,8 @@ interface EditorProps {
 	types: ReadonlyMap<string, TypeDescription>;
 	/** Whether `types` are of the analyzed source. */
 	typesCurrent: boolean;
+	/** Told of the view once it is made, and of null once it is gone. */
+	onView?: (view: EditorView | null) => void;
 }
 
 interface Analyzed {
@@ -33,11 +36,21 @@ function apply(view: EditorView, analyzed: Analyzed): void {
 	);
 }
 
-export function Editor({ value, onChange, analyzed, problems, types, typesCurrent }: EditorProps) {
+export function Editor({
+	value,
+	onChange,
+	analyzed,
+	problems,
+	types,
+	typesCurrent,
+	onView,
+}: EditorProps) {
 	const parent = useRef<HTMLDivElement>(null);
 	const view = useRef<EditorView | null>(null);
 	const changed = useRef(onChange);
 	changed.current = onChange;
+	const viewed = useRef(onView);
+	viewed.current = onView;
 	const latest = useRef<Analyzed>({ source: analyzed, problems, types, typesCurrent });
 	latest.current = { source: analyzed, problems, types, typesCurrent };
 
@@ -63,7 +76,9 @@ export function Editor({ value, onChange, analyzed, problems, types, typesCurren
 		view.current = editor;
 		apply(editor, latest.current);
 		editor.focus();
+		viewed.current?.(editor);
 		return () => {
+			viewed.current?.(null);
 			editor.destroy();
 			view.current = null;
 		};
