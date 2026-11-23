@@ -69,9 +69,9 @@
 		"temporal-spec": "^1.0.1"
 	},
 	"devDependencies": {
-		"@types/bun": "^1.4.4",
+		"@types/bun": "^1.4.5",
 		"bumpp": "^12.3.0",
-		"temporal-polyfill": "^1.0.6",
+		"temporal-polyfill": "^1.0.8",
 		"typescript": "^7.0.2"
 	},
 	"peerDependencies": {
